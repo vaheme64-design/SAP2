@@ -2666,7 +2666,7 @@ export async function postWipProductionDb(input: {
               manufacturingOrderId: mo.id,
               issuedWeightKg: { gt: 0 },
             },
-            orderBy: [{ issuedAt: 'asc' }, { createdAt: 'asc' }],
+            orderBy: [{ issuedAt: 'asc' }, { id: 'asc' }],
           });
           const openIssues = (allMoIssues || []).filter((rec: any) => num(rec.outstandingWeightKg) > 1e-6);
           const eligibleOpIssues = openIssues.filter(
