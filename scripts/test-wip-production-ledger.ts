@@ -277,7 +277,7 @@ async function run() {
         ...input,
         idempotencyKey: rollbackKey,
         expectedVersion: refreshedOp10!.version,
-        goodQty: 1,
+        goodQty: 1001,
         scrapQty: 0,
       });
     } catch (error) {
