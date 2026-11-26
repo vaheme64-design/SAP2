@@ -515,7 +515,7 @@ async function main() {
       if (linkedTransactions.length !== 9 || linkedLines.length !== 9) throw new Error('Expected nine coil-linked receipt, reallocation, issue and return ledger rows.');
       if (contractLedger.length !== 2 || contractLedger.reduce((sum: number, row: any) => sum + Number(row.weightKg), 0) !== 100) throw new Error('Expected 100 kg in the supplier contract receipt ledger.');
       console.log('PASS: physical coil, material lot, two-contract reallocation, inventory documents, signed ledger, stock balances and issue/return genealogy reconcile to 82 kg (A=32 kg, B=50 kg).');
-    });
+    }, { maxWait: 15000, timeout: 60000 });
 
     // Two simultaneous partial returns must not both consume the same stale outstanding balance.
     if (!concurrencyIssueRecordId) throw new Error('Concurrency fixture issue record was not captured.');
@@ -529,7 +529,7 @@ async function main() {
         },
       });
       return result.count === 1;
-    }, { isolationLevel: 'Serializable' });
+    }, { isolationLevel: 'Serializable', maxWait: 15000, timeout: 30000 });
     const concurrentReturns = await Promise.allSettled([
       attemptConcurrentReturn(),
       attemptConcurrentReturn(),

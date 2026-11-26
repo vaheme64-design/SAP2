@@ -169,6 +169,8 @@ export function getLocationForProcess(processType: string, stepNumber: number): 
       return 'LOC-WIP-BLANK';
     case 'DRAWING':
       return 'LOC-WIP-DRAWN';
+    case 'TRIMMING':
+      return 'LOC-WIP-TRIM';
     case 'PUNCH_FORM':
       return 'LOC-WIP-PUNCH';
     case 'BENDING':

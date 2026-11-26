@@ -198,7 +198,12 @@ async function main() {
       where: { active: true, category: 'RAW_MATERIAL', materialId: { not: null } },
       include: { material: true, unit: true },
     });
-    const rawPart = rawParts.find(item => item.unit.code === 'KG' && item.material);
+    const rawPart = rawParts.find(
+      item =>
+        item.unit.code === 'KG' &&
+        item.material &&
+        INITIAL_PARTS.some(app => app.code === item.partNumber),
+    );
     const appRawPart = rawPart ? INITIAL_PARTS.find(item => item.code === rawPart.partNumber) : undefined;
     const rawWarehouse = await prisma.warehouse.findFirst({ where: { code: 'WH-RAW', active: true } });
     const supplier = await prisma.customer.findFirst({ where: { active: true }, orderBy: { createdAt: 'asc' } });
@@ -506,6 +511,9 @@ async function main() {
         ).map((r: any) => r.id);
         await prisma.productionActivityLog.deleteMany({ where: { manufacturingOrderId: { in: releasedMoIds } } });
         await prisma.productionTransfer.deleteMany({ where: { manufacturingOrderId: { in: releasedMoIds } } });
+        await prisma.machineAssignment.deleteMany({
+          where: { productionOperation: { manufacturingOrderId: { in: releasedMoIds } } },
+        });
         if (repIds.length) {
           await prisma.productionScrap.deleteMany({ where: { productionReportId: { in: repIds } } });
         }
