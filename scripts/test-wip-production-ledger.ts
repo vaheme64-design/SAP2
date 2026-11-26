@@ -1,0 +1,312 @@
+import { activateTestDatabaseForIntegrationTests } from '../src/server/db/testDatabase';
+import { getLocationForProcess } from '../src/server/productionWipEngine';
+import { createManufacturingOrderDb } from '../src/server/services/productionWipService';
+import { postWipProductionAtomically } from '../src/server/wipProductionLedger';
+
+function assert(description: string, condition: boolean) {
+  if (!condition) throw new Error(`❌ ${description}`);
+  console.log(`✅ ${description}`);
+}
+
+async function run() {
+  const { prisma } = await activateTestDatabaseForIntegrationTests();
+  const nonce = `TEST-LEDGER-${Date.now()}`;
+  const idempotencyKey = `${nonce}-atomic-980-20`;
+  const rollbackKey = `${nonce}-rollback-001`;
+  const testOwnership = 'WIP_LEDGER_TEST';
+  const testContractId = nonce;
+
+  let createdMoId: string | undefined;
+  let sourceBalanceId: string | undefined;
+  let tempPartId: string | undefined;
+  let tempRouteId: string | undefined;
+
+  try {
+    const [unitPcs, operations, activeLocations, shift, user, machine, rawWarehouse, scrapWarehouses] = await Promise.all([
+      prisma.unitOfMeasure.findFirst({ where: { code: 'PCS', active: true } }) ??
+        prisma.unitOfMeasure.findFirst({ where: { active: true }, orderBy: { code: 'asc' } }),
+      prisma.operation.findMany({ where: { active: true }, orderBy: { code: 'asc' } }),
+      prisma.warehouseLocation.findMany({ where: { active: true, warehouse: { active: true } }, include: { warehouse: true } }),
+      prisma.shift.findFirst({ where: { active: true }, orderBy: { code: 'asc' } }),
+      prisma.user.findFirst({ orderBy: { id: 'asc' } }),
+      prisma.machine.findFirst({ where: { active: true, status: 'ACTIVE' }, orderBy: { code: 'asc' } }),
+      prisma.warehouse.findFirst({
+        where: { active: true, type: 'RAW_MATERIALS' },
+        include: { locations: { where: { active: true }, orderBy: { code: 'asc' }, take: 1 } },
+      }),
+      prisma.warehouse.findMany({
+        where: { type: 'SCRAP', active: true },
+        include: { locations: { where: { active: true }, orderBy: { code: 'asc' }, take: 1 } },
+      }),
+    ]);
+
+    const scrapLocation = scrapWarehouses[0]?.locations[0];
+    if (!unitPcs || !shift || !user || !machine || !rawWarehouse?.locations[0] || !scrapLocation) {
+      throw new Error('Active unit, shift, user, machine, raw warehouse location, and scrap location are required.');
+    }
+
+    const locByCode = new Map<string, any[]>();
+    for (const loc of activeLocations) {
+      const list = locByCode.get(loc.code) ?? [];
+      list.push(loc);
+      locByCode.set(loc.code, list);
+    }
+    const opWithLoc = operations
+      .map(op => {
+        const code = getLocationForProcess(op.processType, 10);
+        const matches = locByCode.get(code) ?? [];
+        return matches.length === 1 ? { op, loc: matches[0] } : null;
+      })
+      .filter((x): x is { op: any; loc: any } => Boolean(x));
+
+    const firstPair = opWithLoc.find(x => x.op.processType !== 'ASSEMBLY');
+    const secondPair = opWithLoc.find(x => x.loc.id !== firstPair?.loc.id);
+    if (!firstPair || !secondPair) {
+      throw new Error('Two operations resolving to distinct active warehouse locations are required.');
+    }
+
+    const tempPart = await prisma.part.create({
+      data: {
+        partNumber: nonce,
+        name: `قطعه تست لجر ${nonce}`,
+        category: 'FINISHED_GOOD',
+        unitId: unitPcs.id,
+        weightNetKg: 0.5,
+        weightGrossKg: 0.6,
+        active: true,
+      },
+    });
+    tempPartId = tempPart.id;
+
+    const tempRoute = await prisma.partRoute.create({
+      data: {
+        partId: tempPart.id,
+        version: 'V1.0-LEDGER',
+        status: 'ACTIVE',
+        isDefault: true,
+        operations: {
+          create: [
+            {
+              operationId: firstPair.op.id,
+              stepNumber: 10,
+              stepCode: 'OP10_LEDGER',
+              stepName: 'عملیات ۱۰ تست لجر',
+              machineId: machine.id,
+              setupTimeMin: 10,
+              standardCycleTimeSec: 20,
+              scrapNormPercent: 1,
+              transferBatchQty: 100,
+            },
+            {
+              operationId: secondPair.op.id,
+              stepNumber: 20,
+              stepCode: 'OP20_LEDGER',
+              stepName: 'عملیات ۲۰ تست لجر',
+              machineId: machine.id,
+              setupTimeMin: 10,
+              standardCycleTimeSec: 20,
+              scrapNormPercent: 1,
+              transferBatchQty: 100,
+            },
+          ],
+        },
+      },
+    });
+    tempRouteId = tempRoute.id;
+
+    const sourceLoc = rawWarehouse.locations[0];
+    const sourceBal = await prisma.stockBalance.create({
+      data: {
+        partId: tempPart.id,
+        warehouseId: rawWarehouse.id,
+        locationId: sourceLoc.id,
+        ownership: testOwnership,
+        contractId: testContractId,
+        contractNumber: testContractId,
+        qualityStatus: 'AVAILABLE',
+        quantityOnHand: 1000,
+        quantityReserved: 0,
+        quantityAvailable: 1000,
+        weightKgOnHand: 1000 * Number(tempPart.weightNetKg),
+        weightKgReserved: 0,
+        weightKgAvailable: 1000 * Number(tempPart.weightNetKg),
+      },
+    });
+    sourceBalanceId = sourceBal.id;
+
+    const moDto = await createManufacturingOrderDb({
+      partId: tempPart.id,
+      routingId: tempRoute.id,
+      targetQuantity: 1000,
+      initialInputQuantity: 1000,
+      sourceStockBalanceId: sourceBal.id,
+      notes: 'Isolated relational WIP ledger test MO',
+      createdBy: user.fullName,
+      createdByUserId: user.id,
+    });
+    createdMoId = moDto.id;
+
+    const dbMo = await prisma.manufacturingOrder.findUnique({
+      where: { id: createdMoId },
+      include: {
+        operations: {
+          include: { operation: true, location: true },
+          orderBy: [{ sequence: 'asc' }, { stepNumber: 'asc' }],
+        },
+      },
+    });
+    if (!dbMo || dbMo.operations.length < 2) {
+      throw new Error('Created test MO must have at least 2 operations.');
+    }
+    const op10 = dbMo.operations[0];
+    const op20 = dbMo.operations[1];
+
+    const input = {
+      wipManufacturingOrderId: dbMo.id,
+      wipOperationId: op10.id,
+      idempotencyKey,
+      machineId: op10.plannedMachineId || machine.id,
+      shiftId: shift.id,
+      createdByUserId: user.id,
+      goodQty: 980,
+      scrapQty: 20,
+      reworkQty: 0,
+      rejectedQty: 0,
+      scrapReason: 'TEST_SCRAP',
+      operatorName: user.fullName,
+      expectedVersion: op10.version,
+    };
+
+    const posted = await postWipProductionAtomically(input);
+    assert(
+      `980 good and 20 scrap posted in one atomic transaction (txCount=${posted.transactionCount})`,
+      !posted.duplicate && posted.transactionCount === 3,
+    );
+    assert(
+      'Production report contains 980 good and 20 scrap',
+      Number(posted.report.goodQuantity) === 980 && Number(posted.report.scrapQuantity) === 20,
+    );
+    assert('Scrap reason is retained in the relational report', posted.report.scrapReasonText === 'TEST_SCRAP');
+
+    const [sourceBalance, targetBalance, scrapBalance, movements, refreshedOp10, refreshedOp20, autoTransfers] =
+      await Promise.all([
+        prisma.stockBalance.findFirst({
+          where: {
+            partId: tempPart.id,
+            locationId: op10.locationId!,
+            ownership: testOwnership,
+            contractId: testContractId,
+            qualityStatus: 'AVAILABLE',
+          },
+        }),
+        prisma.stockBalance.findFirst({
+          where: {
+            partId: tempPart.id,
+            locationId: op20.locationId!,
+            ownership: testOwnership,
+            contractId: testContractId,
+            qualityStatus: 'AVAILABLE',
+          },
+        }),
+        prisma.stockBalance.findFirst({
+          where: {
+            partId: tempPart.id,
+            locationId: scrapLocation.id,
+            ownership: testOwnership,
+            contractId: testContractId,
+            qualityStatus: 'SCRAP',
+          },
+        }),
+        prisma.inventoryTransaction.findMany({ where: { productionReportId: posted.report.id } }),
+        prisma.productionOperation.findUnique({ where: { id: op10.id } }),
+        prisma.productionOperation.findUnique({ where: { id: op20.id } }),
+        prisma.productionTransfer.findMany({ where: { manufacturingOrderId: dbMo.id, status: 'AUTO_TRANSFERRED' } }),
+      ]);
+
+    assert('Source stage stock is reduced to zero', Number(sourceBalance?.quantityOnHand) === 0);
+    assert('980 good pieces are added to the next operation location', Number(targetBalance?.quantityOnHand) === 980);
+    assert('20 scrap pieces are added to the scrap location', Number(scrapBalance?.quantityOnHand) === 20);
+    assert('Expected 3 report-linked ledger movements written', movements.length === 3);
+    assert('Op20 waitingInputQty equals 980', Number(refreshedOp20?.waitingInputQty) === 980);
+    assert(
+      'Op10 outputGoodQty=980, outputScrapQty=20, status=COMPLETED',
+      Number(refreshedOp10?.outputGoodQty) === 980 &&
+        Number(refreshedOp10?.outputScrapQty) === 20 &&
+        refreshedOp10?.status === 'COMPLETED',
+    );
+    assert('AUTO_TRANSFERRED record created in ProductionTransfer', autoTransfers.length === 1 && Number(autoTransfers[0].quantity) === 980);
+
+    const replay = await postWipProductionAtomically(input);
+    assert('Same idempotency key returns the existing report without new transactions', replay.duplicate && replay.transactionCount === 0);
+    const movementCountAfterReplay = await prisma.inventoryTransaction.count({ where: { productionReportId: posted.report.id } });
+    assert('Idempotent replay does not duplicate kardex movements', movementCountAfterReplay === 3);
+
+    let rollbackRejected = false;
+    try {
+      await postWipProductionAtomically({
+        ...input,
+        idempotencyKey: rollbackKey,
+        expectedVersion: refreshedOp10!.version,
+        goodQty: 1,
+        scrapQty: 0,
+      });
+    } catch (error) {
+      rollbackRejected = error instanceof Error && (error.message.includes('بیشتر است') || error.message.includes('Insufficient'));
+    }
+    assert('Insufficient station WIP rejects posting', rollbackRejected);
+    assert(
+      'Failed posting leaves no relational production report',
+      !(await prisma.productionReport.findUnique({ where: { wipIdempotencyKey: rollbackKey } })),
+    );
+    assert(
+      'Failed posting leaves no extra inventory transactions',
+      (await prisma.inventoryTransaction.count({ where: { productionReportId: posted.report.id } })) === 3,
+    );
+
+    console.log('ALL ATOMIC WIP PRODUCTION LEDGER TESTS PASSED');
+  } finally {
+    if (createdMoId) {
+      await prisma.productionActivityLog.deleteMany({ where: { manufacturingOrderId: createdMoId } });
+      await prisma.productionTransfer.deleteMany({ where: { manufacturingOrderId: createdMoId } });
+      const reports = await prisma.productionReport.findMany({
+        where: { manufacturingOrderId: createdMoId },
+        select: { id: true },
+      });
+      const reportIds = reports.map((r: any) => r.id);
+      if (reportIds.length) {
+        await prisma.productionScrap.deleteMany({ where: { productionReportId: { in: reportIds } } });
+      }
+      await prisma.inventoryTransaction.deleteMany({ where: { manufacturingOrderId: createdMoId } });
+      await prisma.productionReport.deleteMany({ where: { manufacturingOrderId: createdMoId } });
+      await prisma.productionOperation.deleteMany({ where: { manufacturingOrderId: createdMoId } });
+      await prisma.manufacturingOrder.deleteMany({ where: { id: createdMoId } });
+    }
+    if (tempPartId) {
+      const txs = await prisma.inventoryTransaction.findMany({ where: { partId: tempPartId }, select: { documentId: true } });
+      const lines = await prisma.inventoryDocumentLine.findMany({ where: { partId: tempPartId }, select: { documentId: true } });
+      const docIds = [...new Set([...txs.map(t => t.documentId), ...lines.map(l => l.documentId)].filter(Boolean))] as string[];
+      await prisma.inventoryTransaction.deleteMany({ where: { partId: tempPartId } });
+      if (docIds.length) {
+        await prisma.inventoryDocumentLine.deleteMany({ where: { documentId: { in: docIds } } });
+        await prisma.inventoryDocument.deleteMany({ where: { id: { in: docIds } } });
+      }
+      await prisma.stockBalance.deleteMany({ where: { partId: tempPartId } });
+    }
+    if (sourceBalanceId) {
+      await prisma.stockBalance.deleteMany({ where: { id: sourceBalanceId } });
+    }
+    if (tempRouteId) {
+      await prisma.routeOperation.deleteMany({ where: { routeId: tempRouteId } });
+      await prisma.partRoute.deleteMany({ where: { id: tempRouteId } });
+    }
+    if (tempPartId) {
+      await prisma.part.deleteMany({ where: { id: tempPartId } });
+    }
+    await prisma.$disconnect();
+  }
+}
+
+run().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

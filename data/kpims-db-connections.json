@@ -1,0 +1,17 @@
+{
+  "localDbUrl": "",
+  "cloudDbUrl": "postgresql://postgres:QKMZDr0H90GWJ3ki@db.iusaocctfromtocsmdog.supabase.co:5432/postgres",
+  "activeTarget": "AUTO",
+  "autoCheckCloudUpdates": false,
+  "cloudCheckIntervalSec": 120,
+  "deviceLabel": "localhost",
+  "lastSyncedCloudHash": "f982983164928fa4018da817",
+  "lastSyncedLocalHash": "8722438f5237e362baae4600",
+  "lastSyncedCloudRevision": 8,
+  "lastSyncedCloudAt": "2026-11-18T09:32:09.604Z",
+  "lastLocalHash": "1de50bde3b0a3810b1678c9e",
+  "lastLocalRevision": 9,
+  "lastLocalUpdatedAt": "2026-11-18T09:49:59.350Z",
+  "lastSyncAt": "2026-11-18T09:36:48.533Z",
+  "lastSyncSummary": "به‌روزرسانی محلی (Pull #8) از «localhost» با موفقیت انجام شد (1467 قطعه، 3 دستور تولید)."
+}
