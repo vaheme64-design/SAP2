@@ -22,26 +22,32 @@ async function run() {
   let tempRouteId: string | undefined;
 
   try {
-    const [unitPcs, operations, activeLocations, shift, user, machine, rawWarehouse, scrapWarehouses] = await Promise.all([
-      prisma.unitOfMeasure.findFirst({ where: { code: 'PCS', active: true } }) ??
-        prisma.unitOfMeasure.findFirst({ where: { active: true }, orderBy: { code: 'asc' } }),
-      prisma.operation.findMany({ where: { active: true }, orderBy: { code: 'asc' } }),
-      prisma.warehouseLocation.findMany({ where: { active: true, warehouse: { active: true } }, include: { warehouse: true } }),
-      prisma.shift.findFirst({ where: { active: true }, orderBy: { code: 'asc' } }),
-      prisma.user.findFirst({ orderBy: { id: 'asc' } }),
-      prisma.machine.findFirst({ where: { active: true, status: 'ACTIVE' }, orderBy: { code: 'asc' } }),
-      prisma.warehouse.findFirst({
-        where: { active: true, type: 'RAW_MATERIALS' },
-        include: { locations: { where: { active: true }, orderBy: { code: 'asc' }, take: 1 } },
-      }),
-      prisma.warehouse.findMany({
-        where: { type: 'SCRAP', active: true },
-        include: { locations: { where: { active: true }, orderBy: { code: 'asc' }, take: 1 } },
-      }),
-    ]);
+    const [unitPcs, operations, activeLocations, shift, user, activeMachines, capabilityCount, rawWarehouse, scrapWarehouses] =
+      await Promise.all([
+        prisma.unitOfMeasure.findFirst({ where: { code: 'PCS', active: true } }) ??
+          prisma.unitOfMeasure.findFirst({ where: { active: true }, orderBy: { code: 'asc' } }),
+        prisma.operation.findMany({ where: { active: true }, orderBy: { code: 'asc' } }),
+        prisma.warehouseLocation.findMany({ where: { active: true, warehouse: { active: true } }, include: { warehouse: true } }),
+        prisma.shift.findFirst({ where: { active: true }, orderBy: { code: 'asc' } }),
+        prisma.user.findFirst({ orderBy: { id: 'asc' } }),
+        prisma.machine.findMany({
+          where: { active: true, status: 'ACTIVE' },
+          include: { capabilities: { include: { operation: true } } },
+          orderBy: { code: 'asc' },
+        }),
+        prisma.machineCapability.count(),
+        prisma.warehouse.findFirst({
+          where: { active: true, type: 'RAW_MATERIALS' },
+          include: { locations: { where: { active: true }, orderBy: { code: 'asc' }, take: 1 } },
+        }),
+        prisma.warehouse.findMany({
+          where: { type: 'SCRAP', active: true },
+          include: { locations: { where: { active: true }, orderBy: { code: 'asc' }, take: 1 } },
+        }),
+      ]);
 
     const scrapLocation = scrapWarehouses[0]?.locations[0];
-    if (!unitPcs || !shift || !user || !machine || !rawWarehouse?.locations[0] || !scrapLocation) {
+    if (!unitPcs || !shift || !user || activeMachines.length === 0 || !rawWarehouse?.locations[0] || !scrapLocation) {
       throw new Error('Active unit, shift, user, machine, raw warehouse location, and scrap location are required.');
     }
 
@@ -51,18 +57,42 @@ async function run() {
       list.push(loc);
       locByCode.set(loc.code, list);
     }
-    const opWithLoc = operations
-      .map(op => {
-        const code = getLocationForProcess(op.processType, 10);
-        const matches = locByCode.get(code) ?? [];
-        return matches.length === 1 ? { op, loc: matches[0] } : null;
-      })
-      .filter((x): x is { op: any; loc: any } => Boolean(x));
 
-    const firstPair = opWithLoc.find(x => x.op.processType !== 'ASSEMBLY');
-    const secondPair = opWithLoc.find(x => x.loc.id !== firstPair?.loc.id);
+    const findEligibleMachineForOp = (op: (typeof operations)[number]) => {
+      if (capabilityCount === 0) {
+        return activeMachines[0] ?? null;
+      }
+      return (
+        activeMachines.find(m =>
+          m.capabilities.some(
+            c => c.operationId === op.id || (op.processType && c.operation?.processType === op.processType),
+          ),
+        ) ?? null
+      );
+    };
+
+    const resolveEligibleOp = (op: (typeof operations)[number], stepNumber: number) => {
+      const code = getLocationForProcess(op.processType, stepNumber);
+      const matches = locByCode.get(code) ?? [];
+      if (matches.length !== 1) return null;
+      const eligibleMachine = findEligibleMachineForOp(op);
+      if (!eligibleMachine) return null;
+      return { op, loc: matches[0], machine: eligibleMachine };
+    };
+
+    const firstPair = operations
+      .filter(op => op.processType !== 'ASSEMBLY')
+      .map(op => resolveEligibleOp(op, 10))
+      .find((x): x is { op: any; loc: any; machine: any } => Boolean(x));
+
+    const secondPair = operations
+      .map(op => resolveEligibleOp(op, 20))
+      .find((x): x is { op: any; loc: any; machine: any } => Boolean(x && firstPair && x.loc.id !== firstPair.loc.id));
+
     if (!firstPair || !secondPair) {
-      throw new Error('Two operations resolving to distinct active warehouse locations are required.');
+      throw new Error(
+        'Two active operations with eligible ACTIVE machines (matching machine_capabilities when seeded) and distinct active warehouse locations are required.',
+      );
     }
 
     const tempPart = await prisma.part.create({
@@ -91,7 +121,7 @@ async function run() {
               stepNumber: 10,
               stepCode: 'OP10_LEDGER',
               stepName: 'عملیات ۱۰ تست لجر',
-              machineId: machine.id,
+              machineId: firstPair.machine.id,
               setupTimeMin: 10,
               standardCycleTimeSec: 20,
               scrapNormPercent: 1,
@@ -102,7 +132,7 @@ async function run() {
               stepNumber: 20,
               stepCode: 'OP20_LEDGER',
               stepName: 'عملیات ۲۰ تست لجر',
-              machineId: machine.id,
+              machineId: secondPair.machine.id,
               setupTimeMin: 10,
               standardCycleTimeSec: 20,
               scrapNormPercent: 1,
@@ -165,7 +195,7 @@ async function run() {
       wipManufacturingOrderId: dbMo.id,
       wipOperationId: op10.id,
       idempotencyKey,
-      machineId: op10.plannedMachineId || machine.id,
+      machineId: op10.plannedMachineId || firstPair.machine.id,
       shiftId: shift.id,
       createdByUserId: user.id,
       goodQty: 980,

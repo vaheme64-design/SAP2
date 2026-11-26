@@ -66,7 +66,7 @@ async function run() {
   });
 
   try {
-    const [unitPcs, operations, activeLocations, rawWarehouse, fgWarehouse, scrapWarehouse, machine, shift, user] =
+    const [unitPcs, operations, activeLocations, rawWarehouse, fgWarehouse, scrapWarehouse, activeMachines, capabilityCount, shift, user] =
       await Promise.all([
         prisma.unitOfMeasure.findFirst({ where: { code: 'PCS', active: true } }) ??
           prisma.unitOfMeasure.findFirst({ where: { active: true }, orderBy: { code: 'asc' } }),
@@ -84,7 +84,12 @@ async function run() {
           where: { type: 'SCRAP', active: true },
           include: { locations: { where: { active: true }, orderBy: { code: 'asc' }, take: 1 } },
         }),
-        prisma.machine.findFirst({ where: { active: true, status: 'ACTIVE' }, orderBy: { code: 'asc' } }),
+        prisma.machine.findMany({
+          where: { active: true, status: 'ACTIVE' },
+          include: { capabilities: { include: { operation: true } } },
+          orderBy: { code: 'asc' },
+        }),
+        prisma.machineCapability.count(),
         prisma.shift.findFirst({ where: { active: true }, orderBy: { code: 'asc' } }),
         prisma.user.findFirst({ orderBy: { id: 'asc' } }),
       ]);
@@ -94,14 +99,14 @@ async function run() {
       !rawWarehouse?.locations[0] ||
       !fgWarehouse ||
       !scrapWarehouse?.locations[0] ||
-      !machine ||
+      activeMachines.length === 0 ||
       !shift ||
       !user
     ) {
       throw new Error('Required master fixtures (unit, warehouses, machine, shift, user) are missing.');
     }
 
-    // Resolve two operations that map to distinct active locations for testing both same-location & cross-location steps
+    // Resolve two operations with eligible active machines that map to distinct active locations for testing both same-location & cross-location steps
     const locByCode = new Map<string, any[]>();
     for (const loc of activeLocations) {
       const list = locByCode.get(loc.code) ?? [];
@@ -109,18 +114,42 @@ async function run() {
       locByCode.set(loc.code, list);
     }
 
-    const opWithLoc = operations
-      .map(op => {
-        const code = getLocationForProcess(op.processType, 10);
-        const matches = locByCode.get(code) ?? [];
-        return matches.length === 1 ? { op, loc: matches[0] } : null;
-      })
-      .filter((x): x is { op: any; loc: any } => Boolean(x));
+    const findEligibleMachineForOp = (op: (typeof operations)[number]) => {
+      if (capabilityCount === 0) {
+        return activeMachines[0] ?? null;
+      }
+      return (
+        activeMachines.find(m =>
+          m.capabilities.some(
+            c => c.operationId === op.id || (op.processType && c.operation?.processType === op.processType),
+          ),
+        ) ?? null
+      );
+    };
 
-    const firstPair = opWithLoc.find(x => x.op.processType !== 'ASSEMBLY');
-    const secondPair = opWithLoc.find(x => x.loc.id !== firstPair?.loc.id);
+    const resolveEligibleOp = (op: (typeof operations)[number], stepNumbers: number[]) => {
+      const codes = stepNumbers.map(stepNumber => getLocationForProcess(op.processType, stepNumber));
+      if (new Set(codes).size !== 1) return null;
+      const matches = locByCode.get(codes[0]) ?? [];
+      if (matches.length !== 1) return null;
+      const eligibleMachine = findEligibleMachineForOp(op);
+      if (!eligibleMachine) return null;
+      return { op, loc: matches[0], machine: eligibleMachine };
+    };
+
+    const firstPair = operations
+      .filter(op => op.processType !== 'ASSEMBLY')
+      .map(op => resolveEligibleOp(op, [10, 20]))
+      .find((x): x is { op: any; loc: any; machine: any } => Boolean(x));
+
+    const secondPair = operations
+      .map(op => resolveEligibleOp(op, [30]))
+      .find((x): x is { op: any; loc: any; machine: any } => Boolean(x && firstPair && x.loc.id !== firstPair.loc.id));
+
     if (!firstPair || !secondPair) {
-      throw new Error('Need at least two active Operations resolving to distinct active WarehouseLocations.');
+      throw new Error(
+        'Need at least two active Operations with eligible ACTIVE machines (matching machine_capabilities when seeded) resolving to distinct active WarehouseLocations.',
+      );
     }
 
     // Pick a dedicated FG location (or create an isolated one) that isn't LOC-FIN-P1 to prove Decision #3 (no hardcoding)
@@ -166,7 +195,7 @@ async function run() {
               stepNumber: 10,
               stepCode: 'OP10_SAME_A',
               stepName: 'مرحله ۱۰ تست هم‌مکان',
-              machineId: machine.id,
+              machineId: firstPair.machine.id,
               setupTimeMin: 10,
               standardCycleTimeSec: 20,
               scrapNormPercent: 1,
@@ -177,7 +206,7 @@ async function run() {
               stepNumber: 20,
               stepCode: 'OP20_SAME_B',
               stepName: 'مرحله ۲۰ تست هم‌مکان',
-              machineId: machine.id,
+              machineId: firstPair.machine.id,
               setupTimeMin: 10,
               standardCycleTimeSec: 20,
               scrapNormPercent: 1,
@@ -188,7 +217,7 @@ async function run() {
               stepNumber: 30,
               stepCode: 'OP30_FINAL',
               stepName: 'مرحله ۳۰ تست نهایی',
-              machineId: machine.id,
+              machineId: secondPair.machine.id,
               setupTimeMin: 10,
               standardCycleTimeSec: 20,
               scrapNormPercent: 1,
@@ -334,7 +363,7 @@ async function run() {
       operationId: op10.id,
       quantity: 100,
       operatorName: user.fullName,
-      machineId: machine.id,
+      machineId: firstPair.machine.id,
       expectedVersion: op10.version,
     });
     const op10AfterInput = afterInputMo.operations[0];
@@ -351,7 +380,7 @@ async function run() {
           moId: loadedMo.id,
           operationId: op10AfterInput.id,
           idempotencyKey: `${nonce}-stale-op10`,
-          machineId: machine.id,
+          machineId: firstPair.machine.id,
           shiftId: shift.id,
           createdByUserId: user.id,
           goodQty: 90,
@@ -370,7 +399,7 @@ async function run() {
       moId: loadedMo.id,
       operationId: op10AfterInput.id,
       idempotencyKey: `${nonce}-post-op10`,
-      machineId: machine.id,
+      machineId: firstPair.machine.id,
       shiftId: shift.id,
       createdByUserId: user.id,
       goodQty: 90,
@@ -427,7 +456,7 @@ async function run() {
       moId: loadedMo.id,
       operationId: op20AfterPost10.id,
       idempotencyKey: `${nonce}-post-op20`,
-      machineId: machine.id,
+      machineId: firstPair.machine.id,
       shiftId: shift.id,
       createdByUserId: user.id,
       goodQty: 90,
@@ -446,7 +475,7 @@ async function run() {
       moId: loadedMo.id,
       operationId: op30AfterPost20.id,
       idempotencyKey: `${nonce}-post-op30`,
-      machineId: machine.id,
+      machineId: secondPair.machine.id,
       shiftId: shift.id,
       createdByUserId: user.id,
       goodQty: 90,
