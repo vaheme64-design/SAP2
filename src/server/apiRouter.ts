@@ -10866,7 +10866,12 @@ apiRouter.post('/inventory/coils/:id/return', async (req: Request, res: Response
     });
 
     if (!dbRes.success) {
-      return res.status(dbRes.statusCode || 409).json({
+      const httpStatus =
+        dbRes.errorCode === 'RETURN_EXCEEDS_OUTSTANDING_ISSUE' ||
+        dbRes.errorCode === 'RETURN_EXCEEDS_ORIGINAL_WEIGHT'
+          ? 409
+          : dbRes.statusCode || 409;
+      return res.status(httpStatus).json({
         success: false,
         code: dbRes.errorCode,
         error: dbRes.error || 'خطا در ثبت اتمیک برگشت ته‌کلاف در PostgreSQL',
@@ -16340,21 +16345,15 @@ apiRouter.get('/reports/wip-aging', async (req: Request, res: Response) => {
 });
 
 // 19.6 Material Consumption vs Standard
-apiRouter.get('/reports/material-consumption-vs-standard', (req: Request, res: Response) => {
-  try {
-    const filters = extractReportFilters(req);
-    const report = getMaterialConsumptionVsStandardReport(filters);
-    return res.json({
-      success: true,
-      source: 'VERSIONED_BOM_RECONCILIATION_AND_POSTED_MATERIAL_LEDGER',
-      ...report,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'خطا در محاسبه انحراف مصرف استاندارد BOM',
-    });
-  }
+apiRouter.get('/reports/material-consumption-vs-standard', (_req: Request, res: Response) => {
+  return res.status(409).json({
+    success: false,
+    source: 'BOM_VARIANCE_DISABLED_UNTIL_VERSIONED_BOM_RECONCILIATION',
+    error:
+      'گزارش انحراف مصرف استاندارد BOM تا اتصال نسخه تأییدشده BOM به مصرف واقعی غیرفعال است؛ از گزارش مصرف واقعی (/api/reports/material-consumption-actual) استفاده کنید.',
+    replacementEndpoint: '/api/reports/material-consumption-actual',
+    data: [],
+  });
 });
 
 // 19.6a Actual Material Consumption from Posted Inventory Transactions and Production Reports
