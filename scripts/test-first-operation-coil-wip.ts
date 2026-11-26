@@ -183,10 +183,7 @@ async function run() {
         { contractId: contractB.id, contractNumber: contractB.contractNumber, allocatedWeightKg: 40 },
       ],
     });
-    assert(
-      `One physical coil can be allocated across two contracts (HTTP ${allocation.response.status}): ${JSON.stringify(allocation.payload)}`,
-      allocation.response.status === 200 && allocation.payload.success === true,
-    );
+    assert('One physical coil can be allocated across two contracts', allocation.response.status === 200 && allocation.payload.success === true);
 
     const issuePayload = {
       issueRequestKey: `${nonce}-ISSUE-REQUEST-1`,
