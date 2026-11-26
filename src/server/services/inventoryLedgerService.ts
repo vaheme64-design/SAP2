@@ -7316,7 +7316,7 @@ export async function reallocatePhysicalCoilContractsInDbTransaction(
                   allocatedWeightKg: Number(a.allocatedWeightKg || 0),
                   consumedWeightKg: 0,
                   remainingAllocatedKg: Number(a.allocatedWeightKg || 0),
-                  allocatedAt: (a.allocationDate instanceof Date ? a.allocationDate : now).toISOString(),
+                  allocatedAt: (a.createdAt instanceof Date ? a.createdAt : now).toISOString(),
                   notes: a.notes || undefined,
                 })),
               };
@@ -7651,7 +7651,7 @@ export async function reallocatePhysicalCoilContractsInDbTransaction(
                 contractId: target.contract.id,
                 coilId: dbCoil.id,
                 allocatedWeightKg: target.allocatedWeightKg,
-                allocationDate: now,
+                createdAt: now,
                 notes: target.notes || null,
               },
             });

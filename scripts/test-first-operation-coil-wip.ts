@@ -9,6 +9,8 @@ let server: import('node:http').Server | undefined;
 let coilId: string | undefined;
 let materialLotId: string | undefined;
 let testMoId: string | undefined;
+let createdOp30LocationId: string | undefined;
+const op30LocationCode = 'LOC-WIP-OP30';
 const contractIds: string[] = [];
 
 function assert(description: string, condition: boolean) {
@@ -46,21 +48,46 @@ async function run() {
   if (!targetPart) throw new Error('Active PCS part with >= 2 route operations is required.');
   const targetRoute = targetPart.routes.find((r: any) => r.operations.length >= 2)!;
 
-  const [warehouse, customer, rawParts] = await Promise.all([
+  const [warehouse, customer, rawParts, wipWarehouse] = await Promise.all([
     prisma.warehouse.findFirst({ where: { code: 'WH-RAW', active: true } }),
     prisma.customer.findFirst({ where: { active: true } }),
     prisma.part.findMany({
       where: { active: true, category: 'RAW_MATERIAL', materialId: { not: null } },
       include: { unit: true, material: true },
     }),
+    prisma.warehouse.findFirst({ where: { code: 'WH-WIP-STAMP', active: true } }) ??
+      prisma.warehouse.findFirst({ where: { type: 'WIP', active: true } }),
   ]);
-  const rawPart = rawParts.find((row: any) => row.unit.code === 'KG' && row.material);
+  const rawPart = rawParts.find(
+    (row: any) =>
+      row.unit.code === 'KG' &&
+      row.material &&
+      INITIAL_PARTS.some((app: any) => app.code === row.partNumber),
+  );
   const appPart = rawPart ? INITIAL_PARTS.find((row: any) => row.code === rawPart.partNumber) : undefined;
-  if (!warehouse || !customer || !rawPart?.material || !appPart) {
-    throw new Error('Test requires WH-RAW, a customer, and a mapped KG raw-material part.');
+  if (!warehouse || !customer || !rawPart?.material || !appPart || !wipWarehouse) {
+    throw new Error('Test requires WH-RAW, a customer, a mapped KG raw-material part, and an active WIP warehouse.');
   }
 
   try {
+    const existingOp30 = await prisma.warehouseLocation.findFirst({
+      where: { code: op30LocationCode, active: true },
+    });
+    if (!existingOp30) {
+      const op30Loc = await prisma.warehouseLocation.create({
+        data: {
+          warehouseId: wipWarehouse.id,
+          code: op30LocationCode,
+          aisle: 'P',
+          rack: 'TRIM',
+          bin: 'T-30',
+          maxCapacityKg: 10000,
+          active: true,
+        },
+      });
+      createdOp30LocationId = op30Loc.id;
+    }
+
     await loadInventoryAppState();
 
     const moDto = await createManufacturingOrderDb({
@@ -156,7 +183,10 @@ async function run() {
         { contractId: contractB.id, contractNumber: contractB.contractNumber, allocatedWeightKg: 40 },
       ],
     });
-    assert('One physical coil can be allocated across two contracts', allocation.response.status === 200 && allocation.payload.success === true);
+    assert(
+      `One physical coil can be allocated across two contracts (HTTP ${allocation.response.status}): ${JSON.stringify(allocation.payload)}`,
+      allocation.response.status === 200 && allocation.payload.success === true,
+    );
 
     const issuePayload = {
       issueRequestKey: `${nonce}-ISSUE-REQUEST-1`,
@@ -315,7 +345,10 @@ async function run() {
 
     console.log('ALL FIRST-OPERATION COIL-TO-WIP INTEGRATION TESTS PASSED');
   } finally {
-    if (server) await new Promise<void>(resolve => server!.close(() => resolve()));
+    if (server) {
+      server.closeAllConnections?.();
+      await new Promise<void>(resolve => server!.close(() => resolve()));
+    }
     if (coilId) {
       const docs = await prisma.inventoryDocument.findMany({ where: { lines: { some: { physicalCoilId: coilId } } }, select: { id: true } });
       await prisma.inventoryTransaction.deleteMany({ where: { physicalCoilId: coilId } });
@@ -336,11 +369,18 @@ async function run() {
       await prisma.productionOperation.deleteMany({ where: { manufacturingOrderId: testMoId } });
       await prisma.manufacturingOrder.deleteMany({ where: { id: testMoId } });
     }
+    if (createdOp30LocationId) {
+      await prisma.warehouseLocation.delete({ where: { id: createdOp30LocationId } }).catch(() => {});
+    }
     await prisma.$disconnect();
   }
 }
 
-run().catch(error => {
-  console.error('First-operation coil-to-WIP integration test failed:', error);
-  process.exitCode = 1;
-});
+run()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error('First-operation coil-to-WIP integration test failed:', error);
+    process.exit(1);
+  });
