@@ -271,26 +271,90 @@ async function run() {
     const movementCountAfterReplay = await prisma.inventoryTransaction.count({ where: { productionReportId: posted.report.id } });
     assert('Idempotent replay does not duplicate kardex movements', movementCountAfterReplay === 3);
 
-    let rollbackRejected = false;
+    assert('Op20 is active and not completed', refreshedOp20?.status === 'READY');
+    const availableOp20Wip = Number(refreshedOp20?.waitingInputQty ?? 0) + Number(refreshedOp20?.inProgressQty ?? 0);
+    assert('Op20 has known positive available station WIP', availableOp20Wip > 0 && availableOp20Wip === 980);
+
+    const excessiveQty = availableOp20Wip + 1;
+    const preRollbackTxCount = await prisma.inventoryTransaction.count({ where: { manufacturingOrderId: dbMo.id } });
+    const preRollbackReportCount = await prisma.productionReport.count({ where: { manufacturingOrderId: dbMo.id } });
+    const preRollbackStockBalance = await prisma.stockBalance.findFirst({
+      where: {
+        partId: tempPart.id,
+        locationId: op20.locationId!,
+        ownership: testOwnership,
+        contractId: testContractId,
+        qualityStatus: 'AVAILABLE',
+      },
+    });
+
+    let rollbackError: Error | null = null;
     try {
       await postWipProductionAtomically({
-        ...input,
+        wipManufacturingOrderId: dbMo.id,
+        wipOperationId: op20.id,
         idempotencyKey: rollbackKey,
-        expectedVersion: refreshedOp10!.version,
-        goodQty: 1001,
+        machineId: op20.plannedMachineId || secondPair.machine.id,
+        shiftId: shift.id,
+        createdByUserId: user.id,
+        goodQty: excessiveQty,
         scrapQty: 0,
+        reworkQty: 0,
+        rejectedQty: 0,
+        operatorName: user.fullName,
+        expectedVersion: refreshedOp20!.version,
       });
     } catch (error) {
-      rollbackRejected = error instanceof Error && (error.message.includes('بیشتر است') || error.message.includes('Insufficient'));
+      if (error instanceof Error) {
+        rollbackError = error;
+      }
     }
-    assert('Insufficient station WIP rejects posting', rollbackRejected);
+
+    assert('Posting exceeding station WIP threw an error', Boolean(rollbackError));
+    assert(
+      'Rejected specifically due to insufficient station WIP (not operation completed or overproduction)',
+      Boolean(
+        rollbackError &&
+          rollbackError.message.includes('بیشتر است') &&
+          rollbackError.message.includes('موجودی قابل پردازش ایستگاه') &&
+          !rollbackError.message.includes('تکمیل') &&
+          !rollbackError.message.includes('سقف برنامه'),
+      ),
+    );
+    assert('Insufficient station WIP rejects posting', Boolean(rollbackError && rollbackError.message.includes('بیشتر است')));
+
+    const [postRollbackReport, postRollbackTxCount, postRollbackReportCount, postRollbackOp20, postRollbackStockBalance] =
+      await Promise.all([
+        prisma.productionReport.findUnique({ where: { wipIdempotencyKey: rollbackKey } }),
+        prisma.inventoryTransaction.count({ where: { manufacturingOrderId: dbMo.id } }),
+        prisma.productionReport.count({ where: { manufacturingOrderId: dbMo.id } }),
+        prisma.productionOperation.findUnique({ where: { id: op20.id } }),
+        prisma.stockBalance.findFirst({
+          where: {
+            partId: tempPart.id,
+            locationId: op20.locationId!,
+            ownership: testOwnership,
+            contractId: testContractId,
+            qualityStatus: 'AVAILABLE',
+          },
+        }),
+      ]);
+
     assert(
       'Failed posting leaves no relational production report',
-      !(await prisma.productionReport.findUnique({ where: { wipIdempotencyKey: rollbackKey } })),
+      !postRollbackReport && postRollbackReportCount === preRollbackReportCount,
+    );
+    assert('Failed posting leaves no extra inventory transactions', postRollbackTxCount === preRollbackTxCount);
+    assert(
+      'Failed posting leaves op20 state and version unchanged',
+      Number(postRollbackOp20?.waitingInputQty) === Number(refreshedOp20?.waitingInputQty) &&
+        Number(postRollbackOp20?.outputGoodQty) === Number(refreshedOp20?.outputGoodQty) &&
+        postRollbackOp20?.version === refreshedOp20?.version &&
+        postRollbackOp20?.status === refreshedOp20?.status,
     );
     assert(
-      'Failed posting leaves no extra inventory transactions',
-      (await prisma.inventoryTransaction.count({ where: { productionReportId: posted.report.id } })) === 3,
+      'Failed posting leaves inventory stock balance unchanged',
+      Number(postRollbackStockBalance?.quantityOnHand) === Number(preRollbackStockBalance?.quantityOnHand),
     );
 
     console.log('ALL ATOMIC WIP PRODUCTION LEDGER TESTS PASSED');
@@ -336,7 +400,11 @@ async function run() {
   }
 }
 
-run().catch(error => {
-  console.error(error);
-  process.exit(1);
-});
+run()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
