@@ -58,6 +58,7 @@ import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
 import { PreMoWipInspectionModal } from '../workflow/PreMoWipInspectionModal';
 import { HighwayPartScenario } from '../workflow/FactoryHighwayWorkbench';
 import { AuditConfirmationModal } from '../common/AuditConfirmationModal';
+import { FioriMessageStrip, FioriToolbar } from '../fiori/ui';
 import { useAuditAction } from '../../hooks/useAuditAction';
 import { DynamicSelect } from '../common/DynamicSelect';
 import { D3MaterialFlowDiagram } from './D3MaterialFlowDiagram';
@@ -1919,8 +1920,8 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
       {/* ==================================================================== */}
       {/* SAP FIORI WORKSPACE ICON TAB BAR & FILTER BAR                        */}
       {/* ==================================================================== */}
-      <div className="sap-card overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 px-3 border-b border-[#D9DFE5]">
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 px-3 border-b border-[var(--fiori-border-subtle)]">
           <div className="sap-icon-tab-bar border-b-0 flex-1">
             {[
               { id: 'SHOP_FLOOR_EXECUTION' as const, title: '۰. اجرای کارگاه و کنترل تولید (Shop Floor)', icon: Hammer },
@@ -1953,7 +1954,7 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
             <button
               type="button"
               onClick={() => setIsVisualMoGuideOpen(true)}
-              className="px-2.5 py-1.5 rounded border border-[#b3ddf2] bg-[#e5f3fa] hover:bg-[#d2eaf7] text-[#0057b8] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-brand-border)] bg-[var(--fiori-brand-bg)] hover:bg-[#d2eaf7] text-[var(--fiori-brand)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
               title="راهنمای تصویری گام‌به‌گام ثبت دستور ساخت (MO) و رفع خطای متناظر پیدا نشد"
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -1996,9 +1997,9 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
 
         {/* Compact Single-Row Search & Filter Bar */}
         {activeModuleTab !== 'SHOP_FLOOR_EXECUTION' && (
-        <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2 text-xs items-center bg-[#f7f7f7]">
+        <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2 text-xs items-center bg-[var(--fiori-bg-subtle)]">
           <div className="lg:col-span-5 relative">
-            <Search className="w-3.5 h-3.5 text-[#666666] absolute right-3 top-2" />
+            <Search className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)] absolute right-3 top-2" />
             <input
               type="text"
               value={searchQuery}
@@ -2007,7 +2008,7 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
                 setCurrentPage(1);
               }}
               placeholder="جستجوی نام قطعه، کد کالا، شماره دستور ساخت، مرحله OP یا کد دستگاه..."
-              className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded pr-8 pl-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
+              className="w-full bg-white border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] pr-8 pl-3 py-1.5 text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
             />
           </div>
 
@@ -2018,7 +2019,7 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
                 setSelectedCarFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded px-2.5 py-1.5 text-[#333333] font-medium focus:outline-none focus:border-[#007cc0] cursor-pointer"
+              className="w-full bg-white border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-[var(--fiori-text-primary)] font-medium focus:outline-none focus:border-[var(--fiori-border-focus)] cursor-pointer"
             >
               <option value="ALL">همه خودروها ({toPersianDigits(uniqueCars.length)})</option>
               {uniqueCars.map(car => (
@@ -2036,7 +2037,7 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
                 setSelectedHallFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded px-2.5 py-1.5 text-[#333333] font-medium focus:outline-none focus:border-[#007cc0] cursor-pointer"
+              className="w-full bg-white border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-[var(--fiori-text-primary)] font-medium focus:outline-none focus:border-[var(--fiori-border-focus)] cursor-pointer"
             >
               <option value="ALL">همه سالن‌ها و خطوط تولید</option>
               {uniqueHalls.map(h => (
@@ -2047,12 +2048,12 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
             </select>
           </div>
 
-          <div className="lg:col-span-2 flex items-center justify-between bg-[#ffffff] border border-[#bfbfbf] rounded px-2.5 py-1.5">
-            <span className="text-[#666666] font-medium whitespace-nowrap">روز فعال:</span>
+          <div className="lg:col-span-2 flex items-center justify-between bg-white border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5">
+            <span className="text-[var(--fiori-text-secondary)] font-medium whitespace-nowrap">روز فعال:</span>
             <select
               value={selectedDayFilter}
               onChange={e => setSelectedDayFilter(Number(e.target.value))}
-              className="bg-transparent font-semibold text-[#333333] focus:outline-none cursor-pointer"
+              className="bg-transparent font-semibold text-[var(--fiori-text-primary)] focus:outline-none cursor-pointer"
             >
               {WORK_DAYS.map(d => (
                 <option key={d.index} value={d.index}>
@@ -2067,32 +2068,13 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
 
       {/* Live Toast Notification */}
       {toastNotice && (
-        <div
-          className={`rounded p-3 text-xs flex items-center justify-between gap-3 border ${
-            toastNotice.type === 'warning'
-              ? 'bg-[#fff4e5] border-[#f5cba7] text-[#333333]'
-              : 'bg-[#ebf5ec] border-[#b7dfbf] text-[#333333]'
-          }`}
+        <FioriMessageStrip
+          tone={toastNotice.type === 'warning' ? 'warning' : 'success'}
+          title={toastNotice.title}
+          onClose={() => setToastNotice(null)}
         >
-          <div className="flex items-start gap-2">
-            {toastNotice.type === 'warning' ? (
-              <AlertTriangle className="w-4 h-4 text-[#e9730c] shrink-0 mt-0.5" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4 text-[#107e3e] shrink-0 mt-0.5" />
-            )}
-            <div>
-              <div className="font-semibold text-[#333333]">{toastNotice.title}</div>
-              <div className="text-[#666666] mt-0.5">{toastNotice.detail}</div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setToastNotice(null)}
-            className="sap-btn-standard px-2.5 py-1 text-xs cursor-pointer shrink-0"
-          >
-            بستن
-          </button>
-        </div>
+          {toastNotice.detail}
+        </FioriMessageStrip>
       )}
 
       {/* ==================================================================== */}
@@ -2128,7 +2110,7 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
           <MachineOverlapAlertWidget compact />
 
           {paginatedParts.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
+            <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-8 text-center">
               <EmptyState
                 variant={searchQuery || selectedCarFilter !== 'ALL' || selectedHallFilter !== 'ALL' ? 'FILTER_NO_MATCH' : 'NO_DATA'}
                 title={searchQuery ? `قطعه‌ای با عبارت «${searchQuery}» یافت نشد` : 'هیچ برنامه‌ای در ماتریس زمان‌بندی وجود ندارد'}
@@ -2147,29 +2129,32 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 bg-white border border-[#d9d9d9] rounded text-xs">
-                <span className="text-[#666666] tabular-nums">
-                  برنامه‌های صفحه جاری: <strong className="font-mono text-[#333333]">{toPersianDigits(paginatedParts.length)}</strong> · بازشده:{' '}
-                  <strong className="font-mono text-[#007cc0]">
-                    {toPersianDigits(schedExpandedCount(paginatedParts.map(p => p.id)))}
-                  </strong>
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => expandAllSched(paginatedParts.map(p => p.id))}
-                    className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer whitespace-nowrap"
-                  >
-                    باز کردن همه
-                  </button>
-                  <button
-                    type="button"
-                    onClick={collapseAllSched}
-                    className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer whitespace-nowrap"
-                  >
-                    بستن همه
-                  </button>
-                </div>
+              <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] overflow-hidden">
+                <FioriToolbar
+                  variant="table"
+                  title={`برنامه‌های صفحه جاری: ${toPersianDigits(paginatedParts.length)} · بازشده: ${toPersianDigits(
+                    schedExpandedCount(paginatedParts.map(p => p.id))
+                  )}`}
+                  startContent={<Calendar className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />}
+                  endContent={
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => expandAllSched(paginatedParts.map(p => p.id))}
+                        className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer whitespace-nowrap"
+                      >
+                        باز کردن همه
+                      </button>
+                      <button
+                        type="button"
+                        onClick={collapseAllSched}
+                        className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer whitespace-nowrap"
+                      >
+                        بستن همه
+                      </button>
+                    </div>
+                  }
+                />
               </div>
 
               {paginatedParts.map(item => {

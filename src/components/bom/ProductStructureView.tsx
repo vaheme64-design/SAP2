@@ -22,6 +22,8 @@ import { useErpRouter } from '../../context/RouterContext';
 import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
 import { InlinePageGuideButton } from '../common/PageGuideSystem';
 import { usePersistedExpandMap } from '../../hooks/usePersistedCollapse';
+import { FioriDialog, FioriMessageStrip, FioriObjectStatus, FioriToolbar } from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 export interface SubComponentNode {
   id: string;
@@ -509,7 +511,7 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
 
     return (
       <React.Fragment key={node.id}>
-        <tr className="hover:bg-[#f5f5f5] transition-colors">
+        <tr className="hover:bg-[var(--fiori-row-hover)] transition-colors">
           <td className="py-2 px-3">
             <div
               className="flex items-center gap-2"
@@ -519,21 +521,23 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
                 <button
                   type="button"
                   onClick={() => toggleExpand(node.id)}
-                  className="w-5 h-5 rounded-sm border border-[#d9d9d9] bg-[#ffffff] flex items-center justify-center text-[#666666] hover:text-[#333333] cursor-pointer shrink-0"
+                  className="w-5 h-5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border)] bg-[var(--fiori-surface)] flex items-center justify-center text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] cursor-pointer shrink-0"
                   title={isExpanded ? 'بستن زیرمجموعه‌ها' : 'باز کردن زیرمجموعه‌ها'}
                 >
                   {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </button>
               ) : (
-                <span className="w-5 h-5 flex items-center justify-center text-[#bfbfbf] shrink-0">
+                <span className="w-5 h-5 flex items-center justify-center text-[var(--fiori-text-muted)] shrink-0">
                   └
                 </span>
               )}
-              <span className="font-semibold text-xs text-[#333333]">{node.partName}</span>
+              <span className="font-semibold text-xs text-[var(--fiori-text-primary)]">{node.partName}</span>
               {hasChildren && !isExpanded && (
-                <span className="text-[10px] text-[#007cc0] bg-[#e5f3fa] border border-[#b3ddf2] px-1.5 py-0.2 rounded-sm tabular-nums">
-                  +{toPersianDigits(node.subComponents!.length)} زیرجزء
-                </span>
+                <FioriObjectStatus
+                  tone="info"
+                  label={`+${toPersianDigits(node.subComponents!.length)} زیرجزء`}
+                  size="sm"
+                />
               )}
             </div>
           </td>
@@ -541,28 +545,24 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
             <button
               type="button"
               onClick={() => traceDocument(node.partCode, 'INVENTORY_LEDGER')}
-              className="sap-doc-link font-mono"
+              className="sap-doc-link font-mono fiori-ltr-code cursor-pointer"
               title="رهگیری موجودی و کاردکس قطعه"
             >
               {node.partCode}
             </button>
           </td>
           <td className="py-2 px-3 whitespace-nowrap">
-            <span
-              className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-sm border ${
-                depth === 1
-                  ? 'bg-[#e5f3fa] text-[#007cc0] border-[#b3ddf2]'
-                  : 'bg-[#f5f5f5] text-[#666666] border-[#d9d9d9]'
-              }`}
-            >
-              سطح {toPersianDigits(depth)}
-            </span>
+            <FioriObjectStatus
+              tone={depth === 1 ? 'brand' : 'neutral'}
+              label={`سطح ${toPersianDigits(depth)}`}
+              size="sm"
+            />
           </td>
-          <td className="py-2 px-3 font-mono font-bold text-xs text-[#333333] tabular-nums whitespace-nowrap">
+          <td className="py-2 px-3 font-mono font-bold text-xs text-[var(--fiori-text-primary)] tabular-nums whitespace-nowrap">
             {toPersianDigits(node.quantity)}{' '}
-            <span className="text-[11px] font-sans font-normal text-[#666666]">{node.unit}</span>
+            <span className="text-[11px] font-sans font-normal text-[var(--fiori-text-secondary)]">{node.unit}</span>
           </td>
-          <td className="py-2 px-3 text-[11px] text-[#666666]">
+          <td className="py-2 px-3 text-[11px] text-[var(--fiori-text-secondary)]">
             {node.notes || '—'}
           </td>
           <td className="py-2 px-3 text-left whitespace-nowrap">
@@ -570,7 +570,7 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
               <button
                 type="button"
                 onClick={() => handleOpenAddSubComponent(node.id)}
-                className="sap-btn-standard px-2 py-0.5 text-[11px] inline-flex items-center gap-1"
+                className="sap-btn-standard px-2 py-0.5 text-[11px] inline-flex items-center gap-1 cursor-pointer"
                 title="افزودن جزء فرعی زیر این ردیف"
               >
                 <Plus className="w-3 h-3" />
@@ -579,7 +579,7 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
               <button
                 type="button"
                 onClick={() => handleOpenEditSubComponent(node)}
-                className="p-1 text-[#666666] hover:text-[#007cc0] hover:bg-[#e5f3fa] rounded-sm transition cursor-pointer"
+                className="p-1 text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-brand)] hover:bg-[var(--fiori-info-bg)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
                 title="ویرایش"
               >
                 <Edit3 className="w-3.5 h-3.5" />
@@ -587,7 +587,7 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
               <button
                 type="button"
                 onClick={() => handleDeleteNode(node.id)}
-                className="p-1 text-[#666666] hover:text-[#bb0000] hover:bg-[#ffecec] rounded-sm transition cursor-pointer"
+                className="p-1 text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
                 title="حذف"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -605,27 +605,27 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
   return (
     <div className="space-y-3.5 text-right font-sans">
       {saveMessage && (
-        <div className="bg-[#ebf5ec] border border-[#b7dfbf] text-[#107e3e] rounded-sm px-4 py-2 text-xs font-semibold flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#107e3e] shrink-0" />
-            <span>{saveMessage}</span>
-          </div>
-          <span className="text-[10px] font-mono bg-[#ffffff] text-[#107e3e] border border-[#b7dfbf] px-2 py-0.5 rounded-sm">
-            همگام با MRP
-          </span>
-        </div>
+        <FioriMessageStrip
+          tone="success"
+          onClose={() => setSaveMessage(null)}
+          actions={<FioriObjectStatus tone="positive" label="همگام با MRP" size="sm" />}
+        >
+          {saveMessage}
+        </FioriMessageStrip>
       )}
 
       {/* SAP Fiori Dynamic Header & Structure Selector */}
       <div className="sap-card p-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <FolderTree className="w-4 h-4 text-[#007cc0]" />
-            <h3 className="text-sm font-semibold text-[#333333]">ساختار درختی محصول (SAP BOM چندسطحی)</h3>
+            <FolderTree className="w-4 h-4 text-[var(--fiori-brand)]" />
+            <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)]">
+              ساختار درختی محصول (SAP BOM چندسطحی)
+            </h3>
           </div>
-          <div className="h-4 w-px bg-[#d9d9d9] hidden sm:block" />
+          <div className="h-4 w-px bg-[var(--fiori-border)] hidden sm:block" />
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[#666666]">محصول:</span>
+            <span className="text-xs text-[var(--fiori-text-secondary)]">محصول:</span>
             <select
               value={selectedStructureId}
               onChange={e => {
@@ -641,7 +641,7 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
                 }
                 setSelectedStructureId(nextId);
               }}
-              className="bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-xs font-medium text-[#333333] focus:outline-none focus:border-[#007cc0] cursor-pointer"
+              className="bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-xs font-medium text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)] cursor-pointer"
             >
               {structures.map(s => (
                 <option key={s.id} value={s.id}>
@@ -697,35 +697,31 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
       {/* SAP Fiori Hierarchical BOM Tree Table */}
       {activeStructure && (
         <div className="sap-card overflow-hidden">
-          <div className="px-4 py-2.5 bg-[#f7f7f7] border-b border-[#d9d9d9] flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => traceDocument(activeStructure.rootPartCode, 'INVENTORY_LEDGER')}
-                className="sap-doc-link text-[11px] font-mono font-semibold bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] px-2 py-0.5 rounded-sm"
-                title="رهگیری محصول در انبار و کاردکس"
-              >
-                {activeStructure.rootPartCode}
-              </button>
-              <span className="text-xs font-semibold text-[#333333]">
-                {activeStructure.rootPartName}
-              </span>
-              <span className="text-[11px] text-[#666666]">
-                ({activeStructure.carModel})
-              </span>
-              {activeStructure.notes && (
-                <span className="text-[11px] text-[#666666]">— {activeStructure.notes}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-[11px] text-[#666666] tabular-nums">
-                زیرمجموعه‌های سطح اول:{' '}
-                <strong className="font-mono text-[#007cc0]">
-                  {toPersianDigits(activeStructure.subComponents.length)}
-                </strong>{' '}
-                ردیف
-              </span>
-              {activeStructure.subComponents.some(n => n.subComponents && n.subComponents.length > 0) && (
+          <FioriToolbar
+            variant="table"
+            startContent={
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => traceDocument(activeStructure.rootPartCode, 'INVENTORY_LEDGER')}
+                  className="sap-doc-link text-[11px] font-mono font-semibold fiori-ltr-code bg-[var(--fiori-info-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-info-border)] px-2 py-0.5 rounded-[var(--fiori-radius-sm)] cursor-pointer"
+                  title="رهگیری محصول در انبار و کاردکس"
+                >
+                  {activeStructure.rootPartCode}
+                </button>
+                <span className="text-xs font-semibold text-[var(--fiori-text-primary)]">
+                  {activeStructure.rootPartName}
+                </span>
+                <FioriObjectStatus tone="neutral" label={activeStructure.carModel || 'مشترک'} size="sm" />
+                {activeStructure.notes && (
+                  <span className="text-[11px] text-[var(--fiori-text-secondary)]">— {activeStructure.notes}</span>
+                )}
+              </div>
+            }
+            count={activeStructure.subComponents.length}
+            countLabel="زیرمجموعه سطح ۱"
+            endContent={
+              activeStructure.subComponents.some(n => n.subComponents && n.subComponents.length > 0) ? (
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -742,18 +738,23 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
                     بستن همه
                   </button>
                 </div>
-              )}
-            </div>
-          </div>
+              ) : undefined
+            }
+          />
 
           {activeStructure.subComponents.length === 0 ? (
-            <div className="p-8 text-center text-[#666666] text-xs">
-              هنوز هیچ زیرمجموعه‌ای برای این ساختار محصول تعریف نشده است. از دکمه «افزودن زیرمجموعه سطح ۱» استفاده کنید.
-            </div>
+            <EmptyState
+              variant="NO_DATA"
+              title="هنوز هیچ زیرمجموعه‌ای تعریف نشده است"
+              description="برای تعریف اجزای این ساختار محصول، زیرمجموعه سطح ۱ را اضافه کنید."
+              actionLabel="افزودن زیرمجموعه سطح ۱"
+              onAction={() => handleOpenAddSubComponent(null)}
+              compact
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="sap-table-compact w-full text-right text-xs">
-                <thead className="bg-[#f5f5f5] border-b border-[#d9d9d9] text-[#666666] font-semibold">
+                <thead className="bg-[var(--fiori-surface-muted)] border-b border-[var(--fiori-border)] text-[var(--fiori-text-secondary)] font-semibold">
                   <tr>
                     <th>نام قطعه / زیرمجموعه (ساختار درختی)</th>
                     <th className="whitespace-nowrap">کد فنی</th>
@@ -763,7 +764,7 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
                     <th className="text-left whitespace-nowrap">عملیات</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#e8e8e8]">
+                <tbody className="divide-y divide-[var(--fiori-border-subtle)]">
                   {activeStructure.subComponents.map(node => renderTreeNode(node, 1))}
                 </tbody>
               </table>
@@ -773,215 +774,195 @@ export const ProductStructureView: React.FC<ProductStructureViewProps> = ({ part
       )}
 
       {/* Modal 1: Add / Edit Recursive SubComponent */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 flex items-center justify-center p-4">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm max-w-lg w-full p-5 shadow-md space-y-3.5 text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h4 className="font-bold text-sm text-[#333333] flex items-center gap-2">
-                <FolderTree className="w-4 h-4 text-[#007cc0]" />
-                <span>
-                  {editingNodeId
-                    ? 'ویرایش جزء متشکله'
-                    : targetParentNodeId
-                    ? 'افزودن زیرجزء فرعی بازگشتی'
-                    : 'افزودن زیرمجموعه سطح ۱'}
-                </span>
-              </h4>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSubComponent} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">
-                  انتخاب قطعه یا ماده اولیه از کاتالوگ *
-                </label>
-                <SearchableSelect
-                  value={formPartId}
-                  onChange={val => {
-                    setFormPartId(val);
-                    const found = parts.find(p => p.id === val || p.code === val);
-                    if (found) {
-                      setFormPartCode(found.code);
-                      setFormPartName(found.name);
-                    }
-                  }}
-                  placeholder="جستجو و انتخاب قطعه یا ورق..."
-                  searchPlaceholder="جستجوی کد یا نام قطعه..."
-                  options={parts.map(p => ({
-                    value: p.code,
-                    label: p.name,
-                    sublabel: `${p.code} • ${p.weightPerUnitKg || 0}kg`,
-                    badge: p.category === 'RAW_MATERIAL' ? 'ماده اولیه' : p.category === 'WIP_PART' ? 'نیمه‌ساخته' : 'محصول',
-                  }))}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">کد قطعه *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formPartCode}
-                    onChange={e => setFormPartCode(e.target.value)}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">عنوان کامل قطعه *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formPartName}
-                    onChange={e => setFormPartName(e.target.value)}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">ضریب مصرف (مقدار) *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    min={0.001}
-                    value={formQty}
-                    onChange={e => setFormQty(Number(e.target.value))}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono font-bold text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">واحد سنجش</label>
-                  <select
-                    value={formUnit}
-                    onChange={e => setFormUnit(e.target.value)}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                  >
-                    <option value="عدد">عدد</option>
-                    <option value="کیلوگرم">کیلوگرم</option>
-                    <option value="ست">ست</option>
-                    <option value="متر">متر</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">توضیحات و فرآیند اتصال</label>
-                <textarea
-                  rows={2}
-                  value={formNotes}
-                  onChange={e => setFormNotes(e.target.value)}
-                  placeholder="نکات جوشکاری، برش ورق، تلرانس ابعادی..."
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm p-2 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs"
-                >
-                  {editingNodeId ? 'ثبت تغییرات' : 'افزودن به ساختار درختی'}
-                </button>
-              </div>
-            </form>
+      <FioriDialog
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={
+          editingNodeId
+            ? 'ویرایش جزء متشکله'
+            : targetParentNodeId
+            ? 'افزودن زیرجزء فرعی بازگشتی'
+            : 'افزودن زیرمجموعه سطح ۱'
+        }
+        icon={<FolderTree className="w-4 h-4 text-[var(--fiori-brand)]" />}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="ps-subcomponent-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
+            >
+              {editingNodeId ? 'ثبت تغییرات' : 'افزودن به ساختار درختی'}
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <form id="ps-subcomponent-form" onSubmit={handleSaveSubComponent} className="space-y-3 text-xs">
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">
+              انتخاب قطعه یا ماده اولیه از کاتالوگ *
+            </label>
+            <SearchableSelect
+              value={formPartId}
+              onChange={val => {
+                setFormPartId(val);
+                const found = parts.find(p => p.id === val || p.code === val);
+                if (found) {
+                  setFormPartCode(found.code);
+                  setFormPartName(found.name);
+                }
+              }}
+              placeholder="جستجو و انتخاب قطعه یا ورق..."
+              searchPlaceholder="جستجوی کد یا نام قطعه..."
+              options={parts.map(p => ({
+                value: p.code,
+                label: p.name,
+                sublabel: `${p.code} • ${p.weightPerUnitKg || 0}kg`,
+                badge: p.category === 'RAW_MATERIAL' ? 'ماده اولیه' : p.category === 'WIP_PART' ? 'نیمه‌ساخته' : 'محصول',
+              }))}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">کد قطعه *</label>
+              <input
+                type="text"
+                required
+                value={formPartCode}
+                onChange={e => setFormPartCode(e.target.value)}
+                className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 font-mono fiori-ltr-code text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">عنوان کامل قطعه *</label>
+              <input
+                type="text"
+                required
+                value={formPartName}
+                onChange={e => setFormPartName(e.target.value)}
+                className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)] font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">ضریب مصرف (مقدار) *</label>
+              <input
+                type="number"
+                step="any"
+                required
+                min={0.001}
+                value={formQty}
+                onChange={e => setFormQty(Number(e.target.value))}
+                className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 font-mono tabular-nums font-bold text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">واحد سنجش</label>
+              <select
+                value={formUnit}
+                onChange={e => setFormUnit(e.target.value)}
+                className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)] font-medium"
+              >
+                <option value="عدد">عدد</option>
+                <option value="کیلوگرم">کیلوگرم</option>
+                <option value="ست">ست</option>
+                <option value="متر">متر</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">توضیحات و فرآیند اتصال</label>
+            <textarea
+              rows={2}
+              value={formNotes}
+              onChange={e => setFormNotes(e.target.value)}
+              placeholder="نکات جوشکاری، برش ورق، تلرانس ابعادی..."
+              className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] p-2 text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+            />
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* Modal 2: Create New Root Assembly Structure */}
-      {isNewAssemblyModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 flex items-center justify-center p-4">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm max-w-lg w-full p-5 shadow-md space-y-3.5 text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h4 className="font-bold text-sm text-[#333333] flex items-center gap-2">
-                <Plus className="w-4 h-4 text-[#007cc0]" />
-                <span>تعریف ساختار درختی جدید برای محصول نهایی</span>
-              </h4>
-              <button
-                type="button"
-                onClick={() => setIsNewAssemblyModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateNewAssembly} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">انتخاب محصول نهایی ریشه *</label>
-                <SearchableSelect
-                  value={newRootPartId}
-                  onChange={val => setNewRootPartId(val)}
-                  placeholder="انتخاب قطعه یا مجموعه نهایی..."
-                  searchPlaceholder="جستجوی قطعه نهایی..."
-                  options={parts.map(p => ({
-                    value: p.code,
-                    label: p.name,
-                    sublabel: p.code,
-                    badge: p.carModel || 'محصول',
-                  }))}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">مدل خودرو</label>
-                <input
-                  type="text"
-                  value={newCarModel}
-                  onChange={e => setNewCarModel(e.target.value)}
-                  placeholder="پژو ۲۰۶، تارا، دنا"
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">توضیحات کلی مجموعه</label>
-                <textarea
-                  rows={2}
-                  value={newAssemblyNotes}
-                  onChange={e => setNewAssemblyNotes(e.target.value)}
-                  placeholder="توضیحات و الزامات تحویل به خودروساز..."
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm p-2 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsNewAssemblyModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs"
-                >
-                  ایجاد ساختار محصول
-                </button>
-              </div>
-            </form>
+      <FioriDialog
+        isOpen={isNewAssemblyModalOpen}
+        onClose={() => setIsNewAssemblyModalOpen(false)}
+        title="تعریف ساختار درختی جدید برای محصول نهایی"
+        icon={<Plus className="w-4 h-4 text-[var(--fiori-brand)]" />}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsNewAssemblyModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="ps-new-assembly-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
+            >
+              ایجاد ساختار محصول
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <form id="ps-new-assembly-form" onSubmit={handleCreateNewAssembly} className="space-y-3 text-xs">
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">انتخاب محصول نهایی ریشه *</label>
+            <SearchableSelect
+              value={newRootPartId}
+              onChange={val => setNewRootPartId(val)}
+              placeholder="انتخاب قطعه یا مجموعه نهایی..."
+              searchPlaceholder="جستجوی قطعه نهایی..."
+              options={parts.map(p => ({
+                value: p.code,
+                label: p.name,
+                sublabel: p.code,
+                badge: p.carModel || 'محصول',
+              }))}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">مدل خودرو</label>
+            <input
+              type="text"
+              value={newCarModel}
+              onChange={e => setNewCarModel(e.target.value)}
+              placeholder="پژو ۲۰۶، تارا، دنا"
+              className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)] font-medium"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">توضیحات کلی مجموعه</label>
+            <textarea
+              rows={2}
+              value={newAssemblyNotes}
+              onChange={e => setNewAssemblyNotes(e.target.value)}
+              placeholder="توضیحات و الزامات تحویل به خودروساز..."
+              className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] p-2 text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+            />
+          </div>
+        </form>
+      </FioriDialog>
     </div>
   );
 };

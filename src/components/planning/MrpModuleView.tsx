@@ -48,6 +48,12 @@ import {
   loadVipPartsMap,
   QcHoldRecord,
 } from '../../utils/qcHoldStore';
+import {
+  FioriMessageStrip,
+  FioriObjectStatus,
+  FioriToolbar,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 interface TechDocResolution {
   partId: string;
@@ -736,21 +742,19 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
 
   return (
     <div className="space-y-4 print:space-y-3">
-      {/* SAP HANA Fiori Header & IconTabBar */}
-      <div className="sap-card overflow-hidden no-print">
-        <div className="px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#d9d9d9]">
+      {/* SAP Horizon Fiori Header & IconTabBar */}
+      <div className="sap-card overflow-hidden no-print border border-[var(--fiori-border)]">
+        <div className="px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--fiori-border)] bg-[var(--fiori-surface)]">
           <div className="flex items-start gap-2.5">
-            <span className="p-2 rounded bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] shrink-0">
+            <span className="p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-subtle)] text-[var(--fiori-brand)] border border-[var(--fiori-info-border)] shrink-0">
               <Calculator className="w-4 h-4" />
             </span>
             <div>
-              <h1 className="text-sm font-semibold text-[#333333] flex items-center gap-2 flex-wrap">
+              <h1 className="text-sm font-semibold text-[var(--fiori-text-primary)] flex items-center gap-2 flex-wrap">
                 پیش‌بینی نیازمندی مواد و موازنه کلاف (MRP)
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2]">
-                  ATP & BOM Explosion
-                </span>
+                <FioriObjectStatus tone="info" size="sm" ltrCode label="ATP & BOM Explosion" />
               </h1>
-              <p className="text-xs text-[#666666] mt-0.5">
+              <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
                 انفجار درخت محصول (BOM)، کسر موجودی آزاد ملکی و امانی ساپکو، حذف قرنطینه و پیش‌بینی پوشش قراردادها
               </p>
             </div>
@@ -758,32 +762,35 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
 
           <div className="flex items-center flex-wrap gap-2">
             {mrpData && (
-              <div className="text-[11px] text-[#666666] font-mono hidden lg:flex items-center gap-1.5 bg-[#f5f5f5] px-2.5 py-1 rounded border border-[#d9d9d9]">
-                <Clock className="w-3.5 h-3.5 text-[#007cc0]" />
+              <div className="text-[11px] text-[var(--fiori-text-secondary)] hidden lg:flex items-center gap-1.5 bg-[var(--fiori-surface-subtle)] px-2.5 py-1 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border)]">
+                <Clock className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
                 <span>آخرین محاسبه:</span>
-                <span className="text-[#333333] font-semibold">{mrpData.ranAtFa}</span>
+                <span className="text-[var(--fiori-text-primary)] font-semibold tabular-nums">{mrpData.ranAtFa}</span>
               </div>
             )}
 
             <button
+              type="button"
               onClick={() => loadMrp()}
               disabled={loading}
               className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer disabled:opacity-50 whitespace-nowrap"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#007cc0]' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[var(--fiori-brand)]' : ''}`} />
               <span>محاسبه مجدد</span>
             </button>
 
             <button
+              type="button"
               onClick={handleExportCsv}
               disabled={!mrpData}
               className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer disabled:opacity-50 whitespace-nowrap"
             >
-              <Download className="w-3.5 h-3.5 text-[#107e3e]" />
+              <Download className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
               <span>خروجی اکسل</span>
             </button>
 
             <button
+              type="button"
               onClick={() => window.print()}
               className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap"
             >
@@ -814,23 +821,15 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
 
       {/* Error & Notice Banners */}
       {error && (
-        <div className="p-3 rounded bg-[#ffecec] border border-[#f5b7b1] text-[#bb0000] text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-[#bb0000]" />
-            <span>{error}</span>
-          </div>
-          <button onClick={() => setError(null)} className="text-[#bb0000] hover:underline text-xs cursor-pointer">بستن</button>
-        </div>
+        <FioriMessageStrip tone="error" onClose={() => setError(null)} compact>
+          {error}
+        </FioriMessageStrip>
       )}
 
       {notice && (
-        <div className="p-3 rounded bg-[#ebf5ec] border border-[#b7dfbf] text-[#107e3e] text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#107e3e]" />
-            <span>{notice}</span>
-          </div>
-          <button onClick={() => setNotice(null)} className="text-[#107e3e] hover:underline text-xs cursor-pointer">بستن</button>
-        </div>
+        <FioriMessageStrip tone="success" onClose={() => setNotice(null)} compact>
+          {notice}
+        </FioriMessageStrip>
       )}
 
       {/* Skeleton Loading State */}
@@ -841,61 +840,61 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
       {/* KPI Cards Summary */}
       {mrpData && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          <div className="sap-card p-3 text-right">
-            <span className="text-[11px] text-[#666666] font-semibold block">تعداد مواد و کلاف‌ها</span>
-            <div className="text-lg font-bold text-[#333333] font-mono mt-0.5 tabular-nums">
+          <div className="sap-card p-3 text-right border border-[var(--fiori-border)]">
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] font-semibold block">تعداد مواد و کلاف‌ها</span>
+            <div className="text-lg font-bold text-[var(--fiori-text-primary)] font-mono mt-0.5 tabular-nums">
               {toPersianDigits(mrpData.summary.materialsConsidered)}
             </div>
-            <span className="text-[10px] text-[#666666] mt-0.5 block">اقلام فعال در BOM</span>
+            <span className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 block">اقلام فعال در BOM</span>
           </div>
 
-          <div className="sap-card p-3 text-right border-r-2 border-r-[#107e3e]">
-            <span className="text-[11px] text-[#107e3e] font-semibold flex items-center gap-1">
+          <div className="sap-card p-3 text-right border border-[var(--fiori-border)]">
+            <span className="text-[11px] text-[var(--fiori-positive)] font-semibold flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" />
               پوشش کامل با موجودی
             </span>
-            <div className="text-lg font-bold text-[#107e3e] font-mono mt-0.5 tabular-nums">
+            <div className="text-lg font-bold text-[var(--fiori-positive)] font-mono mt-0.5 tabular-nums">
               {toPersianDigits(mrpData.summary.ok)}
             </div>
-            <span className="text-[10px] text-[#666666] mt-0.5 block">تأمین تضمین‌شده</span>
+            <span className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 block">تأمین تضمین‌شده</span>
           </div>
 
-          <div className="sap-card p-3 text-right border-r-2 border-r-[#e9730c]">
-            <span className="text-[11px] text-[#e9730c] font-semibold flex items-center gap-1">
+          <div className="sap-card p-3 text-right border border-[var(--fiori-border)]">
+            <span className="text-[11px] text-[var(--fiori-critical)] font-semibold flex items-center gap-1">
               <Info className="w-3.5 h-3.5" />
               پوشش با قرارداد باز
             </span>
-            <div className="text-lg font-bold text-[#e9730c] font-mono mt-0.5 tabular-nums">
+            <div className="text-lg font-bold text-[var(--fiori-critical)] font-mono mt-0.5 tabular-nums">
               {toPersianDigits(mrpData.summary.contractCovered)}
             </div>
-            <span className="text-[10px] text-[#666666] mt-0.5 block">در انتظار تحویل سهمیه</span>
+            <span className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 block">در انتظار تحویل سهمیه</span>
           </div>
 
-          <div className="sap-card p-3 text-right border-r-2 border-r-[#bb0000]">
-            <span className="text-[11px] text-[#bb0000] font-semibold flex items-center gap-1">
+          <div className="sap-card p-3 text-right border border-[var(--fiori-negative-border)] bg-[var(--fiori-negative-bg)]">
+            <span className="text-[11px] text-[var(--fiori-negative)] font-semibold flex items-center gap-1">
               <ShieldAlert className="w-3.5 h-3.5" />
               کسری قطعی مواد
             </span>
-            <div className="text-lg font-bold text-[#bb0000] font-mono mt-0.5 tabular-nums">
+            <div className="text-lg font-bold text-[var(--fiori-negative)] font-mono mt-0.5 tabular-nums">
               {toPersianDigits(mrpData.summary.hardShortages)}
             </div>
-            <span className="text-[10px] text-[#bb0000] mt-0.5 block font-semibold">هشدار توقف پرس</span>
+            <span className="text-[10px] text-[var(--fiori-negative)] mt-0.5 block font-semibold">هشدار توقف پرس</span>
           </div>
 
-          <div className="sap-card p-3 text-right">
-            <span className="text-[11px] text-[#666666] font-semibold block">کل وزن ناخالص مواد</span>
-            <div className="text-base font-bold text-[#333333] font-mono mt-0.5 tabular-nums">
-              {formatNumber(mrpData.summary.totalGrossWeightKg)} <span className="text-xs font-normal text-[#666666]">kg</span>
+          <div className="sap-card p-3 text-right border border-[var(--fiori-border)]">
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] font-semibold block">کل وزن ناخالص مواد</span>
+            <div className="text-base font-bold text-[var(--fiori-text-primary)] font-mono mt-0.5 tabular-nums">
+              {formatNumber(mrpData.summary.totalGrossWeightKg)} <span className="text-xs font-normal text-[var(--fiori-text-secondary)]">kg</span>
             </div>
-            <span className="text-[10px] text-[#666666] mt-0.5 block">شامل نرم ضایعات</span>
+            <span className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 block">شامل نرم ضایعات</span>
           </div>
 
-          <div className="sap-card p-3 text-right border-r-2 border-r-[#bb0000]">
-            <span className="text-[11px] text-[#bb0000] font-semibold block">کسری وزنی کل کلاف‌ها</span>
-            <div className="text-base font-bold text-[#bb0000] font-mono mt-0.5 tabular-nums">
-              {formatNumber(mrpData.summary.totalShortageWeightKg)} <span className="text-xs font-normal text-[#bb0000]">kg</span>
+          <div className="sap-card p-3 text-right border border-[var(--fiori-border)]">
+            <span className="text-[11px] text-[var(--fiori-negative)] font-semibold block">کسری وزنی کل کلاف‌ها</span>
+            <div className="text-base font-bold text-[var(--fiori-negative)] font-mono mt-0.5 tabular-nums">
+              {formatNumber(mrpData.summary.totalShortageWeightKg)} <span className="text-xs font-normal text-[var(--fiori-negative)]">kg</span>
             </div>
-            <span className="text-[10px] text-[#666666] mt-0.5 block">نیاز به خرید / حواله</span>
+            <span className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 block">نیاز به خرید / حواله</span>
           </div>
         </div>
       )}
@@ -906,23 +905,23 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
       {activeTab === 'materials' && (
         <div className="space-y-3">
           {/* Filters Bar */}
-          <div className="sap-card p-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 no-print">
+          <div className="sap-card p-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 no-print border border-[var(--fiori-border)]">
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-64">
-                <Search className="w-3.5 h-3.5 text-[#666666] absolute right-2.5 top-2" />
+                <Search className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)] absolute right-2.5 top-2" />
                 <input
                   type="text"
                   placeholder="جستجو در کد، نام کلاف یا گرید..."
                   value={materialSearch}
                   onChange={e => setMaterialSearch(e.target.value)}
-                  className="w-full bg-[#f5f5f5] border border-[#bfbfbf] rounded pr-8 pl-3 py-1 text-xs text-[#333333] placeholder-[#888888] focus:bg-[#ffffff] focus:outline-none focus:border-[#007cc0]"
+                  className="w-full bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border-strong)] rounded-[var(--fiori-radius-sm)] pr-8 pl-3 py-1 text-xs text-[var(--fiori-text-primary)] placeholder-[var(--fiori-text-muted)] focus:bg-[var(--fiori-surface)] focus:outline-none focus:border-[var(--fiori-brand)]"
                 />
               </div>
 
               <select
                 value={gradeFilter}
                 onChange={e => setGradeFilter(e.target.value)}
-                className="bg-[#ffffff] border border-[#bfbfbf] rounded px-2.5 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
+                className="bg-[var(--fiori-surface)] border border-[var(--fiori-border-strong)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
               >
                 <option value="ALL">همه گریدها</option>
                 <option value="DC04">DC04 (کشش عمیق)</option>
@@ -933,24 +932,26 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
             </div>
 
             <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-              <span className="text-[11px] text-[#666666] ml-1">فیلتر وضعیت:</span>
+              <span className="text-[11px] text-[var(--fiori-text-secondary)] ml-1">فیلتر وضعیت:</span>
               <button
+                type="button"
                 onClick={() => setSeverityFilter('ALL')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition ${
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-xs font-semibold cursor-pointer transition ${
                   severityFilter === 'ALL'
-                    ? 'bg-[#007cc0] text-[#ffffff]'
-                    : 'bg-[#ffffff] text-[#333333] hover:bg-[#e5f3fa] border border-[#d9d9d9]'
+                    ? 'bg-[var(--fiori-brand)] text-white'
+                    : 'bg-[var(--fiori-surface)] text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-brand-subtle)] border border-[var(--fiori-border)]'
                 }`}
               >
                 همه ({toPersianDigits(mrpData?.materials.length || 0)})
               </button>
 
               <button
+                type="button"
                 onClick={() => setSeverityFilter('HARD_SHORTAGE')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-xs font-semibold cursor-pointer transition flex items-center gap-1 ${
                   severityFilter === 'HARD_SHORTAGE'
-                    ? 'bg-[#bb0000] text-[#ffffff]'
-                    : 'bg-[#ffffff] text-[#bb0000] hover:bg-[#ffecec] border border-[#f5b7b1]'
+                    ? 'bg-[var(--fiori-negative)] text-white'
+                    : 'bg-[var(--fiori-surface)] text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] border border-[var(--fiori-negative-border)]'
                 }`}
               >
                 <ShieldAlert className="w-3 h-3" />
@@ -958,11 +959,12 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
               </button>
 
               <button
+                type="button"
                 onClick={() => setSeverityFilter('SHORTAGE_COVERED_BY_CONTRACT')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-xs font-semibold cursor-pointer transition flex items-center gap-1 ${
                   severityFilter === 'SHORTAGE_COVERED_BY_CONTRACT'
-                    ? 'bg-[#e9730c] text-[#ffffff]'
-                    : 'bg-[#ffffff] text-[#e9730c] hover:bg-[#fff4e5] border border-[#f5cba7]'
+                    ? 'bg-[var(--fiori-critical)] text-white'
+                    : 'bg-[var(--fiori-surface)] text-[var(--fiori-critical)] hover:bg-[var(--fiori-critical-bg)] border border-[var(--fiori-critical-border)]'
                 }`}
               >
                 <Info className="w-3 h-3" />
@@ -970,11 +972,12 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
               </button>
 
               <button
+                type="button"
                 onClick={() => setSeverityFilter('OK')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-xs font-semibold cursor-pointer transition flex items-center gap-1 ${
                   severityFilter === 'OK'
-                    ? 'bg-[#107e3e] text-[#ffffff]'
-                    : 'bg-[#ffffff] text-[#107e3e] hover:bg-[#ebf5ec] border border-[#b7dfbf]'
+                    ? 'bg-[var(--fiori-positive)] text-white'
+                    : 'bg-[var(--fiori-surface)] text-[var(--fiori-positive)] hover:bg-[var(--fiori-positive-bg)] border border-[var(--fiori-positive-border)]'
                 }`}
               >
                 <CheckCircle2 className="w-3 h-3" />
@@ -984,21 +987,47 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
           </div>
 
           {/* Table */}
-          <div className="sap-card overflow-hidden printable-area">
+          <div className="sap-card overflow-hidden printable-area border border-[var(--fiori-border)]">
             {/* Print Header shown only during print */}
-            <div className="hidden print:block p-4 border-b border-[#d9d9d9] text-center">
-              <span className="text-xs text-[#666666] block">شرکت تولیدی قطعات خودرو (زنجیره تامین ساپکو)</span>
-              <h2 className="text-base font-bold text-[#333333] mt-1">گزارش رسمی پیش‌بینی نیازمندی مواد و موازنه کلاف (MRP)</h2>
-              <span className="text-[10px] text-[#666666] font-mono">تاریخ موازنه: {mrpData?.ranAtFa || 'امروز'}</span>
+            <div className="hidden print:block p-4 border-b border-[var(--fiori-border)] text-center">
+              <span className="text-xs text-[var(--fiori-text-secondary)] block">شرکت تولیدی قطعات خودرو (زنجیره تامین ساپکو)</span>
+              <h2 className="text-base font-bold text-[var(--fiori-text-primary)] mt-1">گزارش رسمی پیش‌بینی نیازمندی مواد و موازنه کلاف (MRP)</h2>
+              <span className="text-[10px] text-[var(--fiori-text-secondary)] font-mono">تاریخ موازنه: {mrpData?.ranAtFa || 'امروز'}</span>
             </div>
 
+            <FioriToolbar
+              variant="table"
+              title="جدول موازنه مواد اولیه و کلاف‌های فولادی (MRP Netting)"
+              count={filteredMaterials.length}
+              countLabel="ماده اولیه"
+              className="no-print"
+            />
+
+            {filteredMaterials.length === 0 ? (
+              <div className="p-6">
+                <EmptyState
+                  variant={materialSearch || severityFilter !== 'ALL' || gradeFilter !== 'ALL' ? 'FILTER_NO_MATCH' : 'NO_DATA'}
+                  compact
+                  actionLabel={materialSearch || severityFilter !== 'ALL' || gradeFilter !== 'ALL' ? 'پاک‌سازی فیلترها' : undefined}
+                  onAction={
+                    materialSearch || severityFilter !== 'ALL' || gradeFilter !== 'ALL'
+                      ? () => {
+                          setMaterialSearch('');
+                          setSeverityFilter('ALL');
+                          setGradeFilter('ALL');
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <table className="sap-table-compact w-full text-right">
                 <thead>
                   <tr>
                     <th className="py-1.5 px-2.5">کد و عنوان ماده اولیه</th>
                     <th className="py-1.5 px-2.5 text-center">گرید و ضخامت</th>
-                    <th className="py-1.5 px-2.5 text-center text-[#007cc0]">
+                    <th className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)]">
                       <span className="inline-flex items-center">
                         <span>نیاز کل (kg)</span>
                         <FormulaTooltip
@@ -1010,10 +1039,10 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                       </span>
                     </th>
                     <th className="py-1.5 px-2.5 text-center">موجودی ملکی</th>
-                    <th className="py-1.5 px-2.5 text-center text-[#107e3e]">امانی ساپکو</th>
-                    <th className="py-1.5 px-2.5 text-center text-[#bb0000]">قرنطینه (QC Hold)</th>
-                    <th className="py-1.5 px-2.5 text-center text-[#e9730c]">رزرو فعال</th>
-                    <th className="py-1.5 px-2.5 text-center text-[#107e3e]">
+                    <th className="py-1.5 px-2.5 text-center text-[var(--fiori-positive)]">امانی ساپکو</th>
+                    <th className="py-1.5 px-2.5 text-center text-[var(--fiori-negative)]">قرنطینه (QC Hold)</th>
+                    <th className="py-1.5 px-2.5 text-center text-[var(--fiori-critical)]">رزرو فعال</th>
+                    <th className="py-1.5 px-2.5 text-center text-[var(--fiori-positive)]">
                       <span className="inline-flex items-center">
                         <span>موجودی آزاد (ATP)</span>
                         <FormulaTooltip
@@ -1024,8 +1053,8 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                         />
                       </span>
                     </th>
-                    <th className="py-1.5 px-2.5 text-center text-[#007cc0]">قرارداد باز</th>
-                    <th className="py-1.5 px-2.5 text-center text-[#bb0000]">
+                    <th className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)]">قرارداد باز</th>
+                    <th className="py-1.5 px-2.5 text-center text-[var(--fiori-negative)]">
                       <span className="inline-flex items-center">
                         <span>کسری قطعی</span>
                         <FormulaTooltip
@@ -1051,100 +1080,89 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                       <React.Fragment key={m.materialId}>
                         <tr
                           className={`transition ${
-                            hasVipDemand ? 'bg-[#fff9f0] hover:bg-[#fff4e5]' : 'hover:bg-[#e5f3fa]'
+                            hasVipDemand
+                              ? 'bg-[var(--fiori-critical-bg)] hover:opacity-95'
+                              : 'hover:bg-[var(--fiori-surface-hover)]'
                           }`}
                         >
                           <td className="py-1.5 px-2.5 font-sans">
-                            <div className="font-semibold text-[#333333] flex items-center gap-1.5 flex-wrap">
+                            <div className="font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1.5 flex-wrap">
                               <span>{m.materialName}</span>
                               {hasVipDemand && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-[#fff4e5] text-[#e9730c] border border-[#f5cba7] text-[9px] font-semibold">
-                                  <Pin className="w-2.5 h-2.5 fill-[#e9730c]" />
-                                  VIP
-                                </span>
+                                <FioriObjectStatus
+                                  tone="critical"
+                                  size="sm"
+                                  icon={<Pin className="w-2.5 h-2.5" />}
+                                  label="VIP"
+                                />
                               )}
                             </div>
                             <button
                               type="button"
                               onClick={() => traceDocument(m.materialCode, 'INVENTORY_LEDGER')}
-                              className="sap-doc-link text-[11px] font-mono cursor-pointer"
+                              className="sap-doc-link text-[11px] fiori-ltr-code cursor-pointer"
                             >
                               {m.materialCode}
                             </button>
                           </td>
                           <td className="py-1.5 px-2.5 text-center">
-                            <span className="px-1.5 py-0.5 rounded bg-[#f5f5f5] border border-[#d9d9d9] text-[#333333] font-semibold text-[11px]">
-                              {m.materialGrade}
-                            </span>
+                            <FioriObjectStatus tone="neutral" size="sm" ltrCode label={m.materialGrade} />
                             {m.thicknessMm > 0 && (
-                              <span className="block text-[10px] text-[#666666] font-mono mt-0.5">
+                              <span className="block text-[10px] text-[var(--fiori-text-secondary)] font-mono mt-0.5 tabular-nums">
                                 {toPersianDigits(m.thicknessMm)} mm
                               </span>
                             )}
                           </td>
-                          <td className="py-1.5 px-2.5 text-center text-[#007cc0] font-semibold">
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)] font-semibold">
                             {formatNumber(m.requiredWeightKg)}
                           </td>
-                          <td className="py-1.5 px-2.5 text-center text-[#333333]">
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-text-primary)]">
                             {formatNumber(m.onHandOwned)}
                           </td>
-                          <td className="py-1.5 px-2.5 text-center text-[#107e3e] font-semibold">
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-positive)] font-semibold">
                             {formatNumber(m.onHandConsignment)}
                           </td>
-                          <td className="py-1.5 px-2.5 text-center text-[#bb0000]">
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-negative)]">
                             {m.onHandQuarantined > 0 ? (
-                              <span className="text-[#bb0000] font-semibold underline" title="خارج از چرخه تخصیص">
+                              <span className="text-[var(--fiori-negative)] font-semibold underline" title="خارج از چرخه تخصیص">
                                 {formatNumber(m.onHandQuarantined)}
                               </span>
                             ) : (
                               '۰'
                             )}
                           </td>
-                          <td className="py-1.5 px-2.5 text-center text-[#e9730c]">
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-critical)]">
                             {formatNumber(m.reservedActive)}
                           </td>
-                          <td className="py-1.5 px-2.5 text-center text-[#107e3e] font-bold bg-[#ebf5ec]">
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-positive)] font-bold bg-[var(--fiori-positive-bg)]">
                             {formatNumber(m.netAvailable)}
                           </td>
-                          <td className="py-1.5 px-2.5 text-center text-[#007cc0]">
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)]">
                             {formatNumber(m.openContractQuantity)}
                           </td>
                           <td className="py-1.5 px-2.5 text-center font-bold">
                             {m.hardShortageQuantity > 0 ? (
-                              <span className="text-[#bb0000] px-1.5 py-0.5 rounded bg-[#ffecec] border border-[#f5b7b1]">
-                                {formatNumber(m.hardShortageQuantity)}
-                              </span>
+                              <FioriObjectStatus tone="negative" size="sm" label={formatNumber(m.hardShortageQuantity)} />
                             ) : (
-                              <span className="text-[#666666]">-</span>
+                              <span className="text-[var(--fiori-text-muted)]">-</span>
                             )}
                           </td>
                           <td className="py-1.5 px-2.5 text-center font-sans">
                             {m.severity === 'OK' && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#ebf5ec] text-[#107e3e] border border-[#b7dfbf] inline-flex items-center gap-1 whitespace-nowrap">
-                                <CheckCircle2 className="w-3 h-3" />
-                                پوشش کامل
-                              </span>
+                              <FioriObjectStatus tone="positive" size="sm" icon label="پوشش کامل" />
                             )}
                             {m.severity === 'SHORTAGE_COVERED_BY_CONTRACT' && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#fff4e5] text-[#e9730c] border border-[#f5cba7] inline-flex items-center gap-1 whitespace-nowrap">
-                                <Info className="w-3 h-3" />
-                                پوشش قرارداد
-                              </span>
+                              <FioriObjectStatus tone="critical" size="sm" icon label="پوشش قرارداد" />
                             )}
                             {m.severity === 'HARD_SHORTAGE' && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#ffecec] text-[#bb0000] border border-[#f5b7b1] inline-flex items-center gap-1 whitespace-nowrap">
-                                <ShieldAlert className="w-3 h-3" />
-                                کسری قطعی
-                              </span>
+                              <FioriObjectStatus tone="negative" size="sm" icon label="کسری قطعی" />
                             )}
                           </td>
                           <td className="py-1.5 px-2.5 text-center font-sans no-print">
                             {issuedPr ? (
                               <div className="inline-flex flex-col items-center gap-0.5">
-                                <span className="px-2 py-0.5 rounded bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] font-mono text-[10px] font-semibold">
-                                  ✓ {issuedPr.prNumber}
-                                </span>
-                                <span className="text-[9px] text-[#666666]">
+                                <FioriObjectStatus tone="info" size="sm" ltrCode label={`✓ ${issuedPr.prNumber}`} />
+                                <span className="text-[9px] text-[var(--fiori-text-secondary)] tabular-nums">
                                   {formatNumber(issuedPr.quantity)} {issuedPr.unit}
                                 </span>
                               </div>
@@ -1161,17 +1179,18 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                                   )
                                 }
                                 title="صدور فوری درخواست خرید (Purchase Requisition) برای جبران کسری"
-                                className="px-2.5 py-1 rounded bg-[#bb0000] hover:bg-[#990000] text-[#ffffff] text-[11px] font-semibold inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
+                                className="px-2.5 py-1 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-negative)] hover:opacity-90 text-white text-[11px] font-semibold inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
                               >
                                 <ShoppingCart className="w-3 h-3" />
                                 <span>صدور درخواست خرید (PR)</span>
                               </button>
                             ) : (
-                              <span className="text-[10px] text-[#888888]">نیاز ندارد</span>
+                              <span className="text-[10px] text-[var(--fiori-text-muted)]">نیاز ندارد</span>
                             )}
                           </td>
                           <td className="py-1.5 px-2.5 text-center">
                             <button
+                              type="button"
                               onClick={() => setExpandedMaterialCode(isExpanded ? null : m.materialCode)}
                               className="sap-btn-standard px-2 py-0.5 text-[11px] font-sans inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
                             >
@@ -1183,36 +1202,36 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
 
                         {/* Expanded Drawer for Demanded Parts & Matching Coils */}
                         {isExpanded && (
-                          <tr className="bg-[#f5f5f5] border-b border-[#d9d9d9] font-sans">
+                          <tr className="bg-[var(--fiori-surface-subtle)] border-b border-[var(--fiori-border)] font-sans">
                             <td colSpan={13} className="p-3">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                                 {/* Demanded by Parts */}
-                                <div className="bg-[#ffffff] border border-[#d9d9d9] rounded p-3">
-                                  <h4 className="font-semibold text-[#333333] mb-2 flex items-center gap-2">
-                                    <Boxes className="w-4 h-4 text-[#007cc0]" />
+                                <div className="bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] p-3">
+                                  <h4 className="font-semibold text-[var(--fiori-text-primary)] mb-2 flex items-center gap-2">
+                                    <Boxes className="w-4 h-4 text-[var(--fiori-brand)]" />
                                     قطعات متقاضی این متریال در برنامه:
                                   </h4>
                                   <div className="space-y-1.5">
                                     {m.demandedByParts.map((dp, idx) => (
                                       <div
                                         key={idx}
-                                        className="flex items-center justify-between p-2 rounded bg-[#f7f7f7] border border-[#e8e8e8]"
+                                        className="flex items-center justify-between p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border)]"
                                       >
                                         <div>
-                                          <div className="font-semibold text-[#333333]">{dp.partName}</div>
+                                          <div className="font-semibold text-[var(--fiori-text-primary)]">{dp.partName}</div>
                                           <button
                                             type="button"
                                             onClick={() => traceDocument(dp.partCode, 'INVENTORY_LEDGER')}
-                                            className="sap-doc-link text-[10px] font-mono cursor-pointer"
+                                            className="sap-doc-link text-[10px] fiori-ltr-code cursor-pointer"
                                           >
                                             {dp.partCode}
                                           </button>
                                         </div>
-                                        <div className="text-left font-mono">
-                                          <div className="text-[#007cc0] font-semibold">
-                                            {formatNumber(dp.weightKg)} <span className="text-[10px] font-sans text-[#666666]">kg</span>
+                                        <div className="text-left font-mono tabular-nums">
+                                          <div className="text-[var(--fiori-brand)] font-semibold">
+                                            {formatNumber(dp.weightKg)} <span className="text-[10px] font-sans text-[var(--fiori-text-secondary)]">kg</span>
                                           </div>
-                                          <div className="text-[10px] text-[#666666]">
+                                          <div className="text-[10px] text-[var(--fiori-text-secondary)]">
                                             ({formatNumber(dp.requiredQuantity)} عدد)
                                           </div>
                                         </div>
@@ -1222,9 +1241,9 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                                 </div>
 
                                 {/* Physical Matching Coils in Plant */}
-                                <div className="bg-[#ffffff] border border-[#d9d9d9] rounded p-3">
-                                  <h4 className="font-semibold text-[#333333] mb-2 flex items-center gap-2">
-                                    <Layers className="w-4 h-4 text-[#107e3e]" />
+                                <div className="bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] p-3">
+                                  <h4 className="font-semibold text-[var(--fiori-text-primary)] mb-2 flex items-center gap-2">
+                                    <Layers className="w-4 h-4 text-[var(--fiori-positive)]" />
                                     کلاف‌ها و رول‌های فیزیکی منطبق پای پرس:
                                   </h4>
                                   {m.matchingCoils.length > 0 ? (
@@ -1232,25 +1251,25 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                                       {m.matchingCoils.map((c, idx) => (
                                         <div
                                           key={idx}
-                                          className="flex items-center justify-between p-2 rounded bg-[#f7f7f7] border border-[#e8e8e8]"
+                                          className="flex items-center justify-between p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border)]"
                                         >
                                           <div>
                                             <button
                                               type="button"
                                               onClick={() => traceDocument(c.coilNumber, 'COILS')}
-                                              className="sap-doc-link font-semibold font-mono cursor-pointer"
+                                              className="sap-doc-link font-semibold fiori-ltr-code cursor-pointer"
                                             >
                                               {c.coilNumber}
                                             </button>
-                                            <div className="text-[10px] text-[#666666]">
+                                            <div className="text-[10px] text-[var(--fiori-text-secondary)]">
                                               {c.ownership === 'SAPCO_CONSIGNMENT' ? 'امانی ساپکو' : 'ملکی کارخانه'} • {c.warehouseLocation}
                                             </div>
                                           </div>
-                                          <div className="text-left font-mono">
-                                            <span className="text-[#107e3e] font-semibold text-xs">
+                                          <div className="text-left font-mono tabular-nums">
+                                            <span className="text-[var(--fiori-positive)] font-semibold text-xs">
                                               {formatNumber(c.remainingWeightKg)} kg
                                             </span>
-                                            <span className="block text-[10px] text-[#666666]">
+                                            <span className="block text-[10px] text-[var(--fiori-text-secondary)]">
                                               ضخامت {toPersianDigits(c.thicknessMm)}mm
                                             </span>
                                           </div>
@@ -1258,9 +1277,12 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                                       ))}
                                     </div>
                                   ) : (
-                                    <div className="text-[#666666] text-[11px] p-3 text-center bg-[#f7f7f7] rounded">
-                                      هیچ رول فیزیکی با این مشخصات در انبار ثبت نشده است.
-                                    </div>
+                                    <EmptyState
+                                      variant="NO_DATA"
+                                      compact
+                                      title="کلاف منطبق ثبت نشده است"
+                                      description="هیچ رول فیزیکی با این مشخصات در انبار ثبت نشده است."
+                                    />
                                   )}
                                 </div>
                               </div>
@@ -1273,6 +1295,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                 </tbody>
               </table>
             </div>
+            )}
           </div>
         </div>
       )}
@@ -1283,17 +1306,17 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
       {activeTab === 'pre_issue' && (
         <div className="space-y-4">
           {/* MO Selector & ATP Status Card */}
-          <div className="sap-card p-4">
+          <div className="sap-card p-4 border border-[var(--fiori-border)] space-y-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex-1">
-                <label className="block text-xs font-semibold text-[#333333] mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--fiori-text-primary)] mb-1.5">
                   انتخاب دستور کار ساخت (MO) جهت بررسی موجودی مواد پیش از صدور حواله:
                 </label>
                 <div className="flex items-center gap-2">
                   <select
                     value={selectedMoId}
                     onChange={e => setSelectedMoId(e.target.value)}
-                    className="flex-1 max-w-xl bg-[#ffffff] border border-[#bfbfbf] rounded px-3 py-1.5 text-xs text-[#333333] font-medium focus:outline-none focus:border-[#007cc0]"
+                    className="flex-1 max-w-xl bg-[var(--fiori-surface)] border border-[var(--fiori-border-strong)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-xs text-[var(--fiori-text-primary)] font-medium focus:outline-none focus:border-[var(--fiori-brand)]"
                   >
                     {moList.map(mo => (
                       <option key={mo.id} value={mo.id}>
@@ -1303,98 +1326,94 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                   </select>
 
                   <button
+                    type="button"
                     onClick={() => runMoCheck(selectedMoId)}
                     disabled={checkingMo}
                     className="sap-btn-standard px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${checkingMo ? 'animate-spin text-[#007cc0]' : ''}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 ${checkingMo ? 'animate-spin text-[var(--fiori-brand)]' : ''}`} />
                     <span>بررسی در لحظه</span>
                   </button>
                 </div>
               </div>
 
               {moCheckResult && (
-                <div className="flex items-center gap-3">
-                  <div className={`p-3 rounded border ${
-                    moCheckResult.readyToIssue
-                      ? 'bg-[#ebf5ec] border-[#b7dfbf] text-[#107e3e]'
-                      : 'bg-[#ffecec] border-[#f5b7b1] text-[#bb0000]'
-                  }`}>
-                    <div className="flex items-center gap-2 font-semibold text-xs">
-                      {moCheckResult.readyToIssue ? (
-                        <>
-                          <CheckCircle2 className="w-4 h-4 text-[#107e3e]" />
-                          <span>آماده صدور حواله خروج پای پرس</span>
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="w-4 h-4 text-[#bb0000]" />
-                          <span>دارای کسری مواد / عدم امکان حواله</span>
-                        </>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-[#666666] mt-0.5">
-                      {moCheckResult.readyToIssue
-                        ? 'کلیه ورق‌ها و قطعات این دستور کار در انبار آزاد و موجود است.'
-                        : 'یک یا چند قلم متریال در انبار آزاد نبوده و نیازمند حواله یا تأمین است.'}
-                    </p>
+                <button
+                  type="button"
+                  onClick={handleAutoReserve}
+                  disabled={reservingMo}
+                  className="sap-btn-emphasized px-4 py-2 text-xs font-semibold transition cursor-pointer disabled:opacity-50 flex flex-col items-center justify-center gap-0.5 text-center whitespace-nowrap"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>رزرو خودکار موجودی آزاد (ATP)</span>
                   </div>
-
-                  <button
-                    onClick={handleAutoReserve}
-                    disabled={reservingMo}
-                    className="sap-btn-emphasized px-4 py-2 text-xs font-semibold transition cursor-pointer disabled:opacity-50 flex flex-col items-center justify-center gap-0.5 text-center whitespace-nowrap"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>رزرو خودکار موجودی آزاد (ATP)</span>
-                    </div>
-                    <span className="text-[10px] opacity-90 font-normal">
-                      قفل کردن مواد در انبار برای این دستور کار
-                    </span>
-                  </button>
-                </div>
+                  <span className="text-[10px] opacity-90 font-normal">
+                    قفل کردن مواد در انبار برای این دستور کار
+                  </span>
+                </button>
               )}
             </div>
+
+            {moCheckResult && (
+              <FioriMessageStrip
+                tone={moCheckResult.readyToIssue ? 'success' : 'error'}
+                title={moCheckResult.readyToIssue ? 'آماده صدور حواله خروج پای پرس' : 'دارای کسری مواد / عدم امکان حواله'}
+                compact
+              >
+                {moCheckResult.readyToIssue
+                  ? 'کلیه ورق‌ها و قطعات این دستور کار در انبار آزاد و موجود است.'
+                  : 'یک یا چند قلم متریال در انبار آزاد نبوده و نیازمند حواله یا تأمین است.'}
+              </FioriMessageStrip>
+            )}
           </div>
 
           {/* BOM Materials Availability Table */}
           {moCheckResult && (
-            <div className="sap-card overflow-hidden">
-              <div className="px-4 py-2.5 bg-[#ffffff] border-b border-[#d9d9d9] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileCheck className="w-4 h-4 text-[#107e3e]" />
-                  <h3 className="text-xs font-semibold text-[#333333]">
-                    جدول موازنه اقلام BOM دستور کار{' '}
+            <div className="sap-card overflow-hidden border border-[var(--fiori-border)]">
+              <FioriToolbar
+                variant="table"
+                title={
+                  <span className="inline-flex items-center gap-1.5">
+                    <span>جدول موازنه اقلام BOM دستور کار</span>
                     <button
                       type="button"
                       onClick={() => traceDocument(moCheckResult.moNumber, 'WIP_TRACEABILITY')}
-                      className="sap-doc-link font-mono cursor-pointer"
+                      className="sap-doc-link fiori-ltr-code cursor-pointer"
                     >
                       {moCheckResult.moNumber}
-                    </button>{' '}
-                    ({moCheckResult.partName})
-                  </h3>
-                </div>
-                <span className="text-xs text-[#666666] font-mono tabular-nums">
-                  تیراژ مصوب: {formatNumber(moCheckResult.targetQuantity)} عدد
-                </span>
-              </div>
+                    </button>
+                    <span>({moCheckResult.partName})</span>
+                  </span>
+                }
+                count={moCheckResult.lines.length}
+                countLabel="ردیف BOM"
+                endContent={
+                  <span className="text-xs text-[var(--fiori-text-secondary)] font-mono tabular-nums">
+                    تیراژ مصوب: {formatNumber(moCheckResult.targetQuantity)} عدد
+                  </span>
+                }
+              />
 
+              {moCheckResult.lines.length === 0 ? (
+                <div className="p-6">
+                  <EmptyState variant="NO_DATA" compact title="هیچ قلم BOM یافت نشد" />
+                </div>
+              ) : (
               <div className="overflow-x-auto">
                 <table className="sap-table-compact w-full text-right">
                   <thead>
                     <tr>
                       <th className="py-1.5 px-2.5">کد و عنوان قطعه / ماده در BOM</th>
                       <th className="py-1.5 px-2.5 text-center">واحد</th>
-                      <th className="py-1.5 px-2.5 text-center text-[#007cc0]">کل نیاز سفارش</th>
+                      <th className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)]">کل نیاز سفارش</th>
                       <th className="py-1.5 px-2.5 text-center">حواله شده قبلی</th>
                       <th className="py-1.5 px-2.5 text-center">باقیمانده نیاز</th>
                       <th className="py-1.5 px-2.5 text-center">موجودی انبار</th>
-                      <th className="py-1.5 px-2.5 text-center text-[#e9730c]">رزرو همین MO</th>
-                      <th className="py-1.5 px-2.5 text-center text-[#bb0000]">رزرو سایر MOها</th>
-                      <th className="py-1.5 px-2.5 text-center text-[#107e3e]">آزاد برای این MO</th>
-                      <th className="py-1.5 px-2.5 text-center text-[#bb0000]">کسری</th>
+                      <th className="py-1.5 px-2.5 text-center text-[var(--fiori-critical)]">رزرو همین MO</th>
+                      <th className="py-1.5 px-2.5 text-center text-[var(--fiori-negative)]">رزرو سایر MOها</th>
+                      <th className="py-1.5 px-2.5 text-center text-[var(--fiori-positive)]">آزاد برای این MO</th>
+                      <th className="py-1.5 px-2.5 text-center text-[var(--fiori-negative)]">کسری</th>
                       <th className="py-1.5 px-2.5 text-center">وضعیت ردیف</th>
                       <th className="py-1.5 px-2.5 text-center">اکشن سریع خرید (PR)</th>
                     </tr>
@@ -1403,63 +1422,51 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                     {moCheckResult.lines.map((l, idx) => {
                       const linePr = issuedPrMap[l.materialCode];
                       return (
-                        <tr key={idx} className="hover:bg-[#e5f3fa] transition">
+                        <tr key={idx} className="hover:bg-[var(--fiori-surface-hover)] transition">
                           <td className="py-1.5 px-2.5 font-sans">
-                            <div className="font-semibold text-[#333333]">{l.materialName}</div>
+                            <div className="font-semibold text-[var(--fiori-text-primary)]">{l.materialName}</div>
                             <button
                               type="button"
                               onClick={() => traceDocument(l.materialCode, 'INVENTORY_LEDGER')}
-                              className="sap-doc-link text-[11px] font-mono cursor-pointer"
+                              className="sap-doc-link text-[11px] fiori-ltr-code cursor-pointer"
                             >
                               {l.materialCode}
                             </button>
                             {l.notes.length > 0 && (
-                              <div className="text-[10px] text-[#666666] mt-0.5">{l.notes.join(' • ')}</div>
+                              <div className="text-[10px] text-[var(--fiori-text-secondary)] mt-0.5">{l.notes.join(' • ')}</div>
                             )}
                           </td>
-                          <td className="py-1.5 px-2.5 text-center text-[#666666]">{l.unitCode}</td>
-                          <td className="py-1.5 px-2.5 text-center text-[#007cc0] font-semibold">{formatNumber(l.requiredQuantity)}</td>
-                          <td className="py-1.5 px-2.5 text-center text-[#666666]">{formatNumber(l.alreadyIssuedQuantity)}</td>
-                          <td className="py-1.5 px-2.5 text-center text-[#333333] font-semibold">{formatNumber(l.remainingRequired)}</td>
-                          <td className="py-1.5 px-2.5 text-center text-[#333333]">{formatNumber(l.onHandApproved)}</td>
-                          <td className="py-1.5 px-2.5 text-center text-[#e9730c] font-semibold">{formatNumber(l.reservedForThisMo)}</td>
-                          <td className="py-1.5 px-2.5 text-center text-[#bb0000]">{formatNumber(l.reservedForOthers)}</td>
-                          <td className="py-1.5 px-2.5 text-center text-[#107e3e] font-bold bg-[#ebf5ec]">
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-text-secondary)]">{l.unitCode}</td>
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)] font-semibold">{formatNumber(l.requiredQuantity)}</td>
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-text-secondary)]">{formatNumber(l.alreadyIssuedQuantity)}</td>
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-text-primary)] font-semibold">{formatNumber(l.remainingRequired)}</td>
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-text-primary)]">{formatNumber(l.onHandApproved)}</td>
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-critical)] font-semibold">{formatNumber(l.reservedForThisMo)}</td>
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-negative)]">{formatNumber(l.reservedForOthers)}</td>
+                          <td className="py-1.5 px-2.5 text-center text-[var(--fiori-positive)] font-bold bg-[var(--fiori-positive-bg)]">
                             {formatNumber(l.availableForThisMo)}
                           </td>
                           <td className="py-1.5 px-2.5 text-center font-bold">
                             {l.shortageQuantity > 0 ? (
-                              <span className="text-[#bb0000] px-1.5 py-0.5 rounded bg-[#ffecec] border border-[#f5b7b1]">
-                                {formatNumber(l.shortageQuantity)}
-                              </span>
+                              <FioriObjectStatus tone="negative" size="sm" label={formatNumber(l.shortageQuantity)} />
                             ) : (
-                              <span className="text-[#666666]">۰</span>
+                              <span className="text-[var(--fiori-text-muted)]">۰</span>
                             )}
                           </td>
                           <td className="py-1.5 px-2.5 text-center font-sans">
                             {l.status === 'READY' && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#ebf5ec] text-[#107e3e] border border-[#b7dfbf] inline-flex items-center gap-1 whitespace-nowrap">
-                                <CheckCircle2 className="w-3 h-3" />
-                                آماده حواله
-                              </span>
+                              <FioriObjectStatus tone="positive" size="sm" icon label="آماده حواله" />
                             )}
                             {l.status === 'SHORTAGE' && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#ffecec] text-[#bb0000] border border-[#f5b7b1] inline-flex items-center gap-1 whitespace-nowrap">
-                                <AlertTriangle className="w-3 h-3" />
-                                کسری موجودی
-                              </span>
+                              <FioriObjectStatus tone="negative" size="sm" icon label="کسری موجودی" />
                             )}
                             {l.status === 'NOT_REQUIRED' && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#f5f5f5] text-[#666666] border border-[#d9d9d9] whitespace-nowrap">
-                                تأمین کامل شده
-                              </span>
+                              <FioriObjectStatus tone="neutral" size="sm" label="تأمین کامل شده" />
                             )}
                           </td>
                           <td className="py-1.5 px-2.5 text-center font-sans">
                             {linePr ? (
-                              <span className="px-2 py-0.5 rounded bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] font-mono text-[10px] font-semibold">
-                                ✓ {linePr.prNumber}
-                              </span>
+                              <FioriObjectStatus tone="info" size="sm" ltrCode label={`✓ ${linePr.prNumber}`} />
                             ) : l.shortageQuantity > 0 ? (
                               <button
                                 type="button"
@@ -1471,13 +1478,13 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                                     l.unitCode
                                   )
                                 }
-                                className="px-2.5 py-1 rounded bg-[#bb0000] hover:bg-[#990000] text-[#ffffff] text-[10px] font-semibold inline-flex items-center gap-1 cursor-pointer transition whitespace-nowrap"
+                                className="px-2.5 py-1 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-negative)] hover:opacity-90 text-white text-[10px] font-semibold inline-flex items-center gap-1 cursor-pointer transition whitespace-nowrap"
                               >
                                 <ShoppingCart className="w-3 h-3" />
                                 <span>صدور درخواست خرید (PR)</span>
                               </button>
                             ) : (
-                              <span className="text-[10px] text-[#888888]">—</span>
+                              <span className="text-[10px] text-[var(--fiori-text-muted)]">—</span>
                             )}
                           </td>
                         </tr>
@@ -1486,6 +1493,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                   </tbody>
                 </table>
               </div>
+              )}
             </div>
           )}
         </div>
@@ -1495,34 +1503,32 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
           TAB 3: PARTS DEMAND NETTING (موازنه تقاضای قطعات - با دکمه کشوی تعریف درجا BOM/مسیر)
           ========================================================================= */}
       {activeTab === 'parts' && mrpData && (
-        <div className="sap-card overflow-hidden">
-          <div className="px-4 py-3 bg-[#ffffff] border-b border-[#d9d9d9] flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="text-xs font-semibold text-[#333333] flex items-center gap-2">
-                <Boxes className="w-4 h-4 text-[#007cc0]" />
-                موازنه تیراژ قطعات نهایی خودرویی (تقاضای باز مشتریان نسبت به موجودی و WIP)
-              </h3>
-              <p className="text-[11px] text-[#666666] mt-0.5">
-                بر روی وضعیت‌های <strong className="text-[#bb0000]">«فاقد BOM»</strong> یا <strong className="text-[#e9730c]">«فاقد مسیر»</strong> کلیک کنید تا کشوی جانبی تعریف سریع مستندات فنی باز شود (بدون خروج از ماژول MRP).
-              </p>
-            </div>
-            <span className="text-xs text-[#666666] font-mono">
-              {toPersianDigits(mrpData.parts.length)} محصول
-            </span>
-          </div>
+        <div className="sap-card overflow-hidden border border-[var(--fiori-border)]">
+          <FioriToolbar
+            variant="table"
+            title="موازنه تیراژ قطعات نهایی خودرویی (تقاضای باز مشتریان نسبت به موجودی و WIP)"
+            subtitle="بر روی وضعیت‌های «فاقد BOM» یا «فاقد مسیر» کلیک کنید تا کشوی جانبی تعریف سریع مستندات فنی باز شود (بدون خروج از ماژول MRP)."
+            count={mrpData.parts.length}
+            countLabel="محصول"
+          />
 
+          {mrpData.parts.length === 0 ? (
+            <div className="p-6">
+              <EmptyState variant="NO_DATA" compact title="تقاضای قطعه‌ای در MRP ثبت نشده است" />
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="sap-table-compact w-full text-right">
               <thead>
                 <tr>
                   <th className="py-1.5 px-2.5">کد و نام قطعه خودرویی</th>
                   <th className="py-1.5 px-2.5">خودرو</th>
-                  <th className="py-1.5 px-2.5 text-center text-[#007cc0]">تقاضای ناخالص</th>
-                  <th className="py-1.5 px-2.5 text-center text-[#107e3e]">موجودی محصول نهایی</th>
-                  <th className="py-1.5 px-2.5 text-center text-[#e9730c]">رزرو محصول</th>
-                  <th className="py-1.5 px-2.5 text-center text-[#007cc0]">کار در جریان (WIP)</th>
-                  <th className="py-1.5 px-2.5 text-center text-[#007cc0]">دستور کار باز (MO)</th>
-                  <th className="py-1.5 px-2.5 text-center text-[#bb0000]">نیاز خالص تولید</th>
+                  <th className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)]">تقاضای ناخالص</th>
+                  <th className="py-1.5 px-2.5 text-center text-[var(--fiori-positive)]">موجودی محصول نهایی</th>
+                  <th className="py-1.5 px-2.5 text-center text-[var(--fiori-critical)]">رزرو محصول</th>
+                  <th className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)]">کار در جریان (WIP)</th>
+                  <th className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)]">دستور کار باز (MO)</th>
+                  <th className="py-1.5 px-2.5 text-center text-[var(--fiori-negative)]">نیاز خالص تولید</th>
                   <th className="py-1.5 px-2.5 text-center">وضعیت مستندات فنی (کلیک برای تکمیل در کشو)</th>
                 </tr>
               </thead>
@@ -1531,50 +1537,50 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                   <tr
                     key={p.partId}
                     className={`transition ${
-                      p.isVIP ? 'bg-[#fff9f0] hover:bg-[#fff4e5]' : 'hover:bg-[#e5f3fa]'
+                      p.isVIP ? 'bg-[var(--fiori-critical-bg)] hover:opacity-95' : 'hover:bg-[var(--fiori-surface-hover)]'
                     }`}
                   >
                     <td className="py-1.5 px-2.5 font-sans">
-                      <div className="font-semibold text-[#333333] flex items-center gap-1.5 flex-wrap">
+                      <div className="font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1.5 flex-wrap">
                         <span>{p.partName}</span>
                         {p.isVIP && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-[#fff4e5] text-[#e9730c] text-[10px] font-semibold border border-[#f5cba7]">
-                            <Pin className="w-2.5 h-2.5 fill-[#e9730c]" />
-                            VIP
-                          </span>
+                          <FioriObjectStatus
+                            tone="critical"
+                            size="sm"
+                            icon={<Pin className="w-2.5 h-2.5" />}
+                            label="VIP"
+                          />
                         )}
                       </div>
                       <button
                         type="button"
                         onClick={() => traceDocument(p.partCode, 'INVENTORY_LEDGER')}
-                        className="sap-doc-link text-[11px] font-mono cursor-pointer"
+                        className="sap-doc-link text-[11px] fiori-ltr-code cursor-pointer"
                       >
                         {p.partCode}
                       </button>
                     </td>
-                    <td className="py-1.5 px-2.5 font-sans text-[#333333]">{p.carModel || '-'}</td>
-                    <td className="py-1.5 px-2.5 text-center text-[#007cc0] font-semibold">
+                    <td className="py-1.5 px-2.5 font-sans text-[var(--fiori-text-primary)]">{p.carModel || '-'}</td>
+                    <td className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)] font-semibold">
                       {formatNumber(p.grossDemand)}
                     </td>
-                    <td className="py-1.5 px-2.5 text-center text-[#107e3e] font-semibold">
+                    <td className="py-1.5 px-2.5 text-center text-[var(--fiori-positive)] font-semibold">
                       {formatNumber(p.coveredByFgStock)}
                     </td>
-                    <td className="py-1.5 px-2.5 text-center text-[#e9730c]">
+                    <td className="py-1.5 px-2.5 text-center text-[var(--fiori-critical)]">
                       {formatNumber(p.coveredByFgReservations)}
                     </td>
-                    <td className="py-1.5 px-2.5 text-center text-[#007cc0] font-semibold">
+                    <td className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)] font-semibold">
                       {formatNumber(p.coveredByWip)}
                     </td>
-                    <td className="py-1.5 px-2.5 text-center text-[#007cc0]">
+                    <td className="py-1.5 px-2.5 text-center text-[var(--fiori-brand)]">
                       {formatNumber(p.coveredByActiveMos)}
                     </td>
                     <td className="py-1.5 px-2.5 text-center font-bold">
                       {p.netRequirement > 0 ? (
-                        <span className="px-2 py-0.5 rounded bg-[#ffecec] text-[#bb0000] border border-[#f5b7b1]">
-                          {formatNumber(p.netRequirement)}
-                        </span>
+                        <FioriObjectStatus tone="negative" size="sm" label={formatNumber(p.netRequirement)} />
                       ) : (
-                        <span className="text-[#107e3e] font-semibold">پوشش کامل (۰)</span>
+                        <FioriObjectStatus tone="positive" size="sm" label="پوشش کامل (۰)" />
                       )}
                     </td>
                     <td className="py-1.5 px-2.5 text-center font-sans">
@@ -1587,10 +1593,10 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                               ? 'مشاهده یا ویرایش درخت محصول (BOM) در کشوی جانبی'
                               : 'کلیک جهت تعریف سریع BOM در کشوی جانبی بدون خروج از MRP'
                           }
-                          className={`px-2 py-1 rounded text-[10px] font-semibold inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap ${
+                          className={`px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[10px] font-semibold inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap ${
                             p.hasBom
-                              ? 'bg-[#ebf5ec] text-[#107e3e] border border-[#b7dfbf] hover:bg-[#d8eedb]'
-                              : 'bg-[#bb0000] hover:bg-[#990000] text-[#ffffff] border border-[#bb0000]'
+                              ? 'bg-[var(--fiori-positive-bg)] text-[var(--fiori-positive)] border border-[var(--fiori-positive-border)] hover:opacity-90'
+                              : 'bg-[var(--fiori-negative)] hover:opacity-90 text-white border border-[var(--fiori-negative)]'
                           }`}
                         >
                           <Edit3 className="w-2.5 h-2.5" />
@@ -1605,10 +1611,10 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                               ? 'مشاهده یا ویرایش مسیر تولید (Routing) در کشوی جانبی'
                               : 'کلیک جهت تعریف سریع مسیر تولید در کشوی جانبی بدون خروج از MRP'
                           }
-                          className={`px-2 py-1 rounded text-[10px] font-semibold inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap ${
+                          className={`px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[10px] font-semibold inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap ${
                             p.hasRouting
-                              ? 'bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] hover:bg-[#d1eafa]'
-                              : 'bg-[#e9730c] hover:bg-[#c85f05] text-[#ffffff] border border-[#e9730c]'
+                              ? 'bg-[var(--fiori-info-bg)] text-[var(--fiori-info)] border border-[var(--fiori-info-border)] hover:opacity-90'
+                              : 'bg-[var(--fiori-critical)] hover:opacity-90 text-white border border-[var(--fiori-critical)]'
                           }`}
                         >
                           <GitBranch className="w-2.5 h-2.5" />
@@ -1621,6 +1627,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
               </tbody>
             </table>
           </div>
+          )}
         </div>
       )}
 
@@ -1628,31 +1635,32 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
           TAB 4: DEMAND SIMULATION (شبیه‌ساز سناریوی تقاضا)
           ========================================================================= */}
       {activeTab === 'simulation' && (
-        <div className="sap-card p-5 space-y-4">
+        <div className="sap-card p-5 space-y-4 border border-[var(--fiori-border)]">
           <div>
-            <h3 className="text-sm font-semibold text-[#333333] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#007cc0]" />
+            <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)] flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[var(--fiori-brand)]" />
               شبیه‌ساز پیش‌بینی نیازمندی مواد و سناریوی رشد تقاضا (What-If Simulation)
             </h3>
-            <p className="text-xs text-[#666666] mt-0.5">
+            <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
               تنظیم سناریوهای رشد تقاضای ساپکو، افق زمانی برنامه‌ریزی، و سنجش میزان کسری کلاف قبل از تعهد تجاری
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            <div className="bg-[#f5f5f5] border border-[#d9d9d9] rounded p-3.5">
-              <label className="block text-xs font-semibold text-[#333333] mb-2">
+            <div className="bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] p-3.5">
+              <label className="block text-xs font-semibold text-[var(--fiori-text-primary)] mb-2">
                 درصد رشد تقاضای سفارشات:
               </label>
               <div className="flex items-center gap-1.5">
                 {[0, 15, 25, 50].map(pct => (
                   <button
                     key={pct}
+                    type="button"
                     onClick={() => setSimGrowth(pct)}
-                    className={`flex-1 py-1.5 rounded text-xs font-semibold transition cursor-pointer ${
+                    className={`flex-1 py-1.5 rounded-[var(--fiori-radius-sm)] text-xs font-semibold transition cursor-pointer ${
                       simGrowth === pct
-                        ? 'bg-[#007cc0] text-[#ffffff]'
-                        : 'bg-[#ffffff] text-[#666666] hover:text-[#333333] border border-[#d9d9d9]'
+                        ? 'bg-[var(--fiori-brand)] text-white'
+                        : 'bg-[var(--fiori-surface)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] border border-[var(--fiori-border)]'
                     }`}
                   >
                     {pct === 0 ? 'مبنا (۰٪)' : `+${toPersianDigits(pct)}٪`}
@@ -1661,19 +1669,20 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
               </div>
             </div>
 
-            <div className="bg-[#f5f5f5] border border-[#d9d9d9] rounded p-3.5">
-              <label className="block text-xs font-semibold text-[#333333] mb-2">
+            <div className="bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] p-3.5">
+              <label className="block text-xs font-semibold text-[var(--fiori-text-primary)] mb-2">
                 افق زمانی برنامه‌ریزی:
               </label>
               <div className="flex items-center gap-1.5">
                 {[7, 14, 30, 90].map(days => (
                   <button
                     key={days}
+                    type="button"
                     onClick={() => setSimHorizon(days)}
-                    className={`flex-1 py-1.5 rounded text-xs font-semibold transition cursor-pointer ${
+                    className={`flex-1 py-1.5 rounded-[var(--fiori-radius-sm)] text-xs font-semibold transition cursor-pointer ${
                       simHorizon === days
-                        ? 'bg-[#007cc0] text-[#ffffff]'
-                        : 'bg-[#ffffff] text-[#666666] hover:text-[#333333] border border-[#d9d9d9]'
+                        ? 'bg-[var(--fiori-brand)] text-white'
+                        : 'bg-[var(--fiori-surface)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] border border-[var(--fiori-border)]'
                     }`}
                   >
                     {toPersianDigits(days)} روزه
@@ -1682,26 +1691,26 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
               </div>
             </div>
 
-            <div className="bg-[#f5f5f5] border border-[#d9d9d9] rounded p-3.5 flex flex-col justify-between">
-              <label className="block text-xs font-semibold text-[#333333] mb-2">
+            <div className="bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] p-3.5 flex flex-col justify-between">
+              <label className="block text-xs font-semibold text-[var(--fiori-text-primary)] mb-2">
                 ملاحظات چرخه ساخت و موجودی:
               </label>
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-xs text-[#333333] cursor-pointer">
+                <label className="flex items-center gap-2 text-xs text-[var(--fiori-text-primary)] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={simIncludeWip}
                     onChange={e => setSimIncludeWip(e.target.checked)}
-                    className="accent-[#007cc0] rounded"
+                    className="accent-[var(--fiori-brand)] rounded"
                   />
                   <span>لحاظ کردن موجودی کار در جریان (WIP)</span>
                 </label>
-                <label className="flex items-center gap-2 text-xs text-[#333333] cursor-pointer">
+                <label className="flex items-center gap-2 text-xs text-[var(--fiori-text-primary)] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={simIncludeConsignment}
                     onChange={e => setSimIncludeConsignment(e.target.checked)}
-                    className="accent-[#007cc0] rounded"
+                    className="accent-[var(--fiori-brand)] rounded"
                   />
                   <span>شمارش موجودی امانی ساپکو</span>
                 </label>
@@ -1710,6 +1719,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
 
             <div className="flex items-end">
               <button
+                type="button"
                 onClick={handleRunSimulation}
                 disabled={simulating}
                 className="sap-btn-emphasized w-full py-3 text-xs font-semibold transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
@@ -1727,38 +1737,36 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
           ========================================================================= */}
       {bomRoutingDrawerPart && (
         <div
-          className="fixed inset-0 z-[85] flex justify-end bg-[#333333]/40"
+          className="fixed inset-0 z-[85] flex justify-end bg-black/40"
           dir="rtl"
           onClick={() => setBomRoutingDrawerPart(null)}
         >
           <div
-            className="relative w-full max-w-xl bg-[#ffffff] h-full shadow-xl border-r border-[#d9d9d9] flex flex-col justify-between overflow-y-auto"
+            className="relative w-full max-w-xl bg-[var(--fiori-surface)] h-full shadow-xl border-r border-[var(--fiori-border)] flex flex-col justify-between overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             {/* Sticky Header */}
-            <div className="sticky top-0 z-20 p-4 border-b border-[#d9d9d9] bg-[#ffffff] flex items-center justify-between">
+            <div className="sticky top-0 z-20 p-4 border-b border-[var(--fiori-border)] bg-[var(--fiori-surface)] flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] inline-block mb-1">
-                  حل بن‌بست فنی درجا (Inline MRP Technical Resolution)
-                </span>
-                <h3 className="text-sm font-semibold text-[#333333]">
+                <FioriObjectStatus tone="info" size="sm" label="حل بن‌بست فنی درجا (Inline MRP Technical Resolution)" />
+                <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)] mt-1">
                   تعریف BOM و مسیر تولید: {bomRoutingDrawerPart.partName}
                 </h3>
-                <p className="text-[11px] text-[#666666] font-mono mt-0.5">
+                <p className="text-[11px] text-[var(--fiori-text-secondary)] font-mono mt-0.5 tabular-nums">
                   {bomRoutingDrawerPart.partCode} | تقاضای خالص: {formatNumber(bomRoutingDrawerPart.netRequirement)} عدد
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setBomRoutingDrawerPart(null)}
-                className="p-1.5 rounded border border-[#d9d9d9] bg-[#f5f5f5] hover:bg-[#e8e8e8] text-[#666666] hover:text-[#333333] cursor-pointer"
+                className="p-1.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border)] bg-[var(--fiori-surface-subtle)] hover:bg-[var(--fiori-surface-hover)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Section Switcher Tabs */}
-            <div className="sap-icon-tab-bar px-4 bg-[#f7f7f7]">
+            <div className="sap-icon-tab-bar px-4 bg-[var(--fiori-surface-subtle)]">
               <button
                 type="button"
                 onClick={() => setDrawerFocusSection('BOM')}
@@ -1781,29 +1789,27 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
             <form onSubmit={handleSaveBomRoutingFromDrawer} className="flex-1 p-4 space-y-4 text-xs">
               {/* BOM Section */}
               <div
-                className={`p-3.5 rounded border space-y-3 ${
+                className={`p-3.5 rounded-[var(--fiori-radius-sm)] border space-y-3 ${
                   drawerFocusSection === 'BOM'
-                    ? 'bg-[#e5f3fa]/50 border-[#007cc0]'
-                    : 'bg-[#f7f7f7] border-[#d9d9d9]'
+                    ? 'bg-[var(--fiori-brand-subtle)] border-[var(--fiori-brand)]'
+                    : 'bg-[var(--fiori-surface-subtle)] border-[var(--fiori-border)]'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#333333] flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-[#007cc0]" />
+                  <span className="font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-[var(--fiori-brand)]" />
                     <span>مشخصات ماده اولیه و درخت محصول (BOM)</span>
                   </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#ffffff] text-[#007cc0] border border-[#b3ddf2]">
-                    انفجار خودکار در MRP
-                  </span>
+                  <FioriObjectStatus tone="info" size="sm" label="انفجار خودکار در MRP" />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-[#333333] mb-1">گرید ورق فولادی (Grade):</label>
+                    <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">گرید ورق فولادی (Grade):</label>
                     <select
                       value={drawerBomGrade}
                       onChange={e => setDrawerBomGrade(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded bg-[#ffffff] border border-[#bfbfbf] text-[#333333] font-semibold focus:border-[#007cc0] focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface)] border border-[var(--fiori-border-strong)] text-[var(--fiori-text-primary)] font-semibold focus:border-[var(--fiori-brand)] focus:outline-none"
                     >
                       <option value="DC04">DC04 (ورق روغنی کشش عمیق ساپکو)</option>
                       <option value="ST14">ST14 (ورق روغنی فوق کشش)</option>
@@ -1814,7 +1820,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#333333] mb-1">ضخامت ورق (mm):</label>
+                    <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">ضخامت ورق (mm):</label>
                     <input
                       type="number"
                       step="0.1"
@@ -1822,26 +1828,26 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                       max="6.0"
                       value={drawerBomThickness}
                       onChange={e => setDrawerBomThickness(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded bg-[#ffffff] border border-[#bfbfbf] text-[#333333] font-mono tabular-nums focus:border-[#007cc0] focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface)] border border-[var(--fiori-border-strong)] text-[var(--fiori-text-primary)] font-mono tabular-nums focus:border-[var(--fiori-brand)] focus:outline-none"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#333333] mb-1">وزن خالص قطعه (kg):</label>
+                    <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">وزن خالص قطعه (kg):</label>
                     <input
                       type="number"
                       step="0.01"
                       min="0.05"
                       value={drawerBomUnitWeight}
                       onChange={e => setDrawerBomUnitWeight(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded bg-[#ffffff] border border-[#bfbfbf] text-[#333333] font-mono tabular-nums focus:border-[#007cc0] focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface)] border border-[var(--fiori-border-strong)] text-[var(--fiori-text-primary)] font-mono tabular-nums focus:border-[var(--fiori-brand)] focus:outline-none"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#333333] mb-1">ضریب پرت و ضایعات برش (%):</label>
+                    <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">ضریب پرت و ضایعات برش (%):</label>
                     <input
                       type="number"
                       step="0.5"
@@ -1849,30 +1855,30 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                       max="40"
                       value={drawerBomScrapPct}
                       onChange={e => setDrawerBomScrapPct(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded bg-[#ffffff] border border-[#bfbfbf] text-[#333333] font-mono tabular-nums focus:border-[#007cc0] focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface)] border border-[var(--fiori-border-strong)] text-[var(--fiori-text-primary)] font-mono tabular-nums focus:border-[var(--fiori-brand)] focus:outline-none"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-[#e8e8e8]">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-[var(--fiori-border)]">
                   <div className="sm:col-span-2">
-                    <label className="block font-semibold text-[#333333] mb-1">قطعه/یراق مونتاژی فرعی (Sub-Component):</label>
+                    <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">قطعه/یراق مونتاژی فرعی (Sub-Component):</label>
                     <input
                       type="text"
                       value={drawerBomHardware}
                       onChange={e => setDrawerBomHardware(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded bg-[#ffffff] border border-[#bfbfbf] text-[#333333] focus:border-[#007cc0] focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface)] border border-[var(--fiori-border-strong)] text-[var(--fiori-text-primary)] focus:border-[var(--fiori-brand)] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-[#333333] mb-1">ضریب مصرف در واحد:</label>
+                    <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">ضریب مصرف در واحد:</label>
                     <input
                       type="number"
                       min="0"
                       value={drawerBomHardwareQty}
                       onChange={e => setDrawerBomHardwareQty(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded bg-[#ffffff] border border-[#bfbfbf] text-[#333333] font-mono tabular-nums focus:border-[#007cc0] focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface)] border border-[var(--fiori-border-strong)] text-[var(--fiori-text-primary)] font-mono tabular-nums focus:border-[var(--fiori-brand)] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1880,15 +1886,15 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
 
               {/* Routing Section */}
               <div
-                className={`p-3.5 rounded border space-y-3 ${
+                className={`p-3.5 rounded-[var(--fiori-radius-sm)] border space-y-3 ${
                   drawerFocusSection === 'ROUTING'
-                    ? 'bg-[#e5f3fa]/50 border-[#007cc0]'
-                    : 'bg-[#f7f7f7] border-[#d9d9d9]'
+                    ? 'bg-[var(--fiori-brand-subtle)] border-[var(--fiori-brand)]'
+                    : 'bg-[var(--fiori-surface-subtle)] border-[var(--fiori-border)]'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#333333] flex items-center gap-1.5">
-                    <GitBranch className="w-4 h-4 text-[#007cc0]" />
+                  <span className="font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1.5">
+                    <GitBranch className="w-4 h-4 text-[var(--fiori-brand)]" />
                     <span>ایستگاه‌های مسیر تولید (Routing Operations)</span>
                   </span>
                   <button
@@ -1915,7 +1921,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                   {drawerOps.map((op, idx) => (
                     <div
                       key={idx}
-                      className="p-2 rounded bg-[#ffffff] border border-[#d9d9d9] grid grid-cols-12 gap-2 items-center"
+                      className="p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface)] border border-[var(--fiori-border)] grid grid-cols-12 gap-2 items-center"
                     >
                       <div className="col-span-2">
                         <input
@@ -1926,7 +1932,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                               prev.map((item, i) => (i === idx ? { ...item, stepCode: e.target.value } : item))
                             )
                           }
-                          className="w-full px-2 py-1 rounded bg-[#f5f5f5] border border-[#d9d9d9] font-mono text-[11px] font-semibold text-[#007cc0]"
+                          className="w-full px-2 py-1 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border)] font-mono text-[11px] font-semibold text-[var(--fiori-brand)] fiori-ltr-code"
                         />
                       </div>
                       <div className="col-span-4">
@@ -1939,7 +1945,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                             )
                           }
                           placeholder="شرح عملیات"
-                          className="w-full px-2 py-1 rounded bg-[#f5f5f5] border border-[#d9d9d9] text-[11px]"
+                          className="w-full px-2 py-1 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border)] text-[11px]"
                         />
                       </div>
                       <div className="col-span-4">
@@ -1952,7 +1958,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                             )
                           }
                           placeholder="ماشین / پرس"
-                          className="w-full px-2 py-1 rounded bg-[#f5f5f5] border border-[#d9d9d9] text-[11px]"
+                          className="w-full px-2 py-1 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border)] text-[11px]"
                         />
                       </div>
                       <div className="col-span-2 flex items-center justify-end gap-1">
@@ -1968,13 +1974,13 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
                             )
                           }
                           title="زمان سیکل (ثانیه)"
-                          className="w-12 px-1.5 py-1 rounded bg-[#f5f5f5] border border-[#d9d9d9] font-mono text-[11px] text-center"
+                          className="w-12 px-1.5 py-1 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-surface-subtle)] border border-[var(--fiori-border)] font-mono text-[11px] text-center tabular-nums"
                         />
                         {drawerOps.length > 1 && (
                           <button
                             type="button"
                             onClick={() => setDrawerOps(prev => prev.filter((_, i) => i !== idx))}
-                            className="p-1 text-[#666666] hover:text-[#bb0000] cursor-pointer"
+                            className="p-1 text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-negative)] cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1986,7 +1992,7 @@ export const MrpModuleView: React.FC<MrpModuleViewProps> = ({ onRefreshGlobal })
               </div>
 
               {/* Sticky Footer */}
-              <div className="sticky bottom-0 pt-3 pb-2 bg-[#ffffff] border-t border-[#d9d9d9] flex items-center justify-end gap-2">
+              <div className="sticky bottom-0 pt-3 pb-2 bg-[var(--fiori-surface)] border-t border-[var(--fiori-border)] flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setBomRoutingDrawerPart(null)}

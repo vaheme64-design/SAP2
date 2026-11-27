@@ -43,6 +43,12 @@ import { PlanningModuleSkeleton } from '../ui/Skeleton';
 import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
 import { useErpRouter } from '../../context/RouterContext';
 import { InlinePageGuideButton } from '../common/PageGuideSystem';
+import {
+  FioriMessageStrip,
+  FioriObjectStatus,
+  FioriToolbar,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 export type PlanningSubTabKey =
   | 'erp_workbench'
@@ -509,13 +515,13 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
   return (
     <div className="space-y-4">
       {/* SAP Fiori Dynamic Page Header & IconTabBar */}
-      <div className="sap-card overflow-hidden">
-        <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#d9d9d9]">
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-hidden">
+        <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--fiori-border-subtle)]">
           <div>
-            <h1 className="text-sm font-semibold text-[#333333]">
+            <h1 className="text-sm sm:text-[15px] font-semibold text-[var(--fiori-text-primary)]">
               برنامه‌ریزی کلان تولید و نیازسنجی مواد (SAP MRP / PP)
             </h1>
-            <p className="text-xs text-[#666666] mt-0.5">
+            <p className="text-[11px] text-[var(--fiori-text-secondary)] mt-0.5">
               سفارشات ساپکو، انفجار BOM، محاسبه نیاز خالص ورق و تخصیص پرس‌ها
             </p>
           </div>
@@ -531,7 +537,11 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
               disabled={loading}
               className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#007cc0]' : ''}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${
+                  loading ? 'animate-spin text-[var(--fiori-brand)]' : 'text-[var(--fiori-text-secondary)]'
+                }`}
+              />
               <span>بروزرسانی</span>
             </button>
             <button
@@ -567,15 +577,9 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
       </div>
 
       {planToast && (
-        <div className="p-3 rounded border bg-[#ebf5ec] border-[#b7dfbf] text-[#107e3e] flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 font-medium">
-            <CheckCircle2 className="w-4 h-4 text-[#107e3e]" />
-            <span>{planToast}</span>
-          </div>
-          <button type="button" onClick={() => setPlanToast(null)} className="cursor-pointer">
-            ✕
-          </button>
-        </div>
+        <FioriMessageStrip tone="success" onClose={() => setPlanToast(null)}>
+          {planToast}
+        </FioriMessageStrip>
       )}
 
       {/* Sub-Tab 0: ERP 5-Stage Workbench (SAP PP / Odoo MRP / Daily Roll-Forward) */}
@@ -642,58 +646,96 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
       {/* 3. Customer Orders Sub-Tab (SAP Fiori Master-Detail Split Screen) */}
       {activeSubTab === 'orders' && (
         <div className="space-y-3.5">
-          <div className="sap-card p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-[#666666] absolute right-2.5 top-2" />
-                <input
-                  type="text"
-                  placeholder="جستجو در سفارشات ساپکو، قطعات..."
-                  value={orderSearchTerm}
-                  onChange={e => setOrderSearchTerm(e.target.value)}
-                  className="bg-[#f5f5f5] border border-[#bfbfbf] rounded pr-8 pl-3 py-1 text-xs text-[#333333] w-64 focus:bg-[#ffffff] focus:outline-none focus:border-[#007cc0]"
-                />
+          <FioriToolbar
+            variant="page"
+            startContent={
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-[var(--fiori-text-muted)] absolute right-2.5 top-2" />
+                  <input
+                    type="text"
+                    placeholder="جستجو در سفارشات ساپکو، قطعات..."
+                    value={orderSearchTerm}
+                    onChange={e => setOrderSearchTerm(e.target.value)}
+                    className="bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] pr-8 pl-3 py-1 text-xs text-[var(--fiori-text-primary)] w-64 focus:bg-[var(--fiori-bg-surface)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
+                  />
+                </div>
+
+                <select
+                  value={orderStatusFilter}
+                  onChange={e => setOrderStatusFilter(e.target.value)}
+                  className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
+                >
+                  <option value="ALL">همه وضعیت‌ها</option>
+                  <option value="OPEN">سفارشات باز (در حال برنامه‌ریزی)</option>
+                  <option value="PARTIALLY_FULFILLED">تحویل بخشی</option>
+                  <option value="FULFILLED">تکمیل شده</option>
+                  <option value="CANCELLED">ابطال شده (Reversed)</option>
+                </select>
               </div>
-
-              <select
-                value={orderStatusFilter}
-                onChange={e => setOrderStatusFilter(e.target.value)}
-                className="bg-[#ffffff] border border-[#bfbfbf] rounded px-2.5 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
+            }
+            endContent={
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingOrder(null);
+                  setIsOrderModalOpen(true);
+                }}
+                className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap"
               >
-                <option value="ALL">همه وضعیت‌ها</option>
-                <option value="OPEN">سفارشات باز (در حال برنامه‌ریزی)</option>
-                <option value="PARTIALLY_FULFILLED">تحویل بخشی</option>
-                <option value="FULFILLED">تکمیل شده</option>
-                <option value="CANCELLED">ابطال شده (Reversed)</option>
-              </select>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setEditingOrder(null);
-                setIsOrderModalOpen(true);
-              }}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>ثبت تعهد تحویل جدید</span>
-            </button>
-          </div>
+                <Plus className="w-3.5 h-3.5" />
+                <span>ثبت تعهد تحویل جدید</span>
+              </button>
+            }
+          />
 
           {/* Master-Detail Split Screen (Fiori Style: 1/3 Right Master, 2/3 Left Detail) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             {/* Right Column (Master List: 1/3 -> lg:col-span-4) */}
-            <div className="lg:col-span-4 sap-card p-3 space-y-2 max-h-[75vh] overflow-y-auto">
-              <div className="text-xs font-bold text-[#333333] border-b border-[#e8e8e8] pb-2 flex items-center justify-between">
-                <span>لیست سفارشات ساپکو ({toPersianDigits(filteredOrders.length)})</span>
-                <span className="text-[10px] text-[#666666]">انتخاب جهت جزئیات</span>
-              </div>
+            <div className="lg:col-span-4 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] p-3 space-y-2 max-h-[75vh] overflow-y-auto">
+              <FioriToolbar
+                variant="section"
+                title="لیست سفارشات ساپکو"
+                count={filteredOrders.length}
+                countLabel="سفارش"
+                endContent={
+                  <span className="text-[10px] text-[var(--fiori-text-muted)]">انتخاب جهت جزئیات</span>
+                }
+              />
               {filteredOrders.length === 0 ? (
-                <div className="text-center py-8 text-xs text-[#666666]">سفارشی یافت نشد.</div>
+                <EmptyState
+                  variant={orderSearchTerm || orderStatusFilter !== 'ALL' ? 'FILTER_NO_MATCH' : 'NO_CONTRACTS'}
+                  compact
+                  actionLabel={orderSearchTerm || orderStatusFilter !== 'ALL' ? 'پاک‌کردن فیلترها' : undefined}
+                  onAction={
+                    orderSearchTerm || orderStatusFilter !== 'ALL'
+                      ? () => {
+                          setOrderSearchTerm('');
+                          setOrderStatusFilter('ALL');
+                        }
+                      : undefined
+                  }
+                />
               ) : (
                 filteredOrders.map(order => {
-                  const isSelected = selectedOrderId === order.id || (!selectedOrderId && filteredOrders[0]?.id === order.id);
+                  const isSelected =
+                    selectedOrderId === order.id || (!selectedOrderId && filteredOrders[0]?.id === order.id);
+                  const statusTone =
+                    order.status === 'CANCELLED'
+                      ? 'negative'
+                      : order.status === 'FULFILLED'
+                      ? 'info'
+                      : order.status === 'PARTIALLY_FULFILLED'
+                      ? 'critical'
+                      : 'positive';
+                  const statusText =
+                    order.status === 'CANCELLED'
+                      ? 'ابطال'
+                      : order.status === 'FULFILLED'
+                      ? 'تکمیل'
+                      : order.status === 'PARTIALLY_FULFILLED'
+                      ? 'تحویل بخشی'
+                      : 'فعال';
                   return (
                     <div
                       key={order.id}
@@ -708,21 +750,17 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
                         }
                         setSelectedOrderId(order.id);
                       }}
-                      className={`p-3 rounded border cursor-pointer transition-all ${
+                      className={`p-3 rounded-[var(--fiori-radius-sm)] border cursor-pointer transition-all ${
                         isSelected
-                          ? 'bg-[#e5f3fa] border-[#007cc0] shadow-sm'
-                          : 'bg-[#ffffff] border-[#d9d9d9] hover:bg-[#f5f5f5]'
+                          ? 'bg-[var(--fiori-bg-selected)] border-[var(--fiori-brand)] shadow-[var(--fiori-shadow-card)]'
+                          : 'bg-[var(--fiori-bg-surface)] border-[var(--fiori-border-default)] hover:bg-[var(--fiori-bg-hover)]'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-xs font-mono font-bold text-[#333333]">
-                        <span>{order.orderNumber}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] ${
-                          order.status === 'CANCELLED' ? 'bg-[#ffecec] text-[#bb0000]' : 'bg-[#ebf5ec] text-[#107e3e]'
-                        }`}>
-                          {order.status === 'CANCELLED' ? 'ابطال' : 'فعال'}
-                        </span>
+                      <div className="flex items-center justify-between text-xs font-mono font-semibold text-[var(--fiori-text-primary)]">
+                        <span className="fiori-ltr-code">{order.orderNumber}</span>
+                        <FioriObjectStatus tone={statusTone} label={statusText} size="sm" />
                       </div>
-                      <div className="text-[11px] text-[#666666] mt-1 flex items-center justify-between">
+                      <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-1.5 flex items-center justify-between">
                         <span>{order.customerName}</span>
                         <span className="tabular-nums font-mono">{formatToJalali(order.dueDate)}</span>
                       </div>
@@ -733,74 +771,100 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
             </div>
 
             {/* Left Column (Detail Panel: 2/3 -> lg:col-span-8) */}
-            <div className="lg:col-span-8 sap-card p-4 space-y-4">
+            <div className="lg:col-span-8 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] p-4 space-y-4">
               {(() => {
                 const currentOrder = filteredOrders.find(o => o.id === selectedOrderId) || filteredOrders[0];
                 if (!currentOrder) {
                   return (
-                    <div className="text-center py-16 text-xs text-[#666666]">
-                      لطفاً یک سفارش را از لیست سمت راست انتخاب کنید تا جزئیات کامل، BOM و عملیات‌های آن نمایش داده شود.
-                    </div>
+                    <EmptyState
+                      variant="NO_DATA"
+                      compact
+                      title="سفارشی برای نمایش انتخاب نشده است"
+                      description="لطفاً یک سفارش را از لیست سمت راست انتخاب کنید تا جزئیات کامل، BOM و عملیات‌های آن نمایش داده شود."
+                    />
                   );
                 }
                 return (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#e8e8e8] pb-3">
+                    <div className="flex items-center justify-between border-b border-[var(--fiori-border-subtle)] pb-3">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-bold text-[#333333] font-mono">{currentOrder.orderNumber}</h3>
-                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                            currentOrder.priority === 1 ? 'bg-[#ffecec] text-[#bb0000]' : 'bg-[#e5f3fa] text-[#007cc0]'
-                          }`}>
-                            {currentOrder.priority === 1 ? 'اولویت فوری' : 'اولویت عادی'}
-                          </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base font-semibold text-[var(--fiori-text-primary)] font-mono fiori-ltr-code">
+                            {currentOrder.orderNumber}
+                          </h3>
+                          <FioriObjectStatus
+                            tone={currentOrder.priority === 1 ? 'negative' : currentOrder.priority === 3 ? 'neutral' : 'brand'}
+                            label={
+                              currentOrder.priority === 1
+                                ? 'اولویت فوری'
+                                : currentOrder.priority === 3
+                                ? 'اولویت مازاد'
+                                : 'اولویت عادی'
+                            }
+                            size="sm"
+                          />
+                          {currentOrder.status === 'CANCELLED' && (
+                            <FioriObjectStatus tone="negative" label="ابطال شده (Reversed)" size="sm" />
+                          )}
                         </div>
-                        <p className="text-xs text-[#666666] mt-1 flex items-center gap-2">
-                          <Building2 className="w-3.5 h-3.5 text-[#666666]" />
+                        <p className="text-xs text-[var(--fiori-text-secondary)] mt-1 flex items-center gap-2">
+                          <Building2 className="w-3.5 h-3.5 text-[var(--fiori-text-muted)]" />
                           <span>مشتری: {currentOrder.customerName}</span>
                           {currentOrder.contractNumber && <span>| قرارداد: {currentOrder.contractNumber}</span>}
                         </p>
                       </div>
                       <div className="text-left">
-                        <div className="text-xs font-mono text-[#666666]">تاریخ تحویل:</div>
-                        <div className="text-xs font-bold text-[#333333] font-mono">{formatToJalali(currentOrder.dueDate)}</div>
+                        <div className="text-[11px] text-[var(--fiori-text-secondary)]">تاریخ تحویل:</div>
+                        <div className="text-xs font-semibold text-[var(--fiori-text-primary)] font-mono tabular-nums">
+                          {formatToJalali(currentOrder.dueDate)}
+                        </div>
                       </div>
                     </div>
 
                     {/* Order Lines & BOM Requirements */}
                     <div className="space-y-2">
-                      <div className="text-xs font-bold text-[#333333] flex items-center gap-1.5">
-                        <Layers className="w-4 h-4 text-[#007cc0]" />
+                      <div className="text-xs font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-[var(--fiori-brand)]" />
                         <span>اقلام تعهد تحویل و ساختار محصول (BOM & Requirements):</span>
                       </div>
                       {currentOrder.lines.map(line => (
-                        <div key={line.id} className="bg-[#f5f5f5] p-3 rounded border border-[#d9d9d9] flex items-center justify-between text-xs">
+                        <div
+                          key={line.id}
+                          className="bg-[var(--fiori-bg-subtle)] p-3 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] flex items-center justify-between text-xs"
+                        >
                           <div>
-                            <div className="font-semibold text-[#333333] text-sm">{line.partName}</div>
-                            <div className="text-[11px] text-[#666666] font-mono mt-0.5">کد کاتالوگ: {line.partCode}</div>
+                            <div className="font-semibold text-[var(--fiori-text-primary)] text-sm">{line.partName}</div>
+                            <div className="text-[11px] text-[var(--fiori-text-secondary)] font-mono mt-0.5">
+                              کد کاتالوگ: <span className="fiori-ltr-code">{line.partCode}</span>
+                            </div>
                           </div>
                           <div className="text-left tabular-nums">
-                            <div className="text-sm font-bold text-[#333333] font-mono">{formatNumber(line.orderedQuantity)} عدد</div>
-                            <div className="text-[10px] text-[#107e3e]">تحویل شده: {formatNumber(line.deliveredQuantity || 0)}</div>
+                            <div className="text-sm font-semibold text-[var(--fiori-text-primary)] font-mono">
+                              {formatNumber(line.orderedQuantity)} عدد
+                            </div>
+                            <div className="text-[10px] text-[var(--fiori-positive)]">
+                              تحویل شده: {formatNumber(line.deliveredQuantity || 0)}
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
 
                     {currentOrder.notes && (
-                      <div className="text-xs text-[#666666] bg-[#f5f5f5] p-3 rounded border border-[#d9d9d9]">
-                        <span className="font-semibold text-[#333333]">یادداشت‌های مهندسی فروش:</span> {currentOrder.notes}
+                      <div className="text-xs text-[var(--fiori-text-secondary)] bg-[var(--fiori-bg-subtle)] p-3 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                        <span className="font-semibold text-[var(--fiori-text-primary)]">یادداشت‌های مهندسی فروش:</span>{' '}
+                        {currentOrder.notes}
                       </div>
                     )}
 
                     {/* Action Bar */}
-                    <div className="flex items-center justify-between pt-3 border-t border-[#e8e8e8] text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[var(--fiori-border-subtle)] text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="text-[#666666]">تغییر فوری اولویت برنامه‌ریزی:</span>
+                        <span className="text-[var(--fiori-text-secondary)]">تغییر فوری اولویت برنامه‌ریزی:</span>
                         <select
                           value={currentOrder.priority}
                           onChange={e => handleQuickUpdatePriority(currentOrder.id, Number(e.target.value) as 1 | 2 | 3)}
-                          className="text-xs font-semibold bg-[#ffffff] border border-[#bfbfbf] rounded px-2.5 py-1 text-[#333333] cursor-pointer focus:outline-none focus:border-[#007cc0]"
+                          className="text-xs font-semibold bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1 text-[var(--fiori-text-primary)] cursor-pointer focus:outline-none focus:border-[var(--fiori-border-focus)]"
                         >
                           <option value={1}>فوری (اولویت ۱)</option>
                           <option value={2}>عادی (اولویت ۲)</option>
@@ -817,14 +881,14 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
                           }}
                           className="sap-btn-standard px-3 py-1.5 font-semibold cursor-pointer flex items-center gap-1.5"
                         >
-                          <Edit3 className="w-3.5 h-3.5 text-[#007cc0]" />
+                          <Edit3 className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
                           <span>ویرایش سفارش</span>
                         </button>
                         {currentOrder.status !== 'CANCELLED' && (
                           <button
                             type="button"
                             onClick={() => handleReverseCustomerOrder(currentOrder)}
-                            className="px-3 py-1.5 text-[#bb0000] bg-[#ffecec] hover:bg-[#f5b7b1] rounded transition cursor-pointer flex items-center gap-1.5 font-semibold border border-[#f5b7b1]"
+                            className="px-3 py-1.5 text-[var(--fiori-negative)] bg-[var(--fiori-negative-bg)] hover:bg-[var(--fiori-negative)] hover:text-white rounded-[var(--fiori-radius-sm)] transition cursor-pointer flex items-center gap-1.5 font-semibold border border-[var(--fiori-negative-border)]"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
                             <span>ابطال سند (Reversal)</span>
@@ -843,43 +907,46 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
       {/* 4. Approved Plans Sub-Tab */}
       {activeSubTab === 'approved_plans' && (
         <div className="space-y-3.5">
-          <div className="sap-card p-3.5">
-            <h3 className="text-sm font-semibold text-[#333333] flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#107e3e]" />
-              سوابق برنامه‌های مصوب مدیر تولید و دستور کارهای صادر شده به کارگاه
-            </h3>
-            <p className="text-xs text-[#666666] mt-0.5">
-              برنامه‌های تأیید شده قابلیت آزادسازی و ایجاد شناسه رسمی دستور کار (MO) در واحد WIP را دارند.
-            </p>
-          </div>
+          <FioriToolbar
+            variant="page"
+            title="سوابق برنامه‌های مصوب مدیر تولید و دستور کارهای صادر شده به کارگاه"
+            subtitle="برنامه‌های تأیید شده قابلیت آزادسازی و ایجاد شناسه رسمی دستور کار (MO) در واحد WIP را دارند."
+            count={approvedPlans.length}
+            countLabel="برنامه"
+            startContent={<CheckCircle2 className="w-4 h-4 text-[var(--fiori-positive)] shrink-0" />}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {approvedPlans.length === 0 ? (
-              <div className="col-span-2 sap-card p-6 text-center text-[#666666] text-xs">
-                هنوز برنامه‌ای به تصویب نرسیده است. از تب «تخصیص ماشین‌آلات و پیشنهاد برنامه» اقدام به تأیید برنامه‌ها نمایید.
+              <div className="col-span-2">
+                <EmptyState
+                  variant="NO_DATA"
+                  title="هنوز برنامه‌ای به تصویب نرسیده است"
+                  description="از تب «تخصیص ماشین‌آلات و پیشنهاد برنامه» اقدام به تأیید برنامه‌ها نمایید."
+                  actionLabel="مشاهده پیشنهادهای برنامه"
+                  onAction={() => handleSelectSubTab('recommendations')}
+                />
               </div>
             ) : (
               approvedPlans.map(plan => (
                 <div
                   key={plan.id}
-                  className="sap-card p-3.5 space-y-3"
+                  className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] p-3.5 space-y-3"
                 >
-                  <div className="flex items-center justify-between border-b border-[#e8e8e8] pb-2.5">
+                  <div className="flex items-center justify-between border-b border-[var(--fiori-border-subtle)] pb-2.5">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-[#333333] text-sm font-mono">
+                        <span className="font-semibold text-[var(--fiori-text-primary)] text-sm font-mono fiori-ltr-code">
                           {plan.planNumber}
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#fff4e5] text-[#e9730c] border border-[#f5cba7]">
-                          {plan.planVersion}
-                        </span>
+                        <FioriObjectStatus tone="critical" label={plan.planVersion} size="sm" ltrCode />
                       </div>
-                      <div className="text-xs text-[#333333] font-medium mt-1">
+                      <div className="text-xs text-[var(--fiori-text-primary)] font-medium mt-1">
                         قطعه: {plan.partName}{' '}
                         <button
                           type="button"
                           onClick={() => router.traceDocument(plan.partCode, 'INVENTORY_LEDGER')}
-                          className="sap-doc-link font-mono text-[11px] cursor-pointer"
+                          className="sap-doc-link font-mono text-[11px] cursor-pointer fiori-ltr-code"
                         >
                           ({plan.partCode})
                         </button>
@@ -888,33 +955,29 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
 
                     <div className="text-left">
                       {plan.approvalStatus === 'CONVERTED_TO_MO' ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2]">
-                          صادر شده به دستور کار
-                        </span>
+                        <FioriObjectStatus tone="brand" label="صادر شده به دستور کار" size="sm" />
                       ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#ebf5ec] text-[#107e3e] border border-[#b7dfbf]">
-                          مصوب مدیر تولید
-                        </span>
+                        <FioriObjectStatus tone="positive" label="مصوب مدیر تولید" size="sm" />
                       )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="bg-[#f5f5f5] p-2 rounded border border-[#d9d9d9]">
-                      <div className="text-[10px] text-[#666666]">تیراژ خالص مصوب</div>
-                      <div className="font-semibold text-[#333333] mt-0.5 tabular-nums font-mono">
+                    <div className="bg-[var(--fiori-bg-subtle)] p-2 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                      <div className="text-[10px] text-[var(--fiori-text-secondary)]">تیراژ خالص مصوب</div>
+                      <div className="font-semibold text-[var(--fiori-text-primary)] mt-0.5 tabular-nums font-mono">
                         {formatNumber(plan.proposedQuantity)}
                       </div>
                     </div>
-                    <div className="bg-[#f5f5f5] p-2 rounded border border-[#d9d9d9]">
-                      <div className="text-[10px] text-[#666666]">ورق مورد نیاز</div>
-                      <div className="font-semibold text-[#333333] mt-0.5 tabular-nums font-mono">
+                    <div className="bg-[var(--fiori-bg-subtle)] p-2 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                      <div className="text-[10px] text-[var(--fiori-text-secondary)]">ورق مورد نیاز</div>
+                      <div className="font-semibold text-[var(--fiori-text-primary)] mt-0.5 tabular-nums font-mono">
                         {formatNumber(plan.materialStatus.requiredWeightKg)} kg
                       </div>
                     </div>
-                    <div className="bg-[#f5f5f5] p-2 rounded border border-[#d9d9d9]">
-                      <div className="text-[10px] text-[#666666]">موعد تحویل</div>
-                      <div className="font-semibold text-[#333333] mt-0.5 tabular-nums font-mono">
+                    <div className="bg-[var(--fiori-bg-subtle)] p-2 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                      <div className="text-[10px] text-[var(--fiori-text-secondary)]">موعد تحویل</div>
+                      <div className="font-semibold text-[var(--fiori-text-primary)] mt-0.5 tabular-nums font-mono">
                         {formatToJalali(plan.targetDueDate)}
                       </div>
                     </div>
@@ -927,7 +990,7 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
                         setSelectedSuggestionId(plan.id);
                         handleSelectSubTab('recommendations');
                       }}
-                      className="text-xs text-[#007cc0] hover:underline font-semibold cursor-pointer"
+                      className="text-xs text-[var(--fiori-brand)] hover:underline font-semibold cursor-pointer"
                     >
                       مشاهده جزئیات مراحل و ماشین‌ها ←
                     </button>
@@ -960,7 +1023,7 @@ export const ProductionPlanningModuleView: React.FC<ProductionPlanningModuleView
                       <button
                         type="button"
                         onClick={() => router.traceDocument(plan.createdMoId!, 'WIP_TRACEABILITY')}
-                        className="sap-doc-link text-[11px] font-semibold font-mono bg-[#e5f3fa] px-2.5 py-1 rounded border border-[#b3ddf2] cursor-pointer"
+                        className="sap-doc-link text-[11px] font-semibold font-mono bg-[var(--fiori-brand-bg)] px-2.5 py-1 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-brand-border)] cursor-pointer fiori-ltr-code"
                         title="رهگیری دستور کار در WIP"
                       >
                         MO: {plan.createdMoId}

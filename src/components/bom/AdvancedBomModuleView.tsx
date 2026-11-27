@@ -37,6 +37,13 @@ import {
 import { toPersianDigits, formatNumber } from '../../utils/formatters';
 import { MasterDataDifferenceGuideModal } from '../common/MasterDataDifferenceGuideModal';
 import { SearchableSelect } from '../common/SearchableSelect';
+import { EmptyState } from '../common/EmptyState';
+import {
+  FioriDialog,
+  FioriMessageStrip,
+  FioriObjectStatus,
+  FioriToolbar,
+} from '../fiori/ui';
 import { useErpRouter } from '../../context/RouterContext';
 import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
 
@@ -537,22 +544,20 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
   return (
     <div className="space-y-4 font-sans text-right">
       {/* SAP Fiori Header Banner */}
-      <div className="sap-card p-4 text-[#333333] space-y-3">
+      <div className="sap-card p-4 text-[var(--fiori-text-primary)] space-y-3">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-sm bg-[#e5f3fa] border border-[#b3ddf2] text-[#007cc0] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] border border-[var(--fiori-brand-border)] text-[var(--fiori-brand)] flex items-center justify-center shrink-0">
               <ListTree className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-[#333333]">
+                <h2 className="text-base font-bold text-[var(--fiori-text-primary)]">
                   مدیریت درخت محصول چندسطحی (Multi-Level BOM &amp; Assemblies)
                 </h2>
-                <span className="text-[11px] bg-[#ebf7ef] text-[#107e3e] border border-[#a9dfbf] px-2 py-0.5 rounded-sm font-mono font-bold">
-                  مهندسی پرسکاری و مونتاژ
-                </span>
+                <FioriObjectStatus tone="positive" label="مهندسی پرسکاری و مونتاژ" />
               </div>
-              <p className="text-xs text-[#666666] mt-0.5">
+              <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
                 تعریف ساختار قطعات ترکیبی خودرویی، ورق‌های مختلف، مهره‌های جوشی و صدور دستورات ساخت فرعی کارگاهی
               </p>
             </div>
@@ -563,7 +568,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
             <button
               type="button"
               onClick={() => setIsNewBomModalOpen(true)}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs"
+              className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>تعریف BOM جدید برای محصول</span>
@@ -573,9 +578,9 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToParallelFlow}
-                className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs"
+                className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
               >
-                <GitFork className="w-3.5 h-3.5 text-[#007cc0]" />
+                <GitFork className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
                 <span>منطق قالب‌های مشترک و قرینه چپ/راست</span>
               </button>
             )}
@@ -583,28 +588,28 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
             <button
               type="button"
               onClick={() => setIsGuideOpen(true)}
-              className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs"
+              className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
             >
-              <HelpCircle className="w-3.5 h-3.5 text-[#666666]" />
+              <HelpCircle className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)]" />
               <span>راهنمای تفاوت کاتالوگ و BOM</span>
             </button>
           </div>
         </div>
 
         {/* BOM Selector Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#e8e8e8] text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[var(--fiori-border-subtle)] text-xs">
           <div className="flex items-center gap-2 flex-wrap flex-1">
             <div className="relative min-w-[200px]">
-              <Search className="w-3.5 h-3.5 text-[#666666] absolute right-2.5 top-2" />
+              <Search className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)] absolute right-2.5 top-2" />
               <input
                 type="text"
                 value={bomSearchQuery}
                 onChange={e => setBomSearchQuery(e.target.value)}
                 placeholder="جستجوی کد یا نام قطعه در BOM..."
-                className="bg-[#ffffff] border border-[#bfbfbf] rounded-sm pr-8 pl-2.5 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
+                className="fiori-input pr-8 pl-2.5 py-1 text-xs w-full"
               />
             </div>
-            <span className="text-[#666666] font-medium">انتخاب درخت محصول جاری:</span>
+            <span className="text-[var(--fiori-text-secondary)] font-medium">انتخاب درخت محصول جاری:</span>
             <select
               value={activeBom?.id || ''}
               onChange={e => {
@@ -620,7 +625,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                 }
                 setSelectedBomId(nextId);
               }}
-              className="bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-xs text-[#333333] font-bold focus:outline-none focus:border-[#007cc0] cursor-pointer"
+              className="fiori-input px-3 py-1.5 text-xs font-bold cursor-pointer"
             >
               {filteredBoms.map(b => (
                 <option key={b.id} value={b.id}>
@@ -630,7 +635,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
             </select>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] text-[#666666]">
+          <div className="flex items-center gap-2 text-[11px] text-[var(--fiori-text-secondary)]">
             {route.docQuery && (
               <button
                 type="button"
@@ -638,99 +643,95 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                   clearDocQuery();
                   setBomSearchQuery('');
                 }}
-                className="px-2 py-0.5 rounded-sm bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] flex items-center gap-1 cursor-pointer"
+                className="px-2 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-brand-border)] flex items-center gap-1 cursor-pointer"
               >
-                <span>فیلتر لینک: {route.docQuery}</span>
+                <span>فیلتر لینک: <span className="fiori-ltr-code font-mono">{route.docQuery}</span></span>
                 <X className="w-3 h-3" />
               </button>
             )}
-            <span>
-              تعداد BOMهای فعال: <strong>{toPersianDigits(filteredBoms.length)}</strong>
-            </span>
+            <FioriObjectStatus
+              tone="neutral"
+              label={
+                <span className="tabular-nums">
+                  {toPersianDigits(filteredBoms.length)} BOM فعال
+                </span>
+              }
+            />
           </div>
         </div>
       </div>
 
       {/* Missing BOM CTA for queried part */}
       {bomSearchQuery.trim() && filteredBoms.length === 0 && (
-        <div className="sap-card p-4 bg-[#fff4e5] border border-[#f9d6a7] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start sm:items-center gap-2.5 text-xs text-[#333333]">
-            <AlertTriangle className="w-5 h-5 text-[#e9730c] shrink-0" />
-            <div>
-              <div className="font-bold text-[#e9730c]">
-                درخت ساختار محصول (BOM) برای «{bomSearchQuery.trim()}» ثبت نشده است
-              </div>
-              <div className="text-[11px] text-[#666666] mt-0.5">
-                می‌توانید بلافاصله ساختار ورق، زیرقطعات و پیچ/مهره جوشی این محصول را ایجاد کنید.
-              </div>
+        <FioriMessageStrip
+          tone="warning"
+          title={`درخت ساختار محصول (BOM) برای «${bomSearchQuery.trim()}» ثبت نشده است`}
+          actions={
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const q = bomSearchQuery.trim().toLowerCase();
+                  const matchedPart = parts.find(
+                    p =>
+                      p.code.toLowerCase() === q ||
+                      p.name.toLowerCase() === q ||
+                      p.code.toLowerCase().includes(q) ||
+                      p.name.toLowerCase().includes(q),
+                  );
+                  if (matchedPart) {
+                    setNewBomPartId(matchedPart.id);
+                    setNewBomCarModel(matchedPart.carModel || '');
+                  }
+                  setIsNewBomModalOpen(true);
+                }}
+                className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1 text-xs cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>ایجاد درخت BOM برای قطعه مرتبط</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearDocQuery();
+                  setBomSearchQuery('');
+                }}
+                className="sap-btn-standard px-3 py-1 text-xs cursor-pointer"
+              >
+                نمایش همه BOMها
+              </button>
             </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                const q = bomSearchQuery.trim().toLowerCase();
-                const matchedPart = parts.find(
-                  p =>
-                    p.code.toLowerCase() === q ||
-                    p.name.toLowerCase() === q ||
-                    p.code.toLowerCase().includes(q) ||
-                    p.name.toLowerCase().includes(q),
-                );
-                if (matchedPart) {
-                  setNewBomPartId(matchedPart.id);
-                  setNewBomCarModel(matchedPart.carModel || '');
-                }
-                setIsNewBomModalOpen(true);
-              }}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>ایجاد درخت BOM برای قطعه مرتبط</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clearDocQuery();
-                setBomSearchQuery('');
-              }}
-              className="sap-btn-standard px-3 py-1.5 text-xs cursor-pointer"
-            >
-              نمایش همه BOMها
-            </button>
-          </div>
-        </div>
+          }
+        >
+          می‌توانید بلافاصله ساختار ورق، زیرقطعات و پیچ/مهره جوشی این محصول را ایجاد کنید.
+        </FioriMessageStrip>
       )}
 
       {activeBom && (
         <div className="sap-card p-4 space-y-4">
           {/* Active BOM Summary Header */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-3 border-b border-[#e8e8e8]">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-3 border-b border-[var(--fiori-border-subtle)]">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => traceDocument(activeBom.assemblyPartCode, 'INVENTORY_LEDGER')}
-                  className="text-xs px-2 py-0.5 rounded-sm bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] font-mono font-bold hover:underline cursor-pointer"
+                  className="text-xs px-2 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-brand-border)] font-mono font-bold hover:underline cursor-pointer fiori-ltr-code"
                   title="رهگیری در کاردکس انبار"
                 >
                   {activeBom.assemblyPartCode}
                 </button>
-                <span className="text-xs px-2 py-0.5 rounded-sm bg-[#fff4e5] text-[#e9730c] border border-[#f9d6a7] font-bold">
-                  نسخه {activeBom.version}
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-sm bg-[#f5f5f5] text-[#333333] border border-[#d9d9d9] font-medium">
-                  مدل خودرو: <strong>{activeBom.carModel}</strong>
-                </span>
-                <span className="text-xs text-[#666666]">
-                  تاریخ اعتبار: <span className="font-mono">{toPersianDigits(activeBom.effectiveDate || '۱۴۰۳/۰۸')}</span>
+                <FioriObjectStatus tone="critical" label={`نسخه ${activeBom.version}`} />
+                <FioriObjectStatus tone="neutral" label={`مدل خودرو: ${activeBom.carModel}`} />
+                <span className="text-xs text-[var(--fiori-text-secondary)]">
+                  تاریخ اعتبار: <span className="font-mono tabular-nums">{toPersianDigits(activeBom.effectiveDate || '۱۴۰۳/۰۸')}</span>
                 </span>
               </div>
-              <h3 className="text-base font-bold text-[#333333] mt-2">
+              <h3 className="text-base font-bold text-[var(--fiori-text-primary)] mt-2">
                 {activeBom.assemblyPartName}
               </h3>
               {activeBom.notes && (
-                <p className="text-xs text-[#666666] mt-1 leading-relaxed">
+                <p className="text-xs text-[var(--fiori-text-secondary)] mt-1 leading-relaxed">
                   توضیحات مهندسی: {activeBom.notes}
                 </p>
               )}
@@ -746,7 +747,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                       docQuery: activeBom.assemblyPartCode,
                     })
                   }
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-semibold bg-[#e5f3fa] hover:bg-[#d2eaf7] text-[#0057b8] border border-[#b3ddf2] transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold bg-[var(--fiori-brand-bg)] hover:bg-[var(--fiori-bg-selected)] text-[var(--fiori-brand)] border border-[var(--fiori-brand-border)] transition-colors cursor-pointer"
                   title="مشاهده دستورات ساخت مرتبط با این قطعه در ماژول تولید (PP)"
                 >
                   <ClipboardList className="w-3.5 h-3.5" />
@@ -761,10 +762,10 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                       docQuery: activeBom.assemblyPartCode,
                     })
                   }
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-white hover:bg-[#f0f6fd] text-[#333333] border border-[#d9d9d9] hover:border-[#007cc0] transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-bg-hover)] text-[var(--fiori-text-primary)] border border-[var(--fiori-border-default)] hover:border-[var(--fiori-brand)] transition-colors cursor-pointer"
                   title="مشاهده مسیر تولید و ایستگاه‌های ساخت این قطعه"
                 >
-                  <GitFork className="w-3.5 h-3.5 text-[#007cc0]" />
+                  <GitFork className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
                   <span>مسیر تولید (Routing)</span>
                 </button>
                 <button
@@ -776,10 +777,10 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                       docQuery: activeBom.assemblyPartCode,
                     })
                   }
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-white hover:bg-[#f1f8f3] text-[#333333] border border-[#d9d9d9] hover:border-[#107e3e] transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-positive-bg)] text-[var(--fiori-text-primary)] border border-[var(--fiori-border-default)] hover:border-[var(--fiori-positive)] transition-colors cursor-pointer"
                   title="استعلام موجودی انبار و کاردکس این قطعه"
                 >
-                  <Warehouse className="w-3.5 h-3.5 text-[#107e3e]" />
+                  <Warehouse className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
                   <span>موجودی انبار مرتبط</span>
                 </button>
               </div>
@@ -790,7 +791,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
               <button
                 type="button"
                 onClick={() => handleOpenAddComponent()}
-                className="sap-btn-emphasized px-3 py-1.5 text-xs flex items-center gap-1"
+                className="sap-btn-emphasized px-3 py-1.5 text-xs flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>افزودن جزء / ورق / اتصال به BOM</span>
@@ -799,7 +800,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
               <button
                 type="button"
                 onClick={handleOpenEditBom}
-                className="sap-btn-standard px-3 py-1.5 text-xs flex items-center gap-1"
+                className="sap-btn-standard px-3 py-1.5 text-xs flex items-center gap-1 cursor-pointer"
                 title="ویرایش نسخه و توضیحات BOM"
               >
                 <Edit3 className="w-3.5 h-3.5" />
@@ -809,7 +810,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
               <button
                 type="button"
                 onClick={handleDeleteBom}
-                className="p-1.5 text-[#bb0000] hover:bg-[#ffecec] rounded-sm transition cursor-pointer border border-[#f5b7b1]"
+                className="p-1.5 text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer border border-[var(--fiori-negative-border)]"
                 title="حذف کامل این BOM"
               >
                 <Trash2 className="w-4 h-4" />
@@ -819,9 +820,9 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                 type="button"
                 onClick={handleOpenSubMoPreflight}
                 disabled={isGeneratingSubMos}
-                className="sap-btn-standard px-3 py-1.5 text-xs flex items-center gap-1 text-[#007cc0] border-[#b3ddf2] disabled:opacity-50"
+                className="sap-btn-standard px-3 py-1.5 text-xs flex items-center gap-1 text-[var(--fiori-brand)] border-[var(--fiori-brand-border)] disabled:opacity-50 cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#007cc0]" />
+                <Sparkles className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
                 <span>بررسی و صدور دستورات ساخت فرعی (Sub-MO)</span>
               </button>
             </div>
@@ -829,54 +830,56 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
 
           {/* Key Engineering Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 bg-[#f7f7f7] border border-[#d9d9d9] rounded-sm">
-              <span className="text-[11px] text-[#666666] block">وزن ناخالص ورق مصرفی:</span>
-              <span className="text-base font-bold text-[#333333] font-mono tabular-nums">
+            <div className="p-3 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+              <span className="text-[11px] text-[var(--fiori-text-secondary)] block">وزن ناخالص ورق مصرفی:</span>
+              <span className="text-base font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums">
                 {toPersianDigits(activeBom.totalGrossWeightKg)} <span className="text-xs font-normal">کیلوگرم</span>
               </span>
-              <span className="text-[10px] text-[#666666] block mt-0.5">شامل پرت بلنکینگ</span>
+              <span className="text-[10px] text-[var(--fiori-text-muted)] block mt-0.5">شامل پرت بلنکینگ</span>
             </div>
 
-            <div className="p-3 bg-[#f7f7f7] border border-[#d9d9d9] rounded-sm">
-              <span className="text-[11px] text-[#666666] block">وزن خالص مجموعه نهایی:</span>
-              <span className="text-base font-bold text-[#107e3e] font-mono tabular-nums">
+            <div className="p-3 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+              <span className="text-[11px] text-[var(--fiori-text-secondary)] block">وزن خالص مجموعه نهایی:</span>
+              <span className="text-base font-bold text-[var(--fiori-positive)] font-mono tabular-nums">
                 {toPersianDigits(activeBom.totalNetWeightKg)} <span className="text-xs font-normal">کیلوگرم</span>
               </span>
-              <span className="text-[10px] text-[#666666] block mt-0.5">وزن تحویلی به خودروساز</span>
+              <span className="text-[10px] text-[var(--fiori-text-muted)] block mt-0.5">وزن تحویلی به خودروساز</span>
             </div>
 
-            <div className="p-3 bg-[#f7f7f7] border border-[#d9d9d9] rounded-sm">
-              <span className="text-[11px] text-[#666666] block">راندمان مصرف ورق (Yield):</span>
-              <span className="text-base font-bold text-[#e9730c] font-mono tabular-nums">
+            <div className="p-3 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+              <span className="text-[11px] text-[var(--fiori-text-secondary)] block">راندمان مصرف ورق (Yield):</span>
+              <span className="text-base font-bold text-[var(--fiori-critical)] font-mono tabular-nums">
                 {toPersianDigits(activeBom.yieldEfficiencyPercent)}%
               </span>
-              <span className="text-[10px] text-[#666666] block mt-0.5">
+              <span className="text-[10px] text-[var(--fiori-text-muted)] block mt-0.5 tabular-nums">
                 نرخ پرت استاندارد: {toPersianDigits(Math.round((100 - activeBom.yieldEfficiencyPercent) * 10) / 10)}%
               </span>
             </div>
 
-            <div className="p-3 bg-[#f7f7f7] border border-[#d9d9d9] rounded-sm">
-              <span className="text-[11px] text-[#666666] block">دستورهای ساخت فرعی وابسته:</span>
-              <span className="text-base font-bold text-[#007cc0] font-mono tabular-nums">
+            <div className="p-3 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+              <span className="text-[11px] text-[var(--fiori-text-secondary)] block">دستورهای ساخت فرعی وابسته:</span>
+              <span className="text-base font-bold text-[var(--fiori-brand)] font-mono tabular-nums">
                 {toPersianDigits(activeBom.components.filter(c => c.subMoRequired).length)} <span className="text-xs font-normal">کارت کارگاهی</span>
               </span>
-              <span className="text-[10px] text-[#666666] block mt-0.5">تولید موازی در سالن‌ها</span>
+              <span className="text-[10px] text-[var(--fiori-text-muted)] block mt-0.5">تولید موازی در سالن‌ها</span>
             </div>
           </div>
 
           {/* Components Breakdown Table */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-[#333333] flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-[#007cc0]" />
-                <span>اجزای متشکله درخت محصول و ضرایب مصرف تفکیکی (Component Breakdown):</span>
-              </h4>
-              <span className="text-[11px] text-[#666666]">
-                {toPersianDigits(activeBom.components.length)} جزء و قطعه متصل
-              </span>
-            </div>
+          <div className="border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] overflow-hidden bg-[var(--fiori-bg-surface)]">
+            <FioriToolbar
+              variant="table"
+              title={
+                <span className="inline-flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-[var(--fiori-brand)]" />
+                  <span>اجزای متشکله درخت محصول و ضرایب مصرف تفکیکی (Component Breakdown)</span>
+                </span>
+              }
+              count={activeBom.components.length}
+              countLabel="جزء و قطعه متصل"
+            />
 
-            <div className="overflow-x-auto border border-[#d9d9d9] rounded-sm">
+            <div className="overflow-x-auto">
               <table className="sap-table-compact w-full text-right text-xs">
                 <thead>
                   <tr>
@@ -891,71 +894,84 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                     <th className="text-center">عملیات</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#e8e8e8] text-[#333333]">
+                <tbody className="divide-y divide-[var(--fiori-border-subtle)] text-[var(--fiori-text-primary)]">
                   {activeBom.components.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-8 text-center text-[#666666]">
-                        هنوز جزئی به این درخت محصول اضافه نشده است. برای اضافه کردن ورق، پیچ یا قطعات نیمه‌ساخته روی «افزودن جزء جدید» کلیک کنید.
+                      <td colSpan={9} className="p-4">
+                        <EmptyState
+                          compact
+                          variant="NO_DATA"
+                          title="هنوز جزئی به این درخت محصول اضافه نشده است"
+                          description="برای اضافه کردن ورق، پیچ یا قطعات نیمه‌ساخته روی دکمه افزودن جزء کلیک کنید."
+                          actionLabel="افزودن جزء جدید به BOM"
+                          onAction={() => handleOpenAddComponent()}
+                        />
                       </td>
                     </tr>
                   ) : (
                     activeBom.components.map((comp, idx) => (
-                      <tr key={comp.id || idx} className="hover:bg-[#f5f5f5] transition-colors">
+                      <tr key={comp.id || idx} className="hover:bg-[var(--fiori-bg-hover)] transition-colors">
                         {/* Type Badge */}
                         <td className="whitespace-nowrap">
                           {comp.componentType === 'RAW_SHEET' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-bold bg-[#fff4e5] text-[#e9730c] border border-[#f9d6a7]">
-                              <Disc className="w-3 h-3 text-[#e9730c]" />
-                              <span>ورق خام اولیه</span>
-                            </span>
+                            <FioriObjectStatus
+                              tone="critical"
+                              icon={<Disc className="w-3 h-3" />}
+                              label="ورق خام اولیه"
+                            />
                           )}
                           {comp.componentType === 'FASTENER_HARDWARE' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-bold bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2]">
-                              <Wrench className="w-3 h-3 text-[#007cc0]" />
-                              <span>پیچ / مهره جوشی</span>
-                            </span>
+                            <FioriObjectStatus
+                              tone="info"
+                              icon={<Wrench className="w-3 h-3" />}
+                              label="پیچ / مهره جوشی"
+                            />
                           )}
                           {comp.componentType === 'RUBBER_SEAL' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-bold bg-[#f5f5f5] text-[#333333] border border-[#d9d9d9]">
-                              <Boxes className="w-3 h-3 text-[#666666]" />
-                              <span>لاستیک / دمپر</span>
-                            </span>
+                            <FioriObjectStatus
+                              tone="neutral"
+                              icon={<Boxes className="w-3 h-3" />}
+                              label="لاستیک / دمپر"
+                            />
                           )}
                           {comp.componentType === 'WIP_SUB_PART' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-bold bg-[#ebf7ef] text-[#107e3e] border border-[#a9dfbf]">
-                              <Layers className="w-3 h-3 text-[#107e3e]" />
-                              <span>نیمه‌ساخته پرسی</span>
-                            </span>
+                            <FioriObjectStatus
+                              tone="positive"
+                              icon={<Layers className="w-3 h-3" />}
+                              label="نیمه‌ساخته پرسی"
+                            />
                           )}
                         </td>
 
                         {/* Code & Name with Hierarchy Level Indentation */}
                         <td>
-                          <div className={`flex items-center gap-1.5 ${comp.level && comp.level > 1 ? 'pr-3 border-r-2 border-[#007cc0]' : ''}`}>
+                          <div className={`flex items-center gap-1.5 ${comp.level && comp.level > 1 ? 'pr-4' : ''}`}>
                             {comp.level && comp.level > 1 && (
-                              <span className="text-[10px] font-bold text-[#007cc0] bg-[#e5f3fa] px-1.5 py-0.5 rounded-sm border border-[#b3ddf2] shrink-0">
-                                ↳ سطح {toPersianDigits(comp.level)}
-                              </span>
+                              <FioriObjectStatus
+                                tone="brand"
+                                label={`↳ سطح ${toPersianDigits(comp.level)}`}
+                                className="shrink-0"
+                              />
                             )}
                             <div>
                               <button
                                 type="button"
                                 onClick={() => traceDocument(comp.componentPartCode, 'INVENTORY_LEDGER')}
-                                className="sap-doc-link font-mono font-bold block text-xs"
+                                className="sap-doc-link font-mono font-bold block text-xs fiori-ltr-code"
                                 title="رهگیری این قطعه در کاردکس انبار"
                               >
                                 {comp.componentPartCode}
                               </button>
-                              <span className="text-[11px] text-[#333333] block mt-0.5">
+                              <span className="text-[11px] text-[var(--fiori-text-primary)] block mt-0.5">
                                 {comp.componentPartName}
                               </span>
                               {comp.parentCode && (
-                                <span className="text-[10px] font-semibold text-[#e9730c] block mt-0.5">
-                                  متصل به زیرمجموعه: {comp.parentCode} ({comp.parentName})
+                                <span className="text-[10px] font-semibold text-[var(--fiori-critical)] block mt-0.5">
+                                  متصل به زیرمجموعه: <span className="fiori-ltr-code font-mono">{comp.parentCode}</span> ({comp.parentName})
                                 </span>
                               )}
                               {comp.notes && (
-                                <span className="text-[10px] text-[#666666] block mt-0.5">
+                                <span className="text-[10px] text-[var(--fiori-text-secondary)] block mt-0.5">
                                   {comp.notes}
                                 </span>
                               )}
@@ -965,37 +981,38 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
 
                         {/* Quantity */}
                         <td className="whitespace-nowrap text-center tabular-nums">
-                          <span className="font-bold text-[#333333] font-mono text-xs">
+                          <span className="font-bold text-[var(--fiori-text-primary)] font-mono text-xs">
                             {toPersianDigits(comp.quantityPerAssembly)}
                           </span>{' '}
-                          <span className="text-[11px] text-[#666666]">
+                          <span className="text-[11px] text-[var(--fiori-text-secondary)]">
                             {comp.unit === 'PCS' ? 'عدد' : comp.unit === 'KG' ? 'کیلوگرم' : 'ست'}
                           </span>
                         </td>
 
                         {/* Weights */}
                         <td className="whitespace-nowrap text-[11px] tabular-nums">
-                          <div>خالص: <strong className="font-mono text-[#333333]">{toPersianDigits(comp.netWeightKg)} kg</strong></div>
-                          <div className="text-[#666666]">ناخالص: <span className="font-mono">{toPersianDigits(comp.grossWeightKg)} kg</span></div>
+                          <div>خالص: <strong className="font-mono text-[var(--fiori-text-primary)]">{toPersianDigits(comp.netWeightKg)} kg</strong></div>
+                          <div className="text-[var(--fiori-text-secondary)]">ناخالص: <span className="font-mono">{toPersianDigits(comp.grossWeightKg)} kg</span></div>
                         </td>
 
                         {/* Scrap % */}
                         <td className="whitespace-nowrap text-center tabular-nums">
                           {comp.scrapAllowancePercent > 0 ? (
-                            <span className="text-[11px] font-bold text-[#e9730c] font-mono bg-[#fff4e5] px-1.5 py-0.5 rounded-sm border border-[#f9d6a7]">
-                              {toPersianDigits(comp.scrapAllowancePercent)}%
-                            </span>
+                            <FioriObjectStatus
+                              tone="critical"
+                              label={<span className="font-mono tabular-nums">{toPersianDigits(comp.scrapAllowancePercent)}%</span>}
+                            />
                           ) : (
-                            <span className="text-[11px] text-[#666666] font-mono">۰%</span>
+                            <span className="text-[11px] text-[var(--fiori-text-secondary)] font-mono">۰%</span>
                           )}
                         </td>
 
                         {/* Joining Operation */}
                         <td className="whitespace-nowrap text-[11px]">
-                          <span className="font-bold text-[#333333] block">
+                          <span className="font-bold text-[var(--fiori-text-primary)] block tabular-nums">
                             مرحله {toPersianDigits(comp.stageJoinedStepNumber || 30)}
                           </span>
-                          <span className="text-[10px] text-[#666666] block">
+                          <span className="text-[10px] text-[var(--fiori-text-secondary)] block">
                             {comp.joiningProcess === 'SPOT_WELD' && 'پرس‌جوش مقاومتی'}
                             {comp.joiningProcess === 'CO2_WELD' && 'جوش تحت گاز CO2'}
                             {comp.joiningProcess === 'FASTENING' && 'بستن پیچ با ترک‌رنچ'}
@@ -1011,12 +1028,13 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                               const compRouting = resolveComponentRouting(comp);
                               return (
                                 <div className="space-y-1">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-bold bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2]">
-                                    <CheckCircle2 className="w-3 h-3 text-[#007cc0]" />
-                                    <span>دستور ساخت مجزا</span>
-                                  </span>
+                                  <FioriObjectStatus
+                                    tone="info"
+                                    icon={<CheckCircle2 className="w-3 h-3" />}
+                                    label="دستور ساخت مجزا"
+                                  />
                                   {compRouting && compRouting.operations.length > 0 ? (
-                                    <div className="text-[10px] text-[#107e3e] flex items-center gap-1">
+                                    <div className="text-[10px] text-[var(--fiori-positive)] flex items-center gap-1 tabular-nums">
                                       <span>
                                         مسیر تعریف‌شده: {toPersianDigits(compRouting.operations.length)} ایستگاه
                                       </span>
@@ -1029,14 +1047,14 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                                             docQuery: comp.componentPartCode,
                                           })
                                         }
-                                        className="text-[#007cc0] hover:underline font-bold cursor-pointer"
+                                        className="text-[var(--fiori-brand)] hover:underline font-bold cursor-pointer"
                                         title="مشاهده و سفارشی‌سازی ایستگاه‌ها در مسیر تولید"
                                       >
                                         (شخصی‌سازی)
                                       </button>
                                     </div>
                                   ) : (
-                                    <div className="text-[10px] text-[#bb0000] flex items-center gap-1">
+                                    <div className="text-[10px] text-[var(--fiori-negative)] flex items-center gap-1">
                                       <span>فاقد مسیر تولید (Routing)</span>
                                       <button
                                         type="button"
@@ -1047,7 +1065,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                                             docQuery: comp.componentPartCode,
                                           })
                                         }
-                                        className="text-[#007cc0] underline font-bold cursor-pointer"
+                                        className="text-[var(--fiori-brand)] underline font-bold cursor-pointer"
                                       >
                                         تعریف مسیر
                                       </button>
@@ -1057,12 +1075,12 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                               );
                             })()
                           ) : (
-                            <span className="text-[11px] text-[#666666]">تغذیه مستقیم خط</span>
+                            <span className="text-[11px] text-[var(--fiori-text-secondary)]">تغذیه مستقیم خط</span>
                           )}
                         </td>
 
                         {/* Supplier */}
-                        <td className="whitespace-nowrap text-[11px] text-[#666666]">
+                        <td className="whitespace-nowrap text-[11px] text-[var(--fiori-text-secondary)]">
                           {comp.supplierSource === 'SAPCO_CONSIGNMENT' && 'امانی ساپکو'}
                           {comp.supplierSource === 'INTERNAL_FABRICATED' && 'تولید داخل کارخانه'}
                           {comp.supplierSource === 'PURCHASED_MARKET' && 'خرید بازار'}
@@ -1074,17 +1092,17 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleOpenAddComponent(comp.id)}
-                              className="px-2 py-0.5 bg-[#fff4e5] hover:bg-[#ffe8c7] text-[#e9730c] border border-[#f9d6a7] rounded-sm text-[10px] font-bold transition cursor-pointer flex items-center gap-0.5"
+                              className="px-2 py-0.5 bg-[var(--fiori-critical-bg)] hover:opacity-90 text-[var(--fiori-critical)] border border-[var(--fiori-critical-border)] rounded-[var(--fiori-radius-sm)] text-[10px] font-bold transition cursor-pointer flex items-center gap-0.5"
                               title="افزودن جزء متشکله فرعی زیر این قطعه"
                             >
-                              <Plus className="w-3 h-3 text-[#e9730c]" />
+                              <Plus className="w-3 h-3" />
                               <span>زیر‌جزء</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleOpenEditComponent(comp)}
-                              className="p-1 text-[#666666] hover:text-[#333333] hover:bg-[#f0f0f0] rounded-sm transition cursor-pointer"
+                              className="p-1 text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-bg-hover)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
                               title="ویرایش مشخصات این جزء"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
@@ -1092,7 +1110,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleDeleteComponent(comp.id)}
-                              className="p-1 text-[#bb0000] hover:bg-[#ffecec] rounded-sm transition cursor-pointer"
+                              className="p-1 text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
                               title="حذف این جزء از درخت محصول"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1102,7 +1120,7 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                                 type="button"
                                 onClick={() => onOpenTraceabilityModal(comp.componentPartCode)}
                                 title="صدور کارت رهگیری و بچ برای این جزء"
-                                className="p-1 text-[#007cc0] hover:bg-[#e5f3fa] rounded-sm transition cursor-pointer"
+                                className="p-1 text-[var(--fiori-brand)] hover:bg-[var(--fiori-brand-bg)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
                               >
                                 <Printer className="w-3.5 h-3.5" />
                               </button>
@@ -1120,416 +1138,394 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
       )}
 
       {/* Modal 1: Create New BOM */}
-      {isNewBomModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 flex items-center justify-center p-4">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm max-w-lg w-full p-5 shadow-md space-y-4 text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h3 className="font-bold text-sm text-[#333333] flex items-center gap-2">
-                <ListTree className="w-4 h-4 text-[#007cc0]" />
-                <span>تعریف درخت محصول جدید (New BOM)</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsNewBomModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateNewBom} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">
-                  انتخاب محصول نهایی یا مجموعه از کاتالوگ قطعات *
-                </label>
-                <SearchableSelect
-                  value={newBomPartId}
-                  onChange={val => {
-                    setNewBomPartId(val);
-                    const p = parts.find(item => item.id === val);
-                    if (p && p.carModel) setNewBomCarModel(p.carModel);
-                  }}
-                  placeholder="انتخاب قطعه برای ایجاد درخت محصول..."
-                  searchPlaceholder="جستجوی کد یا نام قطعه..."
-                  options={parts.map(p => ({
-                    value: p.id,
-                    label: p.name,
-                    sublabel: `${p.code} • ${p.carModel || 'مشترک'}`,
-                    badge: p.category === 'FINISHED_GOOD' ? 'محصول نهایی' : p.category === 'WIP_PART' ? 'نیمه‌ساخته' : 'ماده اولیه',
-                  }))}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">نسخه مهندسی BOM *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newBomVersion}
-                    onChange={e => setNewBomVersion(e.target.value)}
-                    placeholder="V1.0 یا V2.0"
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">مدل خودرو / خانواده محصول</label>
-                  <input
-                    type="text"
-                    value={newBomCarModel}
-                    onChange={e => setNewBomCarModel(e.target.value)}
-                    placeholder="مثال: تارا، پژو ۲۰۶، دنا پلاس"
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">توضیحات و الزامات فنی مونتاژ</label>
-                <textarea
-                  rows={2}
-                  value={newBomNotes}
-                  onChange={e => setNewBomNotes(e.target.value)}
-                  placeholder="نکات جوشکاری مقاومتی، تست‌های گشتاور و استانداردهای ساپکو..."
-                  className="w-full bg-white border border-[#bfbfbf] rounded p-2.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsNewBomModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs"
-                >
-                  ایجاد درخت محصول
-                </button>
-              </div>
-            </form>
+      <FioriDialog
+        isOpen={isNewBomModalOpen}
+        onClose={() => setIsNewBomModalOpen(false)}
+        title="تعریف درخت محصول جدید (New BOM)"
+        icon={<ListTree className="w-4 h-4" />}
+        tone="brand"
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsNewBomModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="adv-bom-new-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
+            >
+              ایجاد درخت محصول
+            </button>
+          </>
+        }
+      >
+        <form id="adv-bom-new-form" onSubmit={handleCreateNewBom} className="space-y-3 text-xs">
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">
+              انتخاب محصول نهایی یا مجموعه از کاتالوگ قطعات *
+            </label>
+            <SearchableSelect
+              value={newBomPartId}
+              onChange={val => {
+                setNewBomPartId(val);
+                const p = parts.find(item => item.id === val);
+                if (p && p.carModel) setNewBomCarModel(p.carModel);
+              }}
+              placeholder="انتخاب قطعه برای ایجاد درخت محصول..."
+              searchPlaceholder="جستجوی کد یا نام قطعه..."
+              options={parts.map(p => ({
+                value: p.id,
+                label: p.name,
+                sublabel: `${p.code} • ${p.carModel || 'مشترک'}`,
+                badge: p.category === 'FINISHED_GOOD' ? 'محصول نهایی' : p.category === 'WIP_PART' ? 'نیمه‌ساخته' : 'ماده اولیه',
+              }))}
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">نسخه مهندسی BOM *</label>
+              <input
+                type="text"
+                required
+                value={newBomVersion}
+                onChange={e => setNewBomVersion(e.target.value)}
+                placeholder="V1.0 یا V2.0"
+                className="fiori-input w-full px-3 py-2 font-mono fiori-ltr-code"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">مدل خودرو / خانواده محصول</label>
+              <input
+                type="text"
+                value={newBomCarModel}
+                onChange={e => setNewBomCarModel(e.target.value)}
+                placeholder="مثال: تارا، پژو ۲۰۶، دنا پلاس"
+                className="fiori-input w-full px-3 py-2"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">توضیحات و الزامات فنی مونتاژ</label>
+            <textarea
+              rows={2}
+              value={newBomNotes}
+              onChange={e => setNewBomNotes(e.target.value)}
+              placeholder="نکات جوشکاری مقاومتی، تست‌های گشتاور و استانداردهای ساپکو..."
+              className="fiori-input w-full p-2.5"
+            />
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* Modal 2: Edit Active BOM */}
-      {isEditBomModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 flex items-center justify-center p-4">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm max-w-md w-full p-5 shadow-md space-y-4 text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h3 className="font-bold text-sm text-[#333333]">ویرایش مشخصات سند درخت محصول</h3>
-              <button
-                type="button"
-                onClick={() => setIsEditBomModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEditBom} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">نسخه مهندسی BOM</label>
-                <input
-                  type="text"
-                  required
-                  value={editBomVersion}
-                  onChange={e => setEditBomVersion(e.target.value)}
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">مدل خودرو</label>
-                <input
-                  type="text"
-                  value={editBomCarModel}
-                  onChange={e => setEditBomCarModel(e.target.value)}
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">توضیحات مهندسی</label>
-                <textarea
-                  rows={3}
-                  value={editBomNotes}
-                  onChange={e => setEditBomNotes(e.target.value)}
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm p-2 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsEditBomModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs"
-                >
-                  ثبت تغییرات
-                </button>
-              </div>
-            </form>
+      <FioriDialog
+        isOpen={isEditBomModalOpen}
+        onClose={() => setIsEditBomModalOpen(false)}
+        title="ویرایش مشخصات سند درخت محصول"
+        icon={<Edit3 className="w-4 h-4" />}
+        tone="default"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsEditBomModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="adv-bom-edit-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
+            >
+              ثبت تغییرات
+            </button>
+          </>
+        }
+      >
+        <form id="adv-bom-edit-form" onSubmit={handleSaveEditBom} className="space-y-3 text-xs">
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">نسخه مهندسی BOM</label>
+            <input
+              type="text"
+              required
+              value={editBomVersion}
+              onChange={e => setEditBomVersion(e.target.value)}
+              className="fiori-input w-full px-3 py-1.5 font-mono fiori-ltr-code"
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">مدل خودرو</label>
+            <input
+              type="text"
+              value={editBomCarModel}
+              onChange={e => setEditBomCarModel(e.target.value)}
+              className="fiori-input w-full px-3 py-1.5"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">توضیحات مهندسی</label>
+            <textarea
+              rows={3}
+              value={editBomNotes}
+              onChange={e => setEditBomNotes(e.target.value)}
+              className="fiori-input w-full p-2"
+            />
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* Modal 3: Add / Edit Component Modal */}
-      {isComponentModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 flex items-center justify-center p-4">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm max-w-xl w-full p-5 shadow-md space-y-4 text-right max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h3 className="font-bold text-sm text-[#333333]">
-                {editingCompId ? 'ویرایش جزء متشکله درخت محصول' : `افزودن جزء جدید به BOM [${activeBom?.assemblyPartCode}]`}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsComponentModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveComponent} className="space-y-3 text-xs">
-              {/* Parent Component Selection for Multi-Level Tree */}
-              <div className="p-3 bg-[#f7f7f7] border border-[#d9d9d9] rounded-sm space-y-1">
-                <label className="block font-bold text-[#333333] mb-1">
-                  موقعیت اتکا در درخت محصول (قطعه والد):
-                </label>
-                <select
-                  value={compParentId}
-                  onChange={e => setCompParentId(e.target.value)}
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] font-semibold focus:outline-none focus:border-[#007cc0] cursor-pointer"
-                >
-                  <option value="">
-                    مستقیماً متصل به مجموعه اصلی [{activeBom?.assemblyPartCode}] (سطح ۱)
+      <FioriDialog
+        isOpen={isComponentModalOpen}
+        onClose={() => setIsComponentModalOpen(false)}
+        title={editingCompId ? 'ویرایش جزء متشکله درخت محصول' : `افزودن جزء جدید به BOM [${activeBom?.assemblyPartCode || ''}]`}
+        icon={<Layers className="w-4 h-4" />}
+        tone="brand"
+        size="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsComponentModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="adv-bom-comp-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
+            >
+              {editingCompId ? 'ثبت تغییرات جزء' : 'افزودن به درخت محصول'}
+            </button>
+          </>
+        }
+      >
+        <form id="adv-bom-comp-form" onSubmit={handleSaveComponent} className="space-y-3 text-xs">
+          {/* Parent Component Selection for Multi-Level Tree */}
+          <div className="p-3 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] space-y-1">
+            <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">
+              موقعیت اتکا در درخت محصول (قطعه والد):
+            </label>
+            <select
+              value={compParentId}
+              onChange={e => setCompParentId(e.target.value)}
+              className="fiori-input w-full px-3 py-1.5 font-semibold cursor-pointer"
+            >
+              <option value="">
+                مستقیماً متصل به مجموعه اصلی [{activeBom?.assemblyPartCode}] (سطح ۱)
+              </option>
+              {activeBom?.components
+                .filter(c => c.id !== editingCompId)
+                .map(c => (
+                  <option key={c.id} value={c.id}>
+                    ↳ زیرمجموعه: [{c.componentPartCode}] {c.componentPartName} (سطح {(c.level || 1) + 1})
                   </option>
-                  {activeBom?.components
-                    .filter(c => c.id !== editingCompId)
-                    .map(c => (
-                      <option key={c.id} value={c.id}>
-                        ↳ زیرمجموعه: [{c.componentPartCode}] {c.componentPartName} (سطح {(c.level || 1) + 1})
-                      </option>
-                    ))}
-                </select>
-                <span className="text-[10px] text-[#666666] block pt-0.5">
-                  برای ایجاد ساختار چندسطحی (مانند متصل کردن صفحه اصلی یا مکمل به مجموعه و سپس اتصال پیچ/مهره به آن) قطعه والد را انتخاب کنید.
-                </span>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">
-                  انتخاب جزء از کاتالوگ قطعات یا مواد اولیه *
-                </label>
-                <SearchableSelect
-                  value={compPartId}
-                  onChange={val => {
-                    setCompPartId(val);
-                    const found = parts.find(p => p.id === val || p.code === val);
-                    if (found) {
-                      setCompPartCode(found.code);
-                      setCompPartName(found.name);
-                      if (found.category === 'RAW_MATERIAL') setCompType('RAW_SHEET');
-                      else if (found.category === 'WIP_PART') setCompType('WIP_SUB_PART');
-                      setCompNet(found.weightPerUnitKg || 0.5);
-                      setCompGross(Math.round((found.weightPerUnitKg || 0.5) * 1.15 * 100) / 100);
-                    }
-                  }}
-                  placeholder="جستجو و انتخاب کالا / ورق / اتصال..."
-                  searchPlaceholder="جستجوی کد یا نام جزء..."
-                  options={parts.map(p => ({
-                    value: p.code,
-                    label: p.name,
-                    sublabel: `${p.code} • ${p.weightPerUnitKg || 0}kg`,
-                    badge: p.category === 'RAW_MATERIAL' ? 'ماده اولیه' : p.category === 'WIP_PART' ? 'نیمه‌ساخته' : 'محصول',
-                  }))}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">کد جزء *</label>
-                  <input
-                    type="text"
-                    required
-                    value={compPartCode}
-                    onChange={e => setCompPartCode(e.target.value)}
-                    placeholder="مثال: SHT-ST14-1.2 یا NUT-M8"
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">دسته‌بندی نوع جزء *</label>
-                  <select
-                    value={compType}
-                    onChange={e => setCompType(e.target.value as any)}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  >
-                    <option value="RAW_SHEET">ورق خام اولیه (کویل/شیت)</option>
-                    <option value="WIP_SUB_PART">قطعه نیمه‌ساخته پرسی</option>
-                    <option value="FASTENER_HARDWARE">پیچ / مهره جوشی / خار</option>
-                    <option value="RUBBER_SEAL">بوش / دمپر لاستیکی</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">نام کامل مهندسی جزء *</label>
-                <input
-                  type="text"
-                  required
-                  value={compPartName}
-                  onChange={e => setCompPartName(e.target.value)}
-                  placeholder="شرح دقیق جزء متشکله"
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">ضریب مصرف (تعداد) *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    min={0.001}
-                    required
-                    value={compQty}
-                    onChange={e => setCompQty(Number(e.target.value))}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono font-bold text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">واحد سنجش</label>
-                  <select
-                    value={compUnit}
-                    onChange={e => setCompUnit(e.target.value as any)}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  >
-                    <option value="PCS">عدد (PCS)</option>
-                    <option value="KG">کیلوگرم (KG)</option>
-                    <option value="SET">ست (SET)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">روش اتصال در خط</label>
-                  <select
-                    value={compJoining}
-                    onChange={e => setCompJoining(e.target.value as any)}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  >
-                    <option value="SPOT_WELD">پرس‌جوش مقاومتی</option>
-                    <option value="CO2_WELD">جوش تحت گاز CO2</option>
-                    <option value="FASTENING">پیچ و مهره‌کاری</option>
-                    <option value="HEMMING">همبربندی هیدرولیک</option>
-                    <option value="PRESS_FIT">جا زدن فشاری بوش</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">وزن خالص (kg)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={compNet}
-                    onChange={e => setCompNet(Number(e.target.value))}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">وزن ناخالص (kg)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={compGross}
-                    onChange={e => setCompGross(Number(e.target.value))}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">درصد ضایعات (%)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={compScrap}
-                    onChange={e => setCompScrap(Number(e.target.value))}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">مرحله اتصال (شماره گام)</label>
-                  <input
-                    type="number"
-                    step={10}
-                    value={compStepJoined}
-                    onChange={e => setCompStepJoined(Number(e.target.value))}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">منبع تأمین</label>
-                  <select
-                    value={compSupplier}
-                    onChange={e => setCompSupplier(e.target.value as any)}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  >
-                    <option value="INTERNAL_FABRICATED">تولید داخل کارخانه</option>
-                    <option value="SAPCO_CONSIGNMENT">امانی ساپکو</option>
-                    <option value="PURCHASED_MARKET">خرید از بازار</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="subMoCheck"
-                  checked={compSubMo}
-                  onChange={e => setCompSubMo(e.target.checked)}
-                  className="rounded-sm text-[#007cc0] focus:ring-[#007cc0] w-4 h-4"
-                />
-                <label htmlFor="subMoCheck" className="text-xs text-[#333333] cursor-pointer font-medium">
-                  نیاز به صدور دستور ساخت فرعی مجزا (Sub-MO) در سالن پرس دارد
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsComponentModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs"
-                >
-                  {editingCompId ? 'ثبت تغییرات جزء' : 'افزودن به درخت محصول'}
-                </button>
-              </div>
-            </form>
+                ))}
+            </select>
+            <span className="text-[10px] text-[var(--fiori-text-secondary)] block pt-0.5">
+              برای ایجاد ساختار چندسطحی (مانند متصل کردن صفحه اصلی یا مکمل به مجموعه و سپس اتصال پیچ/مهره به آن) قطعه والد را انتخاب کنید.
+            </span>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">
+              انتخاب جزء از کاتالوگ قطعات یا مواد اولیه *
+            </label>
+            <SearchableSelect
+              value={compPartId}
+              onChange={val => {
+                setCompPartId(val);
+                const found = parts.find(p => p.id === val || p.code === val);
+                if (found) {
+                  setCompPartCode(found.code);
+                  setCompPartName(found.name);
+                  if (found.category === 'RAW_MATERIAL') setCompType('RAW_SHEET');
+                  else if (found.category === 'WIP_PART') setCompType('WIP_SUB_PART');
+                  setCompNet(found.weightPerUnitKg || 0.5);
+                  setCompGross(Math.round((found.weightPerUnitKg || 0.5) * 1.15 * 100) / 100);
+                }
+              }}
+              placeholder="جستجو و انتخاب کالا / ورق / اتصال..."
+              searchPlaceholder="جستجوی کد یا نام جزء..."
+              options={parts.map(p => ({
+                value: p.code,
+                label: p.name,
+                sublabel: `${p.code} • ${p.weightPerUnitKg || 0}kg`,
+                badge: p.category === 'RAW_MATERIAL' ? 'ماده اولیه' : p.category === 'WIP_PART' ? 'نیمه‌ساخته' : 'محصول',
+              }))}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">کد جزء *</label>
+              <input
+                type="text"
+                required
+                value={compPartCode}
+                onChange={e => setCompPartCode(e.target.value)}
+                placeholder="مثال: SHT-ST14-1.2 یا NUT-M8"
+                className="fiori-input w-full px-3 py-1.5 font-mono fiori-ltr-code"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">دسته‌بندی نوع جزء *</label>
+              <select
+                value={compType}
+                onChange={e => setCompType(e.target.value as any)}
+                className="fiori-input w-full px-3 py-1.5"
+              >
+                <option value="RAW_SHEET">ورق خام اولیه (کویل/شیت)</option>
+                <option value="WIP_SUB_PART">قطعه نیمه‌ساخته پرسی</option>
+                <option value="FASTENER_HARDWARE">پیچ / مهره جوشی / خار</option>
+                <option value="RUBBER_SEAL">بوش / دمپر لاستیکی</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">نام کامل مهندسی جزء *</label>
+            <input
+              type="text"
+              required
+              value={compPartName}
+              onChange={e => setCompPartName(e.target.value)}
+              placeholder="شرح دقیق جزء متشکله"
+              className="fiori-input w-full px-3 py-1.5"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">ضریب مصرف (تعداد) *</label>
+              <input
+                type="number"
+                step="any"
+                min={0.001}
+                required
+                value={compQty}
+                onChange={e => setCompQty(Number(e.target.value))}
+                className="fiori-input w-full px-3 py-1.5 font-mono font-bold tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">واحد سنجش</label>
+              <select
+                value={compUnit}
+                onChange={e => setCompUnit(e.target.value as any)}
+                className="fiori-input w-full px-3 py-1.5"
+              >
+                <option value="PCS">عدد (PCS)</option>
+                <option value="KG">کیلوگرم (KG)</option>
+                <option value="SET">ست (SET)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">روش اتصال در خط</label>
+              <select
+                value={compJoining}
+                onChange={e => setCompJoining(e.target.value as any)}
+                className="fiori-input w-full px-3 py-1.5"
+              >
+                <option value="SPOT_WELD">پرس‌جوش مقاومتی</option>
+                <option value="CO2_WELD">جوش تحت گاز CO2</option>
+                <option value="FASTENING">پیچ و مهره‌کاری</option>
+                <option value="HEMMING">همبربندی هیدرولیک</option>
+                <option value="PRESS_FIT">جا زدن فشاری بوش</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">وزن خالص (kg)</label>
+              <input
+                type="number"
+                step="any"
+                value={compNet}
+                onChange={e => setCompNet(Number(e.target.value))}
+                className="fiori-input w-full px-3 py-1.5 font-mono tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">وزن ناخالص (kg)</label>
+              <input
+                type="number"
+                step="any"
+                value={compGross}
+                onChange={e => setCompGross(Number(e.target.value))}
+                className="fiori-input w-full px-3 py-1.5 font-mono tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">درصد ضایعات (%)</label>
+              <input
+                type="number"
+                step="any"
+                value={compScrap}
+                onChange={e => setCompScrap(Number(e.target.value))}
+                className="fiori-input w-full px-3 py-1.5 font-mono tabular-nums"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">مرحله اتصال (شماره گام)</label>
+              <input
+                type="number"
+                step={10}
+                value={compStepJoined}
+                onChange={e => setCompStepJoined(Number(e.target.value))}
+                className="fiori-input w-full px-3 py-1.5 font-mono tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">منبع تأمین</label>
+              <select
+                value={compSupplier}
+                onChange={e => setCompSupplier(e.target.value as any)}
+                className="fiori-input w-full px-3 py-1.5"
+              >
+                <option value="INTERNAL_FABRICATED">تولید داخل کارخانه</option>
+                <option value="SAPCO_CONSIGNMENT">امانی ساپکو</option>
+                <option value="PURCHASED_MARKET">خرید از بازار</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="subMoCheck"
+              checked={compSubMo}
+              onChange={e => setCompSubMo(e.target.checked)}
+              className="rounded-sm accent-[var(--fiori-brand)] w-4 h-4 cursor-pointer"
+            />
+            <label htmlFor="subMoCheck" className="text-xs text-[var(--fiori-text-primary)] cursor-pointer font-medium">
+              نیاز به صدور دستور ساخت فرعی مجزا (Sub-MO) در سالن پرس دارد
+            </label>
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* Pre-Flight Sub-MO Configuration & Confirmation Modal */}
-      {subMoPreflightOpen && activeBom && (() => {
+      {(() => {
+        if (!subMoPreflightOpen || !activeBom) return null;
         const subComps = activeBom.components.filter(c => c.subMoRequired);
         const evaluated = subComps.map(c => {
           const matchedPart = parts.find(
@@ -1548,89 +1544,107 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
         const hasBlocking = selectedEvaluated.length === 0 || selectedEvaluated.some(e => !e.isReady);
 
         return (
-          <div className="fixed inset-0 z-50 bg-[#333333]/40 flex items-center justify-center p-4">
-            <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm max-w-3xl w-full p-5 shadow-md space-y-4 text-right">
-              <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-                <div className="flex items-center gap-2 text-[#007cc0] font-bold text-sm">
-                  <Sparkles className="w-5 h-5 text-[#007cc0]" />
-                  <span>پیش‌بازبینی و تایید صدور دستورات ساخت فرعی (Sub-MO Confirmation)</span>
-                </div>
+          <FioriDialog
+            isOpen={subMoPreflightOpen}
+            onClose={() => setSubMoPreflightOpen(false)}
+            title="پیش‌بازبینی و تایید صدور دستورات ساخت فرعی (Sub-MO Confirmation)"
+            subtitle="پس از تایید، دستورات واقعی کارگاهی در ماژول WIP ایجاد و با دستور مادر و انبار متصل می‌شوند."
+            icon={<Sparkles className="w-4 h-4" />}
+            tone="brand"
+            size="xl"
+            footer={
+              <>
                 <button
                   type="button"
                   onClick={() => setSubMoPreflightOpen(false)}
-                  className="text-[#666666] hover:text-[#333333] cursor-pointer"
+                  className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  انصراف
                 </button>
+                <button
+                  type="button"
+                  disabled={hasBlocking || isGeneratingSubMos}
+                  onClick={handleConfirmGenerateSubMos}
+                  className="sap-btn-emphasized px-5 py-1.5 text-xs disabled:opacity-50 cursor-pointer"
+                >
+                  {isGeneratingSubMos ? 'در حال صدور دستورات...' : 'تایید قطعی و صدور دستورات ساخت فرعی'}
+                </button>
+              </>
+            }
+          >
+            <div className="bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">
+                  تیراژ برنامه‌ریزی‌شده محصول اصلی (<span className="fiori-ltr-code font-mono">{activeBom.assemblyPartCode}</span>):
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={plannedQty}
+                  onChange={e => setPlannedQty(Math.max(1, Number(e.target.value) || 1))}
+                  className="fiori-input w-full px-3 py-1.5 font-mono font-bold tabular-nums"
+                />
               </div>
-
-              <div className="bg-[#f7f7f7] border border-[#d9d9d9] rounded-sm p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">
-                    تیراژ برنامه‌ریزی‌شده محصول اصلی ({activeBom.assemblyPartCode}):
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={plannedQty}
-                    onChange={e => setPlannedQty(Math.max(1, Number(e.target.value) || 1))}
-                    className="w-full bg-white border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono font-bold text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">
-                    شماره دستور کار مادر (Master MO Reference):
-                  </label>
-                  <input
-                    type="text"
-                    value={masterMoNumber}
-                    onChange={e => setMasterMoNumber(e.target.value)}
-                    placeholder="مثلاً MO-ECU-ASY-01"
-                    className="w-full bg-white border border-[#bfbfbf] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
+              <div>
+                <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">
+                  شماره دستور کار مادر (Master MO Reference):
+                </label>
+                <input
+                  type="text"
+                  value={masterMoNumber}
+                  onChange={e => setMasterMoNumber(e.target.value)}
+                  placeholder="مثلاً MO-ECU-ASY-01"
+                  className="fiori-input w-full px-3 py-1.5 font-mono fiori-ltr-code"
+                />
               </div>
+            </div>
 
-              <div className="space-y-2 max-h-72 overflow-y-auto">
-                {evaluated.map(({ comp, compRouting, reqQty, isReady, matchedPart }) => {
-                  const checked = selectedSubCompIds.includes(comp.id);
-                  return (
-                    <div
-                      key={comp.id}
-                      className={`p-3 rounded-sm border text-xs flex flex-col gap-2 ${
-                        isReady ? 'bg-white border-[#d9d9d9]' : 'bg-[#fff4e5] border-[#f9d6a7]'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2 flex-wrap">
-                        <label className="flex items-start gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={e => {
-                              if (e.target.checked) {
-                                setSelectedSubCompIds(prev => [...prev, comp.id]);
-                              } else {
-                                setSelectedSubCompIds(prev => prev.filter(id => id !== comp.id));
-                              }
-                            }}
-                            className="mt-0.5 w-4 h-4 rounded-sm"
-                          />
-                          <span>
-                            <span className="font-bold text-[#333333] block">{comp.componentPartName}</span>
-                            <span className="font-mono text-[11px] text-[#666666]">{comp.componentPartCode}</span>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {evaluated.map(({ comp, compRouting, reqQty, isReady, matchedPart }) => {
+                const checked = selectedSubCompIds.includes(comp.id);
+                return (
+                  <div
+                    key={comp.id}
+                    className={`p-3 rounded-[var(--fiori-radius-sm)] border text-xs flex flex-col gap-2 ${
+                      isReady
+                        ? 'bg-[var(--fiori-bg-surface)] border-[var(--fiori-border-default)]'
+                        : 'bg-[var(--fiori-critical-bg)] border-[var(--fiori-critical-border)]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedSubCompIds(prev => [...prev, comp.id]);
+                            } else {
+                              setSelectedSubCompIds(prev => prev.filter(id => id !== comp.id));
+                            }
+                          }}
+                          className="mt-0.5 w-4 h-4 rounded-sm accent-[var(--fiori-brand)]"
+                        />
+                        <span>
+                          <span className="font-bold text-[var(--fiori-text-primary)] block">{comp.componentPartName}</span>
+                          <span className="font-mono text-[11px] text-[var(--fiori-text-secondary)] fiori-ltr-code">{comp.componentPartCode}</span>
+                        </span>
+                      </label>
+                      <FioriObjectStatus
+                        tone="info"
+                        label={
+                          <span className="font-mono tabular-nums">
+                            تیراژ محاسبه‌شده: {toPersianDigits(reqQty)} {comp.unit === 'PCS' ? 'عدد' : comp.unit}
                           </span>
-                        </label>
-                        <div className="font-mono font-bold text-[#007cc0] tabular-nums">
-                          تیراژ محاسبه‌شده: {toPersianDigits(reqQty)} {comp.unit === 'PCS' ? 'عدد' : comp.unit}
-                        </div>
-                      </div>
+                        }
+                      />
+                    </div>
 
-                      {isReady && compRouting ? (
-                        <div className="text-[11px] text-[#107e3e] bg-[#ebf7ef] border border-[#a9dfbf] rounded-sm px-2.5 py-1.5 flex flex-wrap items-center justify-between gap-2">
-                          <span>
-                            مسیر تولید مصوب ({compRouting.version}): {toPersianDigits(compRouting.operations.length)} ایستگاه —{' '}
-                            {compRouting.operations.map(op => `${op.stepCode} (${op.stepName})`).join(' ← ')}
-                          </span>
+                    {isReady && compRouting ? (
+                      <FioriMessageStrip
+                        compact
+                        tone="success"
+                        actions={
                           <button
                             type="button"
                             onClick={() => {
@@ -1641,18 +1655,20 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                                 docQuery: comp.componentPartCode,
                               });
                             }}
-                            className="text-[#007cc0] hover:underline font-bold cursor-pointer shrink-0"
+                            className="text-[var(--fiori-brand)] hover:underline font-bold cursor-pointer shrink-0"
                           >
                             ویرایش ایستگاه‌ها
                           </button>
-                        </div>
-                      ) : (
-                        <div className="text-[11px] text-[#bb0000] bg-[#ffecec] border border-[#f5b7b1] rounded-sm px-2.5 py-1.5 flex flex-wrap items-center justify-between gap-2">
-                          <span>
-                            {!matchedPart
-                              ? 'قطعه در کاتالوگ قطعات یافت نشد؛ امکان صدور دستور بدون تعریف قطعه وجود ندارد.'
-                              : 'این زیرقطعه فاقد مسیر تولید تعریف‌شده (Routing) است؛ عملیات کارگاهی بدون مسیر واقعی تولید نخواهد شد.'}
-                          </span>
+                        }
+                      >
+                        مسیر تولید مصوب ({compRouting.version}): {toPersianDigits(compRouting.operations.length)} ایستگاه —{' '}
+                        {compRouting.operations.map(op => `${op.stepCode} (${op.stepName})`).join(' ← ')}
+                      </FioriMessageStrip>
+                    ) : (
+                      <FioriMessageStrip
+                        compact
+                        tone="error"
+                        actions={
                           <button
                             type="button"
                             onClick={() => {
@@ -1663,128 +1679,99 @@ export const AdvancedBomModuleView: React.FC<AdvancedBomModuleViewProps> = ({
                                 docQuery: comp.componentPartCode,
                               });
                             }}
-                            className="px-2 py-0.5 bg-white border border-[#bb0000] rounded-sm text-[#bb0000] font-bold hover:bg-[#fff5f5] cursor-pointer shrink-0"
+                            className="sap-btn-standard px-2 py-0.5 text-[11px] text-[var(--fiori-negative)] border-[var(--fiori-negative-border)] cursor-pointer shrink-0"
                           >
                             {matchedPart ? 'تعریف مسیر تولید در Routings' : 'تعریف در کاتالوگ قطعات'}
                           </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#e8e8e8] text-xs">
-                <span className="text-[#666666]">
-                  پس از تایید، دستورات واقعی کارگاهی در ماژول WIP ایجاد و با دستور مادر و انبار متصل می‌شوند.
-                </span>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setSubMoPreflightOpen(false)}
-                    className="sap-btn-standard px-4 py-1.5"
-                  >
-                    انصراف
-                  </button>
-                  <button
-                    type="button"
-                    disabled={hasBlocking || isGeneratingSubMos}
-                    onClick={handleConfirmGenerateSubMos}
-                    className="sap-btn-emphasized px-5 py-1.5 disabled:opacity-50"
-                  >
-                    {isGeneratingSubMos ? 'در حال صدور دستورات...' : 'تایید قطعی و صدور دستورات ساخت فرعی'}
-                  </button>
-                </div>
-              </div>
+                        }
+                      >
+                        {!matchedPart
+                          ? 'قطعه در کاتالوگ قطعات یافت نشد؛ امکان صدور دستور بدون تعریف قطعه وجود ندارد.'
+                          : 'این زیرقطعه فاقد مسیر تولید تعریف‌شده (Routing) است؛ عملیات کارگاهی بدون مسیر واقعی تولید نخواهد شد.'}
+                      </FioriMessageStrip>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </FioriDialog>
         );
       })()}
 
       {/* Generated Sub-MOs Modal */}
-      {subMoModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 flex items-center justify-center p-4">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm max-w-2xl w-full p-5 shadow-md space-y-4 text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <div className="flex items-center gap-2 text-[#107e3e] font-bold text-sm">
-                <CheckCircle2 className="w-5 h-5 text-[#107e3e]" />
-                <span>دستورات ساخت فرعی با موفقیت در سیستم تولید صادر گردیدند</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSubMoModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <FioriDialog
+        isOpen={subMoModalOpen}
+        onClose={() => setSubMoModalOpen(false)}
+        title="دستورات ساخت فرعی با موفقیت در سیستم تولید صادر گردیدند"
+        icon={<CheckCircle2 className="w-4 h-4" />}
+        tone="brand"
+        size="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setSubMoModalOpen(false);
+                navigate({ tab: 'wip', wipSubTab: 'UNIFIED_DIRECTORY' });
+              }}
+              className="sap-btn-standard px-4 py-1.5 text-xs text-[var(--fiori-brand)] border-[var(--fiori-brand-border)] cursor-pointer"
+            >
+              مشاهده و پیگیری در میز کار WIP
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubMoModalOpen(false)}
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
+            >
+              تایید و بستن
+            </button>
+          </>
+        }
+      >
+        <p className="text-xs text-[var(--fiori-text-secondary)] leading-relaxed">
+          بر اساس تیراژ مصوب <strong className="tabular-nums">{toPersianDigits(plannedQty)} عدد</strong> از مجموعه {activeBom?.assemblyPartName}، دستورهای ساخت واقعی زیر در ماژول کارگاهی (WIP) ثبت و قابل پیگیری/ابطال هستند:
+        </p>
 
-            <p className="text-xs text-[#666666] leading-relaxed">
-              بر اساس تیراژ مصوب <strong>{toPersianDigits(plannedQty)} عدد</strong> از مجموعه {activeBom?.assemblyPartName}، دستورهای ساخت واقعی زیر در ماژول کارگاهی (WIP) ثبت و قابل پیگیری/ابطال هستند:
-            </p>
-
-            <div className="space-y-2 max-h-60 overflow-y-auto divide-y divide-[#e8e8e8]">
-              {generatedSubMos.map((sub, i) => (
-                <div key={i} className="flex items-center justify-between py-2 text-xs gap-2">
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSubMoModalOpen(false);
-                          traceDocument(sub.subMoNumber, 'WIP_TRACEABILITY');
-                        }}
-                        className="sap-doc-link font-bold font-mono"
-                      >
-                        {sub.subMoNumber}
-                      </button>
-                      <span className="text-[#333333] font-medium">{sub.componentPartName}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSubMoModalOpen(false);
-                          traceDocument(sub.componentPartCode, 'INVENTORY_LEDGER');
-                        }}
-                        className="sap-doc-link text-[11px] font-mono"
-                      >
-                        ({sub.componentPartCode})
-                      </button>
-                    </div>
-                    {Array.isArray(sub.operations) && sub.operations.length > 0 && (
-                      <div className="text-[10px] text-[#556b82] mt-1">
-                        مراحل ایستگاه: {sub.operations.map((o: any) => `${o.stepCode} (${o.stepName})`).join(' ← ')}
-                      </div>
-                    )}
-                  </div>
-                  <div className="font-mono font-bold text-[#333333] tabular-nums shrink-0">
-                    {toPersianDigits(sub.requiredQty)} {sub.unit === 'PCS' ? 'عدد' : 'kg'}
-                  </div>
+        <div className="space-y-2 max-h-60 overflow-y-auto divide-y divide-[var(--fiori-border-subtle)]">
+          {generatedSubMos.map((sub, i) => (
+            <div key={i} className="flex items-center justify-between py-2 text-xs gap-2">
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubMoModalOpen(false);
+                      traceDocument(sub.subMoNumber, 'WIP_TRACEABILITY');
+                    }}
+                    className="sap-doc-link font-bold font-mono fiori-ltr-code"
+                  >
+                    {sub.subMoNumber}
+                  </button>
+                  <span className="text-[var(--fiori-text-primary)] font-medium">{sub.componentPartName}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubMoModalOpen(false);
+                      traceDocument(sub.componentPartCode, 'INVENTORY_LEDGER');
+                    }}
+                    className="sap-doc-link text-[11px] font-mono fiori-ltr-code"
+                  >
+                    ({sub.componentPartCode})
+                  </button>
                 </div>
-              ))}
+                {Array.isArray(sub.operations) && sub.operations.length > 0 && (
+                  <div className="text-[10px] text-[var(--fiori-text-secondary)] mt-1">
+                    مراحل ایستگاه: {sub.operations.map((o: any) => `${o.stepCode} (${o.stepName})`).join(' ← ')}
+                  </div>
+                )}
+              </div>
+              <div className="font-mono font-bold text-[var(--fiori-text-primary)] tabular-nums shrink-0">
+                {toPersianDigits(sub.requiredQty)} {sub.unit === 'PCS' ? 'عدد' : 'kg'}
+              </div>
             </div>
-
-            <div className="flex justify-between items-center pt-3 border-t border-[#e8e8e8]">
-              <button
-                type="button"
-                onClick={() => {
-                  setSubMoModalOpen(false);
-                  navigate({ tab: 'wip', wipSubTab: 'UNIFIED_DIRECTORY' });
-                }}
-                className="sap-btn-standard px-4 py-1.5 text-xs text-[#007cc0] border-[#b3ddf2]"
-              >
-                مشاهده و پیگیری در میز کار WIP
-              </button>
-              <button
-                type="button"
-                onClick={() => setSubMoModalOpen(false)}
-                className="sap-btn-emphasized px-5 py-1.5 text-xs"
-              >
-                تایید و بستن
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </FioriDialog>
 
       {/* Guide Modal */}
       <MasterDataDifferenceGuideModal

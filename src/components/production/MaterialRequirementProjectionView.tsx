@@ -3,10 +3,7 @@ import {
   Boxes,
   AlertTriangle,
   CheckCircle2,
-  TrendingDown,
-  TrendingUp,
   Clock,
-  Calendar,
   Truck,
   ShoppingCart,
   Download,
@@ -16,20 +13,22 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronRight,
-  ShieldAlert,
-  ArrowRightLeft,
   Layers,
   Sparkles,
-  Info,
-  X,
-  FileText,
-  RefreshCw,
   Plus,
 } from 'lucide-react';
 import { MultiPartScheduleItem, WORK_DAYS } from './ErpProductionWorkbenchView';
 import { formatNumber, toPersianDigits, exportToCsv } from '../../utils/formatters';
 import { getActiveFactoryUser } from '../../utils/userDirectoryStorage';
 import { useErpRouter } from '../../context/RouterContext';
+import {
+  FioriDialog,
+  FioriDynamicPage,
+  FioriMessageStrip,
+  FioriObjectStatus,
+  FioriToolbar,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 interface MaterialRequirementProjectionViewProps {
   scheduleItems: MultiPartScheduleItem[];
@@ -547,64 +546,42 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
     }, 400);
   };
 
+  const activeFiltersCount =
+    (selectedRiskFilter !== 'ALL' ? 1 : 0) +
+    (selectedSupplierFilter !== 'ALL' ? 1 : 0) +
+    (searchTerm.trim() ? 1 : 0);
+
+  const hasActiveStressTest = demandSurgePercent > 0 || supplierDelayDays > 0 || scrapSurgePercent > 0;
+
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 text-right font-sans">
-      {/* Toast for PR Issue */}
-      {prToast && (
-        <div className="rounded-sm p-3.5 bg-[#ebf7ef] border border-[#a9dfbf] text-[#107e3e] flex items-center justify-between shadow-2xs">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-5 h-5 text-[#107e3e] shrink-0" />
-            <div>
-              <span className="font-bold text-sm block">{prToast.msg}</span>
-              <span className="text-xs text-[#107e3e]">
-                کد پیگیری: <strong className="font-mono">{prToast.prCode}</strong> — در ماژول MRP و کارتابل تدارکات قابل مشاهده است.
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setPrToast(null)}
-            className="text-[#107e3e] hover:text-[#333333] p-1 cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Top Banner & Control Strip */}
-      <div className="sap-card p-4 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-sm bg-[#fff4e5] border border-[#f9d6a7] flex items-center justify-center text-[#e9730c]">
-              <Boxes className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-[#333333]">
-                پیش‌بینی کسری ورق و مواد اولیه (Material Requirement Projection)
-              </h2>
-              <p className="text-xs text-[#666666] mt-0.5">
-                محاسبه دینامیک مصرف رول‌های ورق با احتساب تقاضای برنامه‌ریزی تولید، موجودی کلاف، سفارشات در راه (PO) و زمان تحویل تامین‌کننده (Lead Time)
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* What-If Simulation Trigger Button */}
+    <FioriDynamicPage
+      title="پیش‌بینی کسری ورق و مواد اولیه"
+      subtitle="محاسبه دینامیک مصرف رول‌های ورق با احتساب تقاضای برنامه‌ریزی تولید، موجودی کلاف، سفارشات در راه (PO) و زمان تحویل تامین‌کننده (Lead Time)"
+      status={
+        kpiSummary.criticalCount > 0 ? (
+          <FioriObjectStatus
+            tone="negative"
+            label={`${toPersianDigits(kpiSummary.criticalCount)} گرید بحرانی`}
+            size="sm"
+          />
+        ) : (
+          <FioriObjectStatus tone="positive" label="تامین پایدار" size="sm" />
+        )
+      }
+      headerActions={
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setIsSimulationOpen(!isSimulationOpen)}
-            className={`px-3 py-1.5 rounded-sm text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 border ${
-              isSimulationOpen || demandSurgePercent > 0 || supplierDelayDays > 0 || scrapSurgePercent > 0
-                ? 'bg-[#e9730c] text-white border-[#e9730c]'
-                : 'sap-btn-standard'
+            className={`px-3 py-1.5 rounded-[var(--fiori-radius-sm)] text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 border ${
+              isSimulationOpen || hasActiveStressTest
+                ? 'bg-[var(--fiori-warning)] text-white border-[var(--fiori-warning)]'
+                : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-primary)] border-[var(--fiori-border-input)] hover:bg-[var(--fiori-bg-hover)]'
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span>شبیه‌ساز سناریوی ریسک (What-If)</span>
-            {(demandSurgePercent > 0 || supplierDelayDays > 0 || scrapSurgePercent > 0) && (
-              <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-            )}
+            {hasActiveStressTest && <span className="w-2 h-2 rounded-full bg-white animate-pulse" />}
           </button>
 
           <button
@@ -623,215 +600,127 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
             className="sap-btn-standard px-3 py-1.5 text-xs flex items-center gap-1.5"
             title="خروجی فایل اکسل"
           >
-            <Download className="w-3.5 h-3.5 text-[#107e3e]" />
+            <Download className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
             <span>خروجی اکسل</span>
           </button>
         </div>
-      </div>
-
-      {/* What-If Scenario Drawer / Panel */}
-      {isSimulationOpen && (
-        <div className="bg-[#fff4e5] border border-[#f9d6a7] rounded-sm p-4">
-          <div className="flex items-center justify-between pb-2.5 border-b border-[#f9d6a7]">
-            <div className="flex items-center gap-2 text-[#e9730c] font-bold text-sm">
-              <Sparkles className="w-4 h-4 text-[#e9730c]" />
-              <span>موتور شبیه‌سازی سناریوهای بحران تامین (Supply Stress Testing)</span>
+      }
+      kpiStrip={
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3.5 shadow-[var(--fiori-shadow-card)]">
+            <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-xs">
+              <span>کل تقاضای هفتگی ورق</span>
+              <Boxes className="w-4 h-4 text-[var(--fiori-brand)]" />
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setDemandSurgePercent(0);
-                setSupplierDelayDays(0);
-                setScrapSurgePercent(0);
-              }}
-              className="text-xs text-[#e9730c] hover:underline cursor-pointer"
-            >
-              بازنشانی به حالت پایه
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-3">
-            <div>
-              <div className="flex items-center justify-between text-xs font-semibold text-[#333333] mb-1.5">
-                <span>افزایش جهشی تیراژ تولید:</span>
-                <span className="font-mono text-[#e9730c]">+{toPersianDigits(demandSurgePercent)}٪</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="50"
-                step="5"
-                value={demandSurgePercent}
-                onChange={e => setDemandSurgePercent(parseInt(e.target.value, 10))}
-                className="w-full accent-[#e9730c] cursor-pointer"
-              />
-              <span className="text-[10px] text-[#666666] block mt-1">
-                افزایش تقاضای خودروساز (ایران‌خودرو / سایپا)
-              </span>
+            <div className="text-xl font-bold text-[var(--fiori-text-primary)] mt-1.5 font-mono tabular-nums">
+              {toPersianDigits(kpiSummary.totalWeeklyDemandTons)}{' '}
+              <span className="text-xs font-sans font-normal text-[var(--fiori-text-secondary)]">تُن خالص</span>
             </div>
-
-            <div>
-              <div className="flex items-center justify-between text-xs font-semibold text-[#333333] mb-1.5">
-                <span>تاخیر تحویل تامین‌کننده (Mobarakeh/Sapco):</span>
-                <span className="font-mono text-[#e9730c]">+{toPersianDigits(supplierDelayDays)} روز کاری</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="7"
-                step="1"
-                value={supplierDelayDays}
-                onChange={e => setSupplierDelayDays(parseInt(e.target.value, 10))}
-                className="w-full accent-[#e9730c] cursor-pointer"
-              />
-              <span className="text-[10px] text-[#666666] block mt-1">
-                تاخیر ناشی از بارگیری ریلی / ترافیک انبار ساپکو
-              </span>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between text-xs font-semibold text-[#333333] mb-1.5">
-                <span>ضریب ریسک ضایعات قالب و تنظیمات:</span>
-                <span className="font-mono text-[#e9730c]">+{toPersianDigits(scrapSurgePercent)}٪</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="10"
-                step="1"
-                value={scrapSurgePercent}
-                onChange={e => setScrapSurgePercent(parseInt(e.target.value, 10))}
-                className="w-full accent-[#e9730c] cursor-pointer"
-              />
-              <span className="text-[10px] text-[#666666] block mt-1">
-                ضایعات ناشی از تغییر قالب جدید یا پلیسه ورق
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* KPI Cards Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="sap-card border-r-4 border-r-[#007cc0] p-3.5">
-          <div className="flex items-center justify-between text-[#666666] text-xs">
-            <span>کل تقاضای هفتگی ورق</span>
-            <Boxes className="w-4 h-4 text-[#007cc0]" />
-          </div>
-          <div className="text-xl font-bold text-[#333333] mt-1.5 font-mono tabular-nums">
-            {toPersianDigits(kpiSummary.totalWeeklyDemandTons)}{' '}
-            <span className="text-xs font-sans font-normal text-[#666666]">تُن خالص</span>
-          </div>
-          <span className="text-[11px] text-[#666666] mt-0.5 block">
-            تقاضای ۲۰ دستور کار برنامه‌ریزی‌شده در افق ۶ روزه
-          </span>
-        </div>
-
-        <div className="sap-card border-r-4 border-r-[#107e3e] p-3.5">
-          <div className="flex items-center justify-between text-[#666666] text-xs">
-            <span>موجودی اولیه کلاف در انبار</span>
-            <Layers className="w-4 h-4 text-[#107e3e]" />
-          </div>
-          <div className="text-xl font-bold text-[#333333] mt-1.5 font-mono tabular-nums">
-            {toPersianDigits(kpiSummary.totalStartingStockTons)}{' '}
-            <span className="text-xs font-sans font-normal text-[#666666]">تُن</span>
-          </div>
-          <span className="text-[11px] text-[#107e3e] mt-0.5 block">
-            +{toPersianDigits(kpiSummary.totalInboundTons)} تُن سفارش خرید در راه (PO)
-          </span>
-        </div>
-
-        <div className="sap-card border-r-4 border-r-[#bb0000] p-3.5">
-          <div className="flex items-center justify-between text-[#666666] text-xs">
-            <span>اقلام با کسری قطعی (توقف خط)</span>
-            <AlertTriangle className="w-4 h-4 text-[#bb0000]" />
-          </div>
-          <div className="text-xl font-bold text-[#bb0000] mt-1.5 flex items-center justify-between font-mono tabular-nums">
-            <span>{toPersianDigits(kpiSummary.criticalCount)} گرید</span>
-            <span className="text-[10px] font-sans px-2 py-0.5 rounded-sm bg-[#ffecec] text-[#bb0000] border border-[#f5b7b1] font-bold">
-              نیاز به PR فوری
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] mt-0.5 block">
+              تقاضای ۲۰ دستور کار برنامه‌ریزی‌شده در افق ۶ روزه
             </span>
           </div>
-          <span className="text-[11px] text-[#bb0000] mt-0.5 block">
-            اتمام موجودی قبل از زمان تحویل تامین‌کننده
-          </span>
-        </div>
 
-        <div className="sap-card border-r-4 border-r-[#e9730c] p-3.5">
-          <div className="flex items-center justify-between text-[#666666] text-xs">
-            <span>اقلام در آستانه نقطه سفارش</span>
-            <Clock className="w-4 h-4 text-[#e9730c]" />
-          </div>
-          <div className="text-xl font-bold text-[#e9730c] mt-1.5 flex items-center justify-between font-mono tabular-nums">
-            <span>{toPersianDigits(kpiSummary.warningCount)} گرید</span>
-            <span className="text-[10px] font-sans px-2 py-0.5 rounded-sm bg-[#fff4e5] text-[#e9730c] border border-[#f9d6a7] font-bold">
-              هشدار Safety Stock
+          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3.5 shadow-[var(--fiori-shadow-card)]">
+            <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-xs">
+              <span>موجودی اولیه کلاف در انبار</span>
+              <Layers className="w-4 h-4 text-[var(--fiori-positive)]" />
+            </div>
+            <div className="text-xl font-bold text-[var(--fiori-text-primary)] mt-1.5 font-mono tabular-nums">
+              {toPersianDigits(kpiSummary.totalStartingStockTons)}{' '}
+              <span className="text-xs font-sans font-normal text-[var(--fiori-text-secondary)]">تُن</span>
+            </div>
+            <span className="text-[11px] text-[var(--fiori-positive)] mt-0.5 block">
+              +{toPersianDigits(kpiSummary.totalInboundTons)} تُن سفارش خرید در راه (PO)
             </span>
           </div>
-          <span className="text-[11px] text-[#666666] mt-0.5 block">
-            {toPersianDigits(kpiSummary.healthyCount)} گرید در حاشیه امن پایدار
-          </span>
-        </div>
-      </div>
 
-      {/* Filter and Search Bar */}
-      <div className="sap-card p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[#666666] font-medium flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5" /> وضعیت ریسک:
-          </span>
-          <div className="inline-flex rounded-sm border border-[#d9d9d9] p-0.5 bg-[#f5f5f5]">
-            <button
-              type="button"
-              onClick={() => setSelectedRiskFilter('ALL')}
-              className={`px-2.5 py-1 rounded-sm transition cursor-pointer ${
-                selectedRiskFilter === 'ALL'
-                  ? 'bg-[#ffffff] font-bold text-[#333333] border border-[#d9d9d9]'
-                  : 'text-[#666666] hover:text-[#333333]'
-              }`}
-            >
-              همه ({toPersianDigits(projections.length)})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedRiskFilter('CRITICAL')}
-              className={`px-2.5 py-1 rounded-sm transition cursor-pointer ${
-                selectedRiskFilter === 'CRITICAL'
-                  ? 'bg-[#bb0000] text-white font-bold'
-                  : 'text-[#bb0000] hover:bg-[#ffecec]'
-              }`}
-            >
-              کسری بحرانی ({toPersianDigits(kpiSummary.criticalCount)})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedRiskFilter('WARNING')}
-              className={`px-2.5 py-1 rounded-sm transition cursor-pointer ${
-                selectedRiskFilter === 'WARNING'
-                  ? 'bg-[#e9730c] text-white font-bold'
-                  : 'text-[#e9730c] hover:bg-[#fff4e5]'
-              }`}
-            >
-              هشدار نقطه سفارش ({toPersianDigits(kpiSummary.warningCount)})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedRiskFilter('HEALTHY')}
-              className={`px-2.5 py-1 rounded-sm transition cursor-pointer ${
-                selectedRiskFilter === 'HEALTHY'
-                  ? 'bg-[#107e3e] text-white font-bold'
-                  : 'text-[#107e3e] hover:bg-[#ebf7ef]'
-              }`}
-            >
-              ایمن ({toPersianDigits(kpiSummary.healthyCount)})
-            </button>
+          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3.5 shadow-[var(--fiori-shadow-card)]">
+            <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-xs">
+              <span>اقلام با کسری قطعی (توقف خط)</span>
+              <AlertTriangle className="w-4 h-4 text-[var(--fiori-negative)]" />
+            </div>
+            <div className="text-xl font-bold text-[var(--fiori-negative)] mt-1.5 flex items-center justify-between font-mono tabular-nums">
+              <span>{toPersianDigits(kpiSummary.criticalCount)} گرید</span>
+              <FioriObjectStatus tone="negative" label="نیاز به PR فوری" size="sm" />
+            </div>
+            <span className="text-[11px] text-[var(--fiori-negative)] mt-0.5 block">
+              اتمام موجودی قبل از زمان تحویل تامین‌کننده
+            </span>
           </div>
 
-          <div className="relative">
+          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3.5 shadow-[var(--fiori-shadow-card)]">
+            <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-xs">
+              <span>اقلام در آستانه نقطه سفارش</span>
+              <Clock className="w-4 h-4 text-[var(--fiori-warning)]" />
+            </div>
+            <div className="text-xl font-bold text-[var(--fiori-warning)] mt-1.5 flex items-center justify-between font-mono tabular-nums">
+              <span>{toPersianDigits(kpiSummary.warningCount)} گرید</span>
+              <FioriObjectStatus tone="critical" label="هشدار Safety Stock" size="sm" />
+            </div>
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] mt-0.5 block">
+              {toPersianDigits(kpiSummary.healthyCount)} گرید در حاشیه امن پایدار
+            </span>
+          </div>
+        </div>
+      }
+      filterBar={
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[var(--fiori-text-secondary)] font-medium flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5" /> وضعیت ریسک:
+            </span>
+            <div className="inline-flex rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] p-0.5 bg-[var(--fiori-bg-subtle)]">
+              <button
+                type="button"
+                onClick={() => setSelectedRiskFilter('ALL')}
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] transition cursor-pointer ${
+                  selectedRiskFilter === 'ALL'
+                    ? 'bg-[var(--fiori-bg-surface)] font-bold text-[var(--fiori-text-primary)] border border-[var(--fiori-border-default)]'
+                    : 'text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)]'
+                }`}
+              >
+                همه ({toPersianDigits(projections.length)})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRiskFilter('CRITICAL')}
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] transition cursor-pointer ${
+                  selectedRiskFilter === 'CRITICAL'
+                    ? 'bg-[var(--fiori-negative)] text-white font-bold'
+                    : 'text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)]'
+                }`}
+              >
+                کسری بحرانی ({toPersianDigits(kpiSummary.criticalCount)})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRiskFilter('WARNING')}
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] transition cursor-pointer ${
+                  selectedRiskFilter === 'WARNING'
+                    ? 'bg-[var(--fiori-warning)] text-white font-bold'
+                    : 'text-[var(--fiori-warning)] hover:bg-[var(--fiori-warning-bg)]'
+                }`}
+              >
+                هشدار نقطه سفارش ({toPersianDigits(kpiSummary.warningCount)})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRiskFilter('HEALTHY')}
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] transition cursor-pointer ${
+                  selectedRiskFilter === 'HEALTHY'
+                    ? 'bg-[var(--fiori-positive)] text-white font-bold'
+                    : 'text-[var(--fiori-positive)] hover:bg-[var(--fiori-positive-bg)]'
+                }`}
+              >
+                ایمن ({toPersianDigits(kpiSummary.healthyCount)})
+              </button>
+            </div>
+
             <select
               value={selectedSupplierFilter}
               onChange={e => setSelectedSupplierFilter(e.target.value)}
-              className="bg-[#ffffff] border border-[#bfbfbf] text-[#333333] rounded-sm px-2.5 py-1 text-xs focus:outline-none focus:border-[#007cc0] cursor-pointer"
+              className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] text-[var(--fiori-text-primary)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1 text-xs focus:outline-none focus:border-[var(--fiori-brand)] cursor-pointer"
             >
               <option value="ALL">همه تامین‌کنندگان</option>
               {allSuppliers.map(s => (
@@ -841,24 +730,146 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="relative w-72">
-          <Search className="w-3.5 h-3.5 text-[#666666] absolute right-2.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            placeholder="جستجو بر اساس گرید، کد کلاف، قطعه..."
-            className="w-full pl-3 pr-8 py-1.5 bg-[#ffffff] border border-[#bfbfbf] rounded-sm text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
+          <div className="relative w-72">
+            <Search className="w-3.5 h-3.5 text-[var(--fiori-text-muted)] absolute right-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="جستجو بر اساس گرید، کد کلاف، قطعه..."
+              className="w-full pl-3 pr-8 py-1.5 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+            />
+          </div>
+        </div>
+      }
+      activeFiltersCount={activeFiltersCount}
+      onResetFilters={() => {
+        setSelectedRiskFilter('ALL');
+        setSelectedSupplierFilter('ALL');
+        setSearchTerm('');
+      }}
+    >
+      <div className="space-y-4">
+        {/* Toast for PR Issue */}
+        {prToast && (
+          <FioriMessageStrip
+            tone="success"
+            title={prToast.msg}
+            onClose={() => setPrToast(null)}
+          >
+            <span>
+              کد پیگیری: <strong className="fiori-ltr-code font-mono">{prToast.prCode}</strong> — در ماژول MRP و کارتابل تدارکات قابل مشاهده است.
+            </span>
+          </FioriMessageStrip>
+        )}
+
+        {/* What-If Scenario Drawer / Panel */}
+        {isSimulationOpen && (
+          <div className="bg-[var(--fiori-warning-bg)] border border-[var(--fiori-warning-border)] rounded-[var(--fiori-radius-md)] p-4">
+            <div className="flex items-center justify-between pb-2.5 border-b border-[var(--fiori-warning-border)]">
+              <div className="flex items-center gap-2 text-[var(--fiori-warning)] font-bold text-sm">
+                <Sparkles className="w-4 h-4 text-[var(--fiori-warning)]" />
+                <span>موتور شبیه‌سازی سناریوهای بحران تامین (Supply Stress Testing)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDemandSurgePercent(0);
+                  setSupplierDelayDays(0);
+                  setScrapSurgePercent(0);
+                }}
+                className="text-xs text-[var(--fiori-warning)] hover:underline cursor-pointer font-semibold"
+              >
+                بازنشانی به حالت پایه
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-3">
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-[var(--fiori-text-primary)] mb-1.5">
+                  <span>افزایش جهشی تیراژ تولید:</span>
+                  <span className="font-mono text-[var(--fiori-warning)] tabular-nums">+{toPersianDigits(demandSurgePercent)}٪</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="50"
+                  step="5"
+                  value={demandSurgePercent}
+                  onChange={e => setDemandSurgePercent(parseInt(e.target.value, 10))}
+                  className="w-full accent-[var(--fiori-warning)] cursor-pointer"
+                />
+                <span className="text-[10px] text-[var(--fiori-text-secondary)] block mt-1">
+                  افزایش تقاضای خودروساز (ایران‌خودرو / سایپا)
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-[var(--fiori-text-primary)] mb-1.5">
+                  <span>تاخیر تحویل تامین‌کننده (Mobarakeh/Sapco):</span>
+                  <span className="font-mono text-[var(--fiori-warning)] tabular-nums">+{toPersianDigits(supplierDelayDays)} روز کاری</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="7"
+                  step="1"
+                  value={supplierDelayDays}
+                  onChange={e => setSupplierDelayDays(parseInt(e.target.value, 10))}
+                  className="w-full accent-[var(--fiori-warning)] cursor-pointer"
+                />
+                <span className="text-[10px] text-[var(--fiori-text-secondary)] block mt-1">
+                  تاخیر ناشی از بارگیری ریلی / ترافیک انبار ساپکو
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-[var(--fiori-text-primary)] mb-1.5">
+                  <span>ضریب ریسک ضایعات قالب و تنظیمات:</span>
+                  <span className="font-mono text-[var(--fiori-warning)] tabular-nums">+{toPersianDigits(scrapSurgePercent)}٪</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value={scrapSurgePercent}
+                  onChange={e => setScrapSurgePercent(parseInt(e.target.value, 10))}
+                  className="w-full accent-[var(--fiori-warning)] cursor-pointer"
+                />
+                <span className="text-[10px] text-[var(--fiori-text-secondary)] block mt-1">
+                  ضایعات ناشی از تغییر قالب جدید یا پلیسه ورق
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main Material Projection Matrix Table */}
+        <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-hidden">
+          <FioriToolbar
+            variant="table"
+            title="ماتریس پیش‌بینی مصرف روزانه کلاف و مواد اولیه"
+            count={filteredProjections.length}
+            countLabel="گرید"
           />
-        </div>
-      </div>
-
-      {/* Main Material Projection Matrix Table */}
-      <div className="sap-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="sap-table-compact w-full text-right text-xs">
+          {filteredProjections.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                title="ماده اولیه‌ای با فیلترهای انتخابی یافت نشد"
+                description="عبارت جستجو یا فیلتر وضعیت ریسک را تغییر دهید."
+                actionLabel="بازنشانی فیلترها"
+                onAction={() => {
+                  setSelectedRiskFilter('ALL');
+                  setSelectedSupplierFilter('ALL');
+                  setSearchTerm('');
+                }}
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="sap-table-compact w-full text-right text-xs">
             <thead>
               <tr>
                 <th className="text-center w-10">ردیف</th>
@@ -867,55 +878,55 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
                 <th className="text-center">موجودی فعلی (kg)</th>
                 <th className="text-center">ذخیره اطمینان</th>
                 {WORK_DAYS.map(w => (
-                  <th key={w.index} className="text-center border-r border-[#d9d9d9] font-mono text-[11px]">
+                  <th key={w.index} className="text-center border-r border-[var(--fiori-border-default)] font-mono text-[11px]">
                     <div>{w.shortName}</div>
-                    <div className="text-[9px] text-[#666666] font-normal">{w.date.slice(5)}</div>
+                    <div className="text-[9px] text-[var(--fiori-text-secondary)] font-normal">{w.date.slice(5)}</div>
                   </th>
                 ))}
                 <th className="text-center">پوشش موجودی</th>
                 <th className="text-center">وضعیت ریسک</th>
-                <th className="text-center">اقدام سریع (Action)</th>
+                <th className="text-center">اقدام سریع</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#e8e8e8]">
+            <tbody className="divide-y divide-[var(--fiori-border-subtle)]">
               {filteredProjections.map((proj, idx) => {
                 const isExpanded = expandedMaterialCode === proj.material.code;
                 const mat = proj.material;
 
-                let rowBg = 'hover:bg-[#f5f5f5] transition';
+                let rowBg = 'hover:bg-[var(--fiori-bg-hover)] transition';
                 if (proj.riskCategory === 'CRITICAL') {
-                  rowBg = 'bg-[#ffecec]/40 hover:bg-[#ffecec]/70 transition';
+                  rowBg = 'bg-[var(--fiori-negative-bg)]/40 hover:bg-[var(--fiori-negative-bg)]/70 transition';
                 } else if (proj.riskCategory === 'WARNING') {
-                  rowBg = 'bg-[#fff4e5]/40 hover:bg-[#fff4e5]/70 transition';
+                  rowBg = 'bg-[var(--fiori-warning-bg)]/40 hover:bg-[var(--fiori-warning-bg)]/70 transition';
                 }
 
                 return (
                   <React.Fragment key={mat.code}>
                     <tr className={rowBg}>
-                      <td className="text-center text-[#666666] font-mono">{toPersianDigits(idx + 1)}</td>
+                      <td className="text-center text-[var(--fiori-text-secondary)] font-mono tabular-nums">
+                        {toPersianDigits(idx + 1)}
+                      </td>
 
                       <td>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => setExpandedMaterialCode(isExpanded ? null : mat.code)}
-                            className="p-1 hover:bg-[#e8e8e8] rounded-sm text-[#666666] transition cursor-pointer"
+                            className="p-1 hover:bg-[var(--fiori-bg-hover)] rounded-[var(--fiori-radius-sm)] text-[var(--fiori-text-secondary)] transition cursor-pointer"
                             title="مشاهده قطعات مصرف‌کننده و سفارشات در راه"
                           >
                             {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                           </button>
                           <div>
-                            <div className="font-bold text-[#333333] flex items-center gap-1.5">
+                            <div className="font-bold text-[var(--fiori-text-primary)] flex items-center gap-1.5">
                               <span>{mat.name}</span>
-                              <span className="text-[10px] px-1.5 py-0.2 rounded-sm bg-[#f5f5f5] text-[#333333] border border-[#d9d9d9] font-mono">
-                                {mat.grade}
-                              </span>
+                              <FioriObjectStatus tone="neutral" label={mat.grade} size="sm" ltrCode />
                             </div>
-                            <div className="text-[10px] text-[#666666] font-mono mt-0.5 flex items-center gap-1">
+                            <div className="text-[10px] text-[var(--fiori-text-secondary)] font-mono mt-0.5 flex items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => traceDocument(mat.code, 'INVENTORY_LEDGER')}
-                                className="sap-doc-link font-mono"
+                                className="sap-doc-link fiori-ltr-code font-mono"
                               >
                                 {mat.code}
                               </button>
@@ -927,38 +938,40 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
                       </td>
 
                       <td>
-                        <div className="font-semibold text-[#333333]">{mat.supplierName}</div>
-                        <div className="text-[10px] text-[#666666] flex items-center gap-1 mt-0.5">
-                          <Truck className="w-3 h-3 text-[#666666]" />
+                        <div className="font-semibold text-[var(--fiori-text-primary)]">{mat.supplierName}</div>
+                        <div className="text-[10px] text-[var(--fiori-text-secondary)] flex items-center gap-1 mt-0.5">
+                          <Truck className="w-3 h-3 text-[var(--fiori-text-muted)]" />
                           <span>زمان تامین (Lead Time):</span>
-                          <strong className="font-mono text-[#333333]">{toPersianDigits(proj.effectiveLeadTime)} روز</strong>
+                          <strong className="font-mono text-[var(--fiori-text-primary)] tabular-nums">
+                            {toPersianDigits(proj.effectiveLeadTime)} روز
+                          </strong>
                         </div>
                       </td>
 
-                      <td className="text-center font-bold text-[#333333] font-mono tabular-nums">
+                      <td className="text-center font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums">
                         {formatNumber(mat.initialStockKg)}
-                        <span className="text-[10px] text-[#666666] font-normal mr-1">{mat.unit}</span>
+                        <span className="text-[10px] text-[var(--fiori-text-secondary)] font-normal mr-1">{mat.unit}</span>
                       </td>
 
-                      <td className="text-center font-mono text-[#666666] text-[11px] tabular-nums">
+                      <td className="text-center font-mono text-[var(--fiori-text-secondary)] text-[11px] tabular-nums">
                         {formatNumber(mat.safetyStockKg)}
                       </td>
 
                       {/* Day 1 to Day 6 Projected Balance Cells */}
                       {proj.dailyTimelineBalances.map(bal => {
-                        let cellStyle = 'bg-[#ffffff] text-[#333333]';
+                        let cellStyle = 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-primary)]';
                         if (bal.isNegative) {
-                          cellStyle = 'bg-[#ffecec] text-[#bb0000] font-bold border border-[#f5b7b1]';
+                          cellStyle = 'bg-[var(--fiori-negative-bg)] text-[var(--fiori-negative)] font-bold border border-[var(--fiori-negative-border)]';
                         } else if (bal.isBelowSafety) {
-                          cellStyle = 'bg-[#fff4e5] text-[#e9730c] font-bold border border-[#f9d6a7]';
+                          cellStyle = 'bg-[var(--fiori-warning-bg)] text-[var(--fiori-warning)] font-bold border border-[var(--fiori-warning-border)]';
                         }
 
                         return (
                           <td
                             key={bal.dayIndex}
-                            className="text-center border-r border-[#e8e8e8] font-mono text-[11px] tabular-nums"
+                            className="text-center border-r border-[var(--fiori-border-subtle)] font-mono text-[11px] tabular-nums"
                           >
-                            <div className={`p-1 rounded-sm ${cellStyle}`}>
+                            <div className={`p-1 rounded-[var(--fiori-radius-sm)] ${cellStyle}`}>
                               <div>
                                 {bal.endingBalanceKg < 0
                                   ? `(${formatNumber(Math.abs(bal.endingBalanceKg))}-)`
@@ -968,7 +981,7 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
                                 مصرف: {formatNumber(bal.consumedKg)}
                               </div>
                               {bal.inboundArrivedKg > 0 && (
-                                <div className="text-[8px] text-[#107e3e] font-bold">
+                                <div className="text-[8px] text-[var(--fiori-positive)] font-bold">
                                   +{formatNumber(bal.inboundArrivedKg)}
                                 </div>
                               )}
@@ -978,30 +991,35 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
                       })}
 
                       <td className="text-center font-mono font-bold tabular-nums">
-                        <span
-                          className={`px-2 py-0.5 rounded-sm text-xs border ${
-                            parseFloat(proj.daysOfInventory) < proj.effectiveLeadTime
-                              ? 'bg-[#ffecec] text-[#bb0000] border-[#f5b7b1]'
-                              : 'bg-[#ebf7ef] text-[#107e3e] border-[#a9dfbf]'
-                          }`}
-                        >
-                          {toPersianDigits(proj.daysOfInventory)} روز
-                        </span>
+                        <FioriObjectStatus
+                          tone={parseFloat(proj.daysOfInventory) < proj.effectiveLeadTime ? 'negative' : 'positive'}
+                          label={`${toPersianDigits(proj.daysOfInventory)} روز`}
+                          size="sm"
+                        />
                       </td>
 
                       <td className="text-center">
                         {proj.riskCategory === 'CRITICAL' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-sm bg-[#bb0000] text-white font-bold">
-                            <AlertTriangle className="w-3 h-3" /> کسری قطعی خط
-                          </span>
+                          <FioriObjectStatus
+                            tone="negative"
+                            label="کسری قطعی خط"
+                            size="sm"
+                            icon={<AlertTriangle className="w-3 h-3" />}
+                          />
                         ) : proj.riskCategory === 'WARNING' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-sm bg-[#e9730c] text-white font-bold">
-                            <Clock className="w-3 h-3" /> هشدار نقطه سفارش
-                          </span>
+                          <FioriObjectStatus
+                            tone="critical"
+                            label="هشدار نقطه سفارش"
+                            size="sm"
+                            icon={<Clock className="w-3 h-3" />}
+                          />
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-sm bg-[#ebf7ef] text-[#107e3e] border border-[#a9dfbf] font-semibold">
-                            <CheckCircle2 className="w-3 h-3 text-[#107e3e]" /> موجودی پایدار
-                          </span>
+                          <FioriObjectStatus
+                            tone="positive"
+                            label="موجودی پایدار"
+                            size="sm"
+                            icon={<CheckCircle2 className="w-3 h-3" />}
+                          />
                         )}
                       </td>
 
@@ -1010,7 +1028,7 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
                           <button
                             type="button"
                             onClick={() => handleOpenPrModal(proj)}
-                            className="px-2.5 py-1 bg-[#bb0000] hover:bg-[#990000] text-white rounded-sm text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1 mx-auto"
+                            className="px-2.5 py-1 bg-[var(--fiori-negative)] hover:opacity-90 text-white rounded-[var(--fiori-radius-sm)] text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1 mx-auto"
                           >
                             <ShoppingCart className="w-3 h-3" />
                             <span>صدور PR خرید</span>
@@ -1030,15 +1048,15 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
 
                     {/* Expanded Detail Tray */}
                     {isExpanded && (
-                      <tr className="bg-[#f7f7f7] border-y border-[#d9d9d9]">
+                      <tr className="bg-[var(--fiori-bg-subtle)] border-y border-[var(--fiori-border-default)]">
                         <td colSpan={13} className="p-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Left: Consuming Parts & MOs */}
-                            <div className="bg-[#ffffff] p-3.5 rounded-sm border border-[#d9d9d9]">
-                              <h4 className="font-bold text-xs text-[#333333] flex items-center gap-1.5 border-b border-[#e8e8e8] pb-2">
-                                <Boxes className="w-3.5 h-3.5 text-[#007cc0]" />
+                            <div className="bg-[var(--fiori-bg-surface)] p-3.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                              <h4 className="font-bold text-xs text-[var(--fiori-text-primary)] flex items-center gap-1.5 border-b border-[var(--fiori-border-subtle)] pb-2">
+                                <Boxes className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
                                 <span>دستور کارهای ساخت مصرف‌کننده این رول ورق:</span>
-                                <span className="text-[#666666] font-normal">
+                                <span className="text-[var(--fiori-text-secondary)] font-normal">
                                   ({toPersianDigits(proj.matchedParts.length)} قطعه)
                                 </span>
                               </h4>
@@ -1047,93 +1065,93 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
                                   proj.matchedParts.map(part => (
                                     <div
                                       key={part.id}
-                                      className="flex items-center justify-between text-xs p-2 rounded-sm bg-[#f7f7f7] hover:bg-[#f0f0f0] border border-[#e8e8e8] transition"
+                                      className="flex items-center justify-between text-xs p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] hover:bg-[var(--fiori-bg-hover)] border border-[var(--fiori-border-subtle)] transition"
                                     >
-                                        <div>
-                                          <div className="font-bold text-[#333333]">{part.partName}</div>
-                                          <div className="text-[10px] text-[#666666] font-mono flex items-center gap-1.5 mt-0.5">
-                                            <button
-                                              type="button"
-                                              onClick={() => traceDocument(part.orderCode, 'WIP_TRACEABILITY')}
-                                              className="sap-doc-link"
-                                            >
-                                              {part.orderCode}
-                                            </button>
-                                            <span>|</span>
-                                            <button
-                                              type="button"
-                                              onClick={() => traceDocument(part.partCode, 'INVENTORY_LEDGER')}
-                                              className="sap-doc-link"
-                                            >
-                                              {part.partCode}
-                                            </button>
-                                            <span>({part.carModel})</span>
-                                          </div>
-                                        </div>
-                                        <div className="text-left flex items-center gap-2">
-                                          <div className="text-[11px] font-mono text-[#333333] tabular-nums">
-                                            {formatNumber(part.weeklyTargetQty)} عدد
-                                          </div>
-                                          {onOpenOrderTimeline && (
-                                            <button
-                                              type="button"
-                                              onClick={() => onOpenOrderTimeline(part)}
-                                              className="p-1 text-[#007cc0] hover:bg-[#e5f3fa] rounded-sm cursor-pointer"
-                                              title="مشاهده تایم‌لاین این دستور ساخت"
-                                            >
-                                              <Clock className="w-3.5 h-3.5" />
-                                            </button>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="text-xs text-[#666666] py-3 text-center">
-                                      هیچ قطعه فعالی در ماتریس جاری به طور اختصاصی به این گرید متصل نیست.
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Right: Inbound Shipments & Lead Time Assessment */}
-                              <div className="bg-[#ffffff] p-3.5 rounded-sm border border-[#d9d9d9]">
-                                <h4 className="font-bold text-xs text-[#333333] flex items-center gap-1.5 border-b border-[#e8e8e8] pb-2">
-                                  <Truck className="w-3.5 h-3.5 text-[#007cc0]" />
-                                  <span>سفارشات در راه (Inbound Pipeline / PO):</span>
-                                </h4>
-                                <div className="mt-2 space-y-2">
-                                  {mat.inboundPipeline.length > 0 ? (
-                                    mat.inboundPipeline.map((po, pIdx) => (
-                                      <div
-                                        key={pIdx}
-                                        className="p-2.5 rounded-sm bg-[#e5f3fa] border border-[#b3ddf2] text-xs flex items-center justify-between"
-                                      >
-                                        <div>
+                                      <div>
+                                        <div className="font-bold text-[var(--fiori-text-primary)]">{part.partName}</div>
+                                        <div className="text-[10px] text-[var(--fiori-text-secondary)] font-mono flex items-center gap-1.5 mt-0.5">
                                           <button
                                             type="button"
-                                            onClick={() => traceDocument(po.poNumber, 'INVENTORY_LEDGER')}
-                                            className="sap-doc-link font-bold font-mono"
+                                            onClick={() => traceDocument(part.orderCode, 'WIP_TRACEABILITY')}
+                                            className="sap-doc-link fiori-ltr-code"
                                           >
-                                            {po.poNumber}
+                                            {part.orderCode}
                                           </button>
-                                          <div className="text-[10px] text-[#333333] mt-0.5">
-                                            تامین‌کننده: {po.supplier} | زمان ورود: {po.expectedDate}
-                                          </div>
+                                          <span>|</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => traceDocument(part.partCode, 'INVENTORY_LEDGER')}
+                                            className="sap-doc-link fiori-ltr-code"
+                                          >
+                                            {part.partCode}
+                                          </button>
+                                          <span>({part.carModel})</span>
+                                        </div>
                                       </div>
-                                      <div className="font-bold font-mono text-[#007cc0] text-sm tabular-nums">
+                                      <div className="text-left flex items-center gap-2">
+                                        <div className="text-[11px] font-mono text-[var(--fiori-text-primary)] tabular-nums">
+                                          {formatNumber(part.weeklyTargetQty)} عدد
+                                        </div>
+                                        {onOpenOrderTimeline && (
+                                          <button
+                                            type="button"
+                                            onClick={() => onOpenOrderTimeline(part)}
+                                            className="p-1 text-[var(--fiori-brand)] hover:bg-[var(--fiori-brand-subtle)] rounded-[var(--fiori-radius-sm)] cursor-pointer"
+                                            title="مشاهده تایم‌لاین این دستور ساخت"
+                                          >
+                                            <Clock className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-xs text-[var(--fiori-text-secondary)] py-3 text-center">
+                                    هیچ قطعه فعالی در ماتریس جاری به طور اختصاصی به این گرید متصل نیست.
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right: Inbound Shipments & Lead Time Assessment */}
+                            <div className="bg-[var(--fiori-bg-surface)] p-3.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                              <h4 className="font-bold text-xs text-[var(--fiori-text-primary)] flex items-center gap-1.5 border-b border-[var(--fiori-border-subtle)] pb-2">
+                                <Truck className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                                <span>سفارشات در راه (Inbound Pipeline / PO):</span>
+                              </h4>
+                              <div className="mt-2 space-y-2">
+                                {mat.inboundPipeline.length > 0 ? (
+                                  mat.inboundPipeline.map((po, pIdx) => (
+                                    <div
+                                      key={pIdx}
+                                      className="p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] text-xs flex items-center justify-between"
+                                    >
+                                      <div>
+                                        <button
+                                          type="button"
+                                          onClick={() => traceDocument(po.poNumber, 'INVENTORY_LEDGER')}
+                                          className="sap-doc-link fiori-ltr-code font-bold font-mono"
+                                        >
+                                          {po.poNumber}
+                                        </button>
+                                        <div className="text-[10px] text-[var(--fiori-text-primary)] mt-0.5">
+                                          تامین‌کننده: {po.supplier} | زمان ورود: {po.expectedDate}
+                                        </div>
+                                      </div>
+                                      <div className="font-bold font-mono text-[var(--fiori-brand)] text-sm tabular-nums">
                                         +{formatNumber(po.qtyKg)} kg
                                       </div>
                                     </div>
                                   ))
                                 ) : (
-                                  <div className="text-xs text-[#666666] py-3 text-center">
+                                  <div className="text-xs text-[var(--fiori-text-secondary)] py-3 text-center">
                                     هیچ سفارش خریدی (PO) در حال حاضر در مسیر ارسال به کارخانه ثبت نشده است.
                                   </div>
                                 )}
 
-                                <div className="mt-3 p-2.5 rounded-sm bg-[#f5f5f5] border border-[#d9d9d9] text-xs">
-                                  <span className="font-bold text-[#333333] block">ارزیابی گلوگاه تامین (Bottleneck):</span>
-                                  <p className="text-[11px] text-[#666666] mt-1 leading-relaxed">
+                                <div className="mt-3 p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] text-xs">
+                                  <span className="font-bold text-[var(--fiori-text-primary)] block">ارزیابی گلوگاه تامین (Bottleneck):</span>
+                                  <p className="text-[11px] text-[var(--fiori-text-secondary)] mt-1 leading-relaxed">
                                     {proj.riskReason}
                                   </p>
                                 </div>
@@ -1148,112 +1166,147 @@ export const MaterialRequirementProjectionView: React.FC<MaterialRequirementProj
               })}
             </tbody>
           </table>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Purchase Requisition (PR) Generation Modal */}
-      {selectedMaterialForPr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#333333]/40">
-          <div className="bg-[#ffffff] w-full max-w-lg rounded-sm shadow-md border border-[#d9d9d9] p-5 text-right font-sans">
-            <div className="flex items-center justify-between border-b border-[#e8e8e8] pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-sm bg-[#ffecec] text-[#bb0000] border border-[#f5b7b1] flex items-center justify-center">
-                  <ShoppingCart className="w-4 h-4" />
+      <FioriDialog
+        isOpen={Boolean(selectedMaterialForPr)}
+        onClose={() => setSelectedMaterialForPr(null)}
+        title="صدور درخواست خرید کلاف (Purchase Requisition)"
+        subtitle={selectedMaterialForPr?.material.code}
+        tone="danger"
+        size="md"
+        icon={<ShoppingCart className="w-4 h-4" />}
+        footer={
+          <div className="flex items-center justify-end gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => setSelectedMaterialForPr(null)}
+              className="sap-btn-standard px-4 py-1.5"
+            >
+              انصراف
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmIssuePr}
+              className="px-5 py-1.5 bg-[var(--fiori-negative)] hover:opacity-90 text-white rounded-[var(--fiori-radius-sm)] font-bold cursor-pointer flex items-center gap-1.5"
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+              <span>ثبت قطعی و ارسال به تدارکات (PR)</span>
+            </button>
+          </div>
+        }
+      >
+        {selectedMaterialForPr && (
+          <div className="space-y-3.5 text-xs">
+            <div className="bg-[var(--fiori-bg-subtle)] p-3 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-bold text-[var(--fiori-text-primary)] text-sm">
+                  {selectedMaterialForPr.material.name}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => traceDocument(selectedMaterialForPr.material.code, 'INVENTORY_LEDGER')}
+                  className="sap-doc-link fiori-ltr-code text-xs font-mono"
+                >
+                  {selectedMaterialForPr.material.code}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2 text-[var(--fiori-text-secondary)]">
+                <div>
+                  تامین‌کننده پیش‌فرض:{' '}
+                  <strong className="text-[var(--fiori-text-primary)]">
+                    {selectedMaterialForPr.material.supplierName}
+                  </strong>
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-[#333333]">صدور درخواست خرید کلاف (Purchase Requisition)</h3>
+                  زمان تامین استاندارد:{' '}
+                  <strong className="text-[var(--fiori-text-primary)]">
+                    {selectedMaterialForPr.material.leadTimeDays} روز
+                  </strong>
+                </div>
+                <div>
+                  پیش‌بینی نقطه کسری:{' '}
+                  <strong className="text-[var(--fiori-negative)]">
+                    {selectedMaterialForPr.deficitDay}
+                  </strong>
+                </div>
+                <div>
+                  مقدار پیشنهادی MRP:{' '}
+                  <strong className="font-mono text-[var(--fiori-brand)] tabular-nums">
+                    {formatNumber(selectedMaterialForPr.suggestedQty)} kg
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">
+                تیراژ / تناژ درخواستی (کیلوگرم):
+              </label>
+              <input
+                type="text"
+                value={prCustomQty}
+                onChange={e => setPrCustomQty(e.target.value)}
+                className="w-full px-3 py-1.5 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] text-sm font-bold font-mono text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)] tabular-nums"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">
+                اولویت تدارکات:
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  {
+                    id: 'URGENT' as const,
+                    label: 'فوری / توقف خط',
+                    color: 'bg-[var(--fiori-negative-bg)] border-[var(--fiori-negative-border)] text-[var(--fiori-negative)]',
+                  },
+                  {
+                    id: 'HIGH' as const,
+                    label: 'اولویت بالا',
+                    color: 'bg-[var(--fiori-warning-bg)] border-[var(--fiori-warning-border)] text-[var(--fiori-warning)]',
+                  },
+                  {
+                    id: 'NORMAL' as const,
+                    label: 'عادی',
+                    color: 'bg-[var(--fiori-bg-subtle)] border-[var(--fiori-border-default)] text-[var(--fiori-text-primary)]',
+                  },
+                ].map(p => (
                   <button
+                    key={p.id}
                     type="button"
-                    onClick={() => traceDocument(selectedMaterialForPr.material.code, 'INVENTORY_LEDGER')}
-                    className="sap-doc-link text-xs font-mono"
+                    onClick={() => setPrPriority(p.id)}
+                    className={`p-2 rounded-[var(--fiori-radius-sm)] border text-center font-bold text-xs cursor-pointer transition ${
+                      prPriority === p.id
+                        ? `${p.color} ring-1 ring-[var(--fiori-brand)]`
+                        : 'border-[var(--fiori-border-default)] text-[var(--fiori-text-secondary)]'
+                    }`}
                   >
-                    {selectedMaterialForPr.material.code}
+                    {p.label}
                   </button>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedMaterialForPr(null)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3.5 text-xs">
-              <div className="bg-[#f7f7f7] p-3 rounded-sm border border-[#d9d9d9]">
-                <div className="font-bold text-[#333333] text-sm">{selectedMaterialForPr.material.name}</div>
-                <div className="grid grid-cols-2 gap-2 mt-2 text-[#666666]">
-                  <div>تامین‌کننده پیش‌فرض: <strong className="text-[#333333]">{selectedMaterialForPr.material.supplierName}</strong></div>
-                  <div>زمان تامین استاندارد: <strong className="text-[#333333]">{selectedMaterialForPr.material.leadTimeDays} روز</strong></div>
-                  <div>پیش‌بینی نقطه کسری: <strong className="text-[#bb0000]">{selectedMaterialForPr.deficitDay}</strong></div>
-                  <div>مقدار پیشنهادی MRP: <strong className="font-mono text-[#007cc0]">{formatNumber(selectedMaterialForPr.suggestedQty)} kg</strong></div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">تیراژ / تناژ درخواستی (کیلوگرم):</label>
-                <input
-                  type="text"
-                  value={prCustomQty}
-                  onChange={e => setPrCustomQty(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-[#ffffff] border border-[#bfbfbf] rounded-sm text-sm font-bold font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">اولویت تدارکات:</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'URGENT' as const, label: 'فوری / توقف خط', color: 'bg-[#ffecec] border-[#f5b7b1] text-[#bb0000]' },
-                    { id: 'HIGH' as const, label: 'اولویت بالا', color: 'bg-[#fff4e5] border-[#f9d6a7] text-[#e9730c]' },
-                    { id: 'NORMAL' as const, label: 'عادی', color: 'bg-[#f5f5f5] border-[#d9d9d9] text-[#333333]' },
-                  ].map(p => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setPrPriority(p.id)}
-                      className={`p-2 rounded-sm border text-center font-bold text-xs cursor-pointer transition ${
-                        prPriority === p.id ? `${p.color} ring-1 ring-[#007cc0]` : 'border-[#d9d9d9] text-[#666666]'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">توضیحات و دستور اقدام به واحد تدارکات:</label>
-                <textarea
-                  rows={2}
-                  value={prNote}
-                  onChange={e => setPrNote(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-[#ffffff] border border-[#bfbfbf] rounded-sm text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                ></textarea>
+                ))}
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#e8e8e8] flex items-center justify-end gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setSelectedMaterialForPr(null)}
-                className="sap-btn-standard px-4 py-1.5"
-              >
-                انصراف
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmIssuePr}
-                className="px-5 py-1.5 bg-[#bb0000] hover:bg-[#990000] text-white rounded-sm font-bold cursor-pointer flex items-center gap-1.5"
-              >
-                <ShoppingCart className="w-3.5 h-3.5" />
-                <span>ثبت قطعی و ارسال به تدارکات (PR)</span>
-              </button>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">
+                توضیحات و دستور اقدام به واحد تدارکات:
+              </label>
+              <textarea
+                rows={2}
+                value={prNote}
+                onChange={e => setPrNote(e.target.value)}
+                className="w-full px-3 py-1.5 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+              />
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </FioriDialog>
+    </FioriDynamicPage>
   );
 };

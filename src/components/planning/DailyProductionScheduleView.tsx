@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Calendar,
   Printer,
-  CheckCircle2,
   Clock,
   Cpu,
   Building,
@@ -13,6 +11,14 @@ import { formatNumber, toPersianDigits } from '../../utils/formatters';
 import { formatToJalali } from '../../utils/jalali';
 import { JalaliDatePicker } from '../common/JalaliDatePicker';
 import { useErpRouter } from '../../context/RouterContext';
+import {
+  FioriDataTable,
+  FioriDynamicPage,
+  FioriObjectStatus,
+  FioriTableColumn,
+  FioriToolbar,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 interface DailyScheduleItem {
   id: string;
@@ -115,64 +121,209 @@ export const DailyProductionScheduleView: React.FC = () => {
     loadScheduleFromLiveOrders();
   }, [loadScheduleFromLiveOrders]);
 
-  const filteredItems = items.filter(item => {
-    if (selectedHall !== 'ALL' && item.hallId !== selectedHall) return false;
-    if (selectedShift !== 'ALL' && item.shift !== selectedShift) return false;
-    return true;
-  });
+  const filteredItems = useMemo(
+    () =>
+      items.filter(item => {
+        if (selectedHall !== 'ALL' && item.hallId !== selectedHall) return false;
+        if (selectedShift !== 'ALL' && item.shift !== selectedShift) return false;
+        return true;
+      }),
+    [items, selectedHall, selectedShift]
+  );
 
-  const totalPlanned = filteredItems.reduce((acc, i) => acc + i.plannedQuantity, 0);
-  const totalProduced = filteredItems.reduce((acc, i) => acc + i.actualProducedQuantity, 0);
+  const totalPlanned = useMemo(
+    () => filteredItems.reduce((acc, i) => acc + i.plannedQuantity, 0),
+    [filteredItems]
+  );
+  const totalProduced = useMemo(
+    () => filteredItems.reduce((acc, i) => acc + i.actualProducedQuantity, 0),
+    [filteredItems]
+  );
   const achievementRate = totalPlanned > 0 ? Math.round((totalProduced / totalPlanned) * 100) : 0;
 
+  const activeFiltersCount = (selectedHall !== 'ALL' ? 1 : 0) + (selectedShift !== 'ALL' ? 1 : 0);
+
+  const columns: FioriTableColumn<DailyScheduleItem>[] = useMemo(
+    () => [
+      {
+        key: 'shift',
+        header: 'تاریخ / شیفت',
+        render: item => (
+          <div>
+            <div className="font-mono font-semibold text-[var(--fiori-text-primary)] tabular-nums">
+              {scheduleDate}
+            </div>
+            <div className="text-[11px] text-[var(--fiori-text-secondary)]">{item.shiftName}</div>
+          </div>
+        ),
+      },
+      {
+        key: 'machine',
+        header: 'سالن و ماشین',
+        render: item => (
+          <div>
+            <div className="font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1">
+              <Cpu className="w-3.5 h-3.5 text-[var(--fiori-brand)] shrink-0" />
+              <span>{item.machineName}</span>
+            </div>
+            <div className="text-[11px] text-[var(--fiori-text-secondary)]">{item.hallName}</div>
+          </div>
+        ),
+      },
+      {
+        key: 'mo',
+        header: 'دستور کار / مرحله',
+        render: item => (
+          <div>
+            <button
+              type="button"
+              onClick={() => traceDocument(item.moNumber, 'WIP_TRACEABILITY')}
+              className="sap-doc-link font-mono font-semibold fiori-ltr-code cursor-pointer"
+              title="رهگیری دستور کار در جریان ساخت"
+            >
+              {item.moNumber}
+            </button>
+            <div className="text-[11px] text-[var(--fiori-text-secondary)]">
+              <span className="fiori-ltr-code">{item.stepCode}</span> — {item.stepName}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'part',
+        header: 'قطعه',
+        render: item => (
+          <div>
+            <div className="font-semibold text-[var(--fiori-text-primary)]">{item.partName}</div>
+            <button
+              type="button"
+              onClick={() => traceDocument(item.partCode, 'INVENTORY_LEDGER')}
+              className="sap-doc-link text-[11px] font-mono fiori-ltr-code cursor-pointer"
+              title="رهگیری قطعه در انبار و کاردکس"
+            >
+              {item.partCode}
+            </button>
+          </div>
+        ),
+      },
+      {
+        key: 'plannedQuantity',
+        header: 'هدف برنامه',
+        align: 'center',
+        isMono: true,
+        sortable: true,
+        sortValue: item => item.plannedQuantity,
+        render: item => (
+          <span className="font-semibold text-[var(--fiori-text-primary)] tabular-nums">
+            {formatNumber(item.plannedQuantity)}
+          </span>
+        ),
+      },
+      {
+        key: 'actualProducedQuantity',
+        header: 'تولید سالم',
+        align: 'center',
+        isMono: true,
+        sortable: true,
+        sortValue: item => item.actualProducedQuantity,
+        render: item => (
+          <span className="font-semibold text-[var(--fiori-positive)] tabular-nums">
+            {formatNumber(item.actualProducedQuantity)}
+          </span>
+        ),
+      },
+      {
+        key: 'scrapQuantity',
+        header: 'ضایعات',
+        align: 'center',
+        isMono: true,
+        sortable: true,
+        sortValue: item => item.scrapQuantity,
+        render: item => (
+          <span className="text-[var(--fiori-negative)] tabular-nums">
+            {formatNumber(item.scrapQuantity)}
+          </span>
+        ),
+      },
+      {
+        key: 'operatorName',
+        header: 'اپراتور',
+        render: item => (
+          <span className="inline-flex items-center gap-1 text-[var(--fiori-text-primary)]">
+            <User className="w-3 h-3 text-[var(--fiori-text-muted)] shrink-0" />
+            <span>{item.operatorName}</span>
+          </span>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'وضعیت',
+        align: 'center',
+        render: item => {
+          if (item.status === 'COMPLETED') {
+            return <FioriObjectStatus tone="positive" label="تکمیل" icon size="sm" />;
+          }
+          if (item.status === 'IN_PROGRESS') {
+            return <FioriObjectStatus tone="critical" label="در حال تولید" size="sm" />;
+          }
+          return <FioriObjectStatus tone="neutral" label="برنامه‌ریزی‌شده" size="sm" />;
+        },
+      },
+    ],
+    [scheduleDate, traceDocument]
+  );
+
   return (
-    <div className="space-y-5" dir="rtl">
-      <div className="sap-card p-4 space-y-3.5 no-print">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2 rounded-sm bg-[#e5f3fa] border border-[#b3ddf2] text-[#007cc0] shrink-0">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-bold text-[#333333]">
-                برنامه روزانه کارخانه به تفکیک سالن و دستور کار زنده (Live Daily Schedule)
-              </h2>
-              <p className="text-xs text-[#666666] mt-0.5">
-                متصل به دستور کارهای فعال کارگاه (WIP Orders)، سالن‌های استقرار و آمار لحظه‌ای تولید سالم/ضایعات
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={loadScheduleFromLiveOrders}
-              disabled={loading}
-              className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>بروزرسانی زنده</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>چاپ برنامه روزانه</span>
-            </button>
-          </div>
+    <FioriDynamicPage
+      title="برنامه روزانه کارخانه به تفکیک سالن و دستور کار زنده (Live Daily Schedule)"
+      subtitle="متصل به دستور کارهای فعال کارگاه (WIP Orders)، سالن‌های استقرار و آمار لحظه‌ای تولید سالم/ضایعات"
+      status={
+        <FioriObjectStatus
+          tone="info"
+          label={`تحقق برنامه: ${toPersianDigits(achievementRate)}٪`}
+          size="sm"
+        />
+      }
+      activeFiltersCount={activeFiltersCount}
+      onResetFilters={() => {
+        setSelectedHall('ALL');
+        setSelectedShift('ALL');
+      }}
+      headerActions={
+        <div className="flex items-center gap-2 no-print">
+          <button
+            type="button"
+            onClick={loadScheduleFromLiveOrders}
+            disabled={loading}
+            className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${
+                loading ? 'animate-spin text-[var(--fiori-brand)]' : 'text-[var(--fiori-text-secondary)]'
+              }`}
+            />
+            <span>بروزرسانی زنده</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>چاپ برنامه روزانه</span>
+          </button>
         </div>
-
-        <div className="pt-3 border-t border-[#e8e8e8] flex flex-wrap items-center justify-between gap-3 text-xs">
+      }
+      filterBar={
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs no-print">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 bg-[#f7f7f7] border border-[#d9d9d9] rounded-sm px-3 py-1">
-              <Building className="w-3.5 h-3.5 text-[#007cc0]" />
-              <span className="text-[#666666] font-medium">سالن استقرار:</span>
+            <div className="inline-flex items-center gap-2 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] px-3 py-1">
+              <Building className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+              <span className="text-[var(--fiori-text-secondary)] font-medium">سالن استقرار:</span>
               <select
                 value={selectedHall}
                 onChange={e => setSelectedHall(e.target.value)}
-                className="bg-transparent font-bold text-[#333333] focus:outline-none cursor-pointer"
+                className="bg-transparent font-semibold text-[var(--fiori-text-primary)] focus:outline-none cursor-pointer"
               >
                 <option value="ALL">همه سالن‌ها ({toPersianDigits(items.length)} عملیات)</option>
                 {halls.map(h => (
@@ -183,13 +334,13 @@ export const DailyProductionScheduleView: React.FC = () => {
               </select>
             </div>
 
-            <div className="inline-flex items-center gap-2 bg-[#f7f7f7] border border-[#d9d9d9] rounded-sm px-3 py-1">
-              <Clock className="w-3.5 h-3.5 text-[#666666]" />
-              <span className="text-[#666666] font-medium">شیفت:</span>
+            <div className="inline-flex items-center gap-2 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] px-3 py-1">
+              <Clock className="w-3.5 h-3.5 text-[var(--fiori-text-muted)]" />
+              <span className="text-[var(--fiori-text-secondary)] font-medium">شیفت:</span>
               <select
                 value={selectedShift}
                 onChange={e => setSelectedShift(e.target.value)}
-                className="bg-transparent font-bold text-[#333333] focus:outline-none cursor-pointer"
+                className="bg-transparent font-semibold text-[var(--fiori-text-primary)] focus:outline-none cursor-pointer"
               >
                 <option value="ALL">همه شیفت‌ها</option>
                 <option value="MORNING">شیفت صبح (۰۷:۰۰ - ۱۵:۰۰)</option>
@@ -203,112 +354,48 @@ export const DailyProductionScheduleView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4 text-xs font-mono tabular-nums">
-            <span className="text-[#666666]">
-              برنامه: <strong className="text-[#333333]">{formatNumber(totalPlanned)}</strong>
+            <span className="text-[var(--fiori-text-secondary)]">
+              برنامه: <strong className="text-[var(--fiori-text-primary)]">{formatNumber(totalPlanned)}</strong>
             </span>
-            <span className="text-[#107e3e]">
+            <span className="text-[var(--fiori-positive)]">
               تحقق‌یافته: <strong>{formatNumber(totalProduced)}</strong> ({toPersianDigits(achievementRate)}٪)
             </span>
           </div>
         </div>
-      </div>
-
-      {/* Live Table */}
-      <div className="sap-card overflow-hidden">
-        {loading && items.length === 0 ? (
-          <div className="p-10 text-center text-xs text-[#666666]">در حال بارگذاری برنامه زنده سالن‌ها...</div>
-        ) : filteredItems.length === 0 ? (
-          <div className="p-10 text-center text-xs text-[#666666]">
-            هیچ مرحله عملیاتی فعالی برای نمایش در این فیلتر وجود ندارد.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="sap-table-compact w-full text-right text-xs">
-              <thead className="bg-[#f5f5f5] border-b border-[#d9d9d9] text-[#666666] font-bold">
-                <tr>
-                  <th>تاریخ / شیفت</th>
-                  <th>سالن و ماشین</th>
-                  <th>دستور کار / مرحله</th>
-                  <th>قطعه</th>
-                  <th className="text-center">هدف برنامه</th>
-                  <th className="text-center text-[#107e3e]">تولید سالم</th>
-                  <th className="text-center text-[#bb0000]">ضایعات</th>
-                  <th>اپراتور</th>
-                  <th className="text-center">وضعیت</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8e8e8] tabular-nums">
-                {filteredItems.map(item => (
-                  <tr key={item.id} className="hover:bg-[#f5f5f5] transition-colors">
-                    <td>
-                      <div className="font-mono font-bold text-[#333333]">{scheduleDate}</div>
-                      <div className="text-[11px] text-[#666666]">{item.shiftName}</div>
-                    </td>
-                    <td>
-                      <div className="font-bold text-[#333333] flex items-center gap-1">
-                        <Cpu className="w-3.5 h-3.5 text-[#007cc0]" />
-                        <span>{item.machineName}</span>
-                      </div>
-                      <div className="text-[11px] text-[#666666]">{item.hallName}</div>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => traceDocument(item.moNumber, 'WIP_TRACEABILITY')}
-                        className="sap-doc-link font-mono font-bold"
-                        title="رهگیری دستور کار در جریان ساخت"
-                      >
-                        {item.moNumber}
-                      </button>
-                      <div className="text-[11px] text-[#666666]">
-                        {item.stepCode} — {item.stepName}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="font-semibold text-[#333333]">{item.partName}</div>
-                      <button
-                        type="button"
-                        onClick={() => traceDocument(item.partCode, 'INVENTORY_LEDGER')}
-                        className="sap-doc-link text-[11px] font-mono"
-                        title="رهگیری قطعه در انبار و کاردکس"
-                      >
-                        {item.partCode}
-                      </button>
-                    </td>
-                    <td className="text-center font-mono font-bold text-[#333333]">
-                      {formatNumber(item.plannedQuantity)}
-                    </td>
-                    <td className="text-center font-mono font-bold text-[#107e3e]">
-                      {formatNumber(item.actualProducedQuantity)}
-                    </td>
-                    <td className="text-center font-mono text-[#bb0000]">
-                      {formatNumber(item.scrapQuantity)}
-                    </td>
-                    <td className="text-[#333333]">
-                      <span className="inline-flex items-center gap-1">
-                        <User className="w-3 h-3 text-[#666666]" />
-                        {item.operatorName}
-                      </span>
-                    </td>
-                    <td className="text-center">
-                      {item.status === 'COMPLETED' ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#107e3e]">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          تکمیل
-                        </span>
-                      ) : item.status === 'IN_PROGRESS' ? (
-                        <span className="text-[11px] font-bold text-[#e9730c]">در حال تولید</span>
-                      ) : (
-                        <span className="text-[11px] text-[#666666]">برنامه‌ریزی‌شده</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
+      }
+    >
+      <FioriDataTable
+        columns={columns}
+        data={filteredItems}
+        rowKey={item => item.id}
+        loading={loading && items.length === 0}
+        compact
+        bordered
+        toolbar={
+          <FioriToolbar
+            variant="table"
+            title="جدول برنامه شیفتی و وضعیت پیشرفت عملیات"
+            count={filteredItems.length}
+            countLabel="عملیات"
+          />
+        }
+        emptyState={
+          <EmptyState
+            variant={activeFiltersCount > 0 ? 'FILTER_NO_MATCH' : 'NO_SCHEDULE'}
+            compact
+            title="هیچ مرحله عملیاتی فعالی برای نمایش در این فیلتر وجود ندارد"
+            actionLabel={activeFiltersCount > 0 ? 'پاک‌کردن فیلترها' : undefined}
+            onAction={
+              activeFiltersCount > 0
+                ? () => {
+                    setSelectedHall('ALL');
+                    setSelectedShift('ALL');
+                  }
+                : undefined
+            }
+          />
+        }
+      />
+    </FioriDynamicPage>
   );
 };

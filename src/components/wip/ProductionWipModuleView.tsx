@@ -56,6 +56,16 @@ import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
 import { MoRelationalGuideModal } from '../production/MoRelationalGuideModal';
 import { WipHallMoDistributionChart } from './WipHallMoDistributionChart';
 import { usePersistedOpen, usePersistedExpandMap } from '../../hooks/usePersistedCollapse';
+import {
+  FioriDataTable,
+  FioriDialog,
+  FioriDynamicPage,
+  FioriMessageStrip,
+  FioriObjectStatus,
+  FioriTableColumn,
+  FioriToolbar,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 export type WipViewMode =
   | 'UNIFIED_DIRECTORY'
@@ -852,84 +862,164 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
   };
 
   return (
-    <div className="space-y-2.5">
-      {/* SAP HANA Fiori Header + Unified Filter Bar */}
-      <div className="bg-white border border-[#d9d9d9] rounded-md p-3 shadow-2xs space-y-2.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-md bg-[#e5f3fa] border border-[#b3ddf2] text-[#007cc0] flex items-center justify-center shrink-0">
-              <GitBranch className="w-4 h-4" />
+    <FioriDynamicPage
+      title="قطعات در جریان ساخت و ایستگاه‌ها (WIP)"
+      subtitle="مدیریت یکپارچه دستورهای کار ساخت (MO)، صف ایستگاه‌های پرس و جوش، و حواله‌های انتقال بین مراحل"
+      status={
+        metrics?.overallConservationIntegrity ? (
+          <FioriObjectStatus
+            tone="positive"
+            label="تراز پایستگی تایید شده"
+            icon={<ShieldCheck className="w-3 h-3" />}
+          />
+        ) : undefined
+      }
+      collapsibleFilters={false}
+      activeFiltersCount={
+        (searchQuery.trim() ? 1 : 0) +
+        (statusFilter !== 'ALL' ? 1 : 0) +
+        (onlyActiveQueue ? 1 : 0)
+      }
+      onResetFilters={() => {
+        setSearchQuery('');
+        setStatusFilter('ALL');
+        setOnlyActiveQueue(false);
+      }}
+      headerActions={
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsMoGuideOpen(true)}
+            className="sap-btn-standard inline-flex items-center gap-1.5 text-xs cursor-pointer whitespace-nowrap text-[var(--fiori-brand)]"
+            title="راهنمای تصویری ثبت MO، صدور سرکلاف و رفع خطای OP10"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>راهنمای تصویری MO / OP10</span>
+          </button>
+          <button
+            type="button"
+            onClick={loadWipData}
+            disabled={loading}
+            className="sap-btn-standard inline-flex items-center gap-1.5 text-xs cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-[var(--fiori-brand)] ${loading ? 'animate-spin' : ''}`} />
+            <span>به‌روزرسانی</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCreateMoOpen(true)}
+            className="sap-btn-emphasized inline-flex items-center gap-1.5 text-xs cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>دستور کار جدید (MO)</span>
+          </button>
+        </div>
+      }
+      kpiStrip={
+        loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="bg-[var(--fiori-bg-surface)] p-3 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)] space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <Skeleton variant="text" className="w-20 h-3" />
+                  <Skeleton variant="circle" className="w-4 h-4" />
+                </div>
+                <Skeleton variant="block" className="w-16 h-6" />
+                <Skeleton variant="text" className="w-24 h-2.5" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
+              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
+                <span>صف ورودی ایستگاه</span>
+                <Clock className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+              </div>
+              <div className="text-sm font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums mt-0.5">
+                {formatNumber(metrics?.totalWaitingQty || 0)}
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-sm font-bold text-[#333333] tracking-tight">
-                  قطعات در جریان ساخت و ایستگاه‌ها (WIP)
-                </h1>
-                {metrics?.overallConservationIntegrity && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-[#f1f8f3] text-[#107e3e] border border-[#b7dfc4]">
-                    <ShieldCheck className="w-3 h-3 text-[#107e3e]" />
-                    <span>تراز پایستگی تایید شده</span>
-                  </span>
+
+            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
+              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
+                <span>در حال ساخت پای دستگاه</span>
+                <Play className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+              </div>
+              <div className="text-sm font-bold text-[var(--fiori-brand)] font-mono tabular-nums mt-0.5">
+                {formatNumber(metrics?.totalInProgressQty || 0)}
+              </div>
+            </div>
+
+            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
+              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
+                <span>آماده انتقال به مرحله بعد</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
+              </div>
+              <div className="text-sm font-bold text-[var(--fiori-positive)] font-mono tabular-nums mt-0.5">
+                {formatNumber(metrics?.totalReadyForTransferQty || 0)}
+              </div>
+            </div>
+
+            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
+              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
+                <span>در حال انتقال (حواله باز)</span>
+                <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--fiori-critical)]" />
+              </div>
+              <div className="text-sm font-bold text-[var(--fiori-critical)] font-mono tabular-nums mt-0.5">
+                {formatNumber(metrics?.totalInTransitQty || 0)}
+              </div>
+            </div>
+
+            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
+              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
+                <span>محصول تکمیل‌شده</span>
+                <Layers className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+              </div>
+              <div className="text-sm font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums mt-0.5">
+                {formatNumber(metrics?.totalCompletedQty || 0)}
+              </div>
+            </div>
+
+            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
+              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
+                <span>ضایعات و دوباره‌کاری</span>
+                <AlertCircle className="w-3.5 h-3.5 text-[var(--fiori-negative)]" />
+              </div>
+              <div className="text-sm font-bold text-[var(--fiori-negative)] font-mono tabular-nums mt-0.5">
+                {formatNumber(
+                  (metrics?.totalScrapQty || 0) + (metrics?.totalReworkQty || 0)
                 )}
               </div>
-              <p className="text-[11px] text-[#666666]">
-                مدیریت یکپارچه دستورهای کار ساخت (MO)، صف ایستگاه‌های پرس و جوش، و حواله‌های انتقال بین مراحل
-              </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-1.5 flex-wrap self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setIsMoGuideOpen(true)}
-              className="px-2.5 py-1.5 rounded border border-[#b3ddf2] bg-[#e5f3fa] hover:bg-[#d2eaf7] text-[#0057b8] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-              title="راهنمای تصویری ثبت MO، صدور سرکلاف و رفع خطای OP10"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>راهنمای تصویری MO / OP10</span>
-            </button>
-            <button
-              type="button"
-              onClick={loadWipData}
-              disabled={loading}
-              className="sap-btn-standard inline-flex items-center gap-1.5 text-xs cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-[#007cc0] ${loading ? 'animate-spin' : ''}`} />
-              <span>به‌روزرسانی</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsCreateMoOpen(true)}
-              className="sap-btn-emphasized inline-flex items-center gap-1.5 text-xs cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>دستور کار جدید (MO)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Unified SAP Fiori Filter Bar */}
-        <div className="space-y-2 pt-2 border-t border-[#e5e5e5]">
+        )
+      }
+      filterBar={
+        <div className="space-y-2">
           <div className="relative">
-            <Search className="w-4 h-4 text-[#666666] absolute right-3 top-2 pointer-events-none" />
+            <Search className="w-4 h-4 text-[var(--fiori-text-secondary)] absolute right-3 top-2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="جستجوی شماره دستور کار (MO)، کد قطعه، نام قطعه یا ایستگاه کاری..."
-              className="w-full bg-[#f5f5f5] focus:bg-white border border-[#d9d9d9] focus:border-[#007cc0] rounded pr-9 pl-3 py-1.5 text-xs text-[#333333] placeholder:text-[#767676] focus:outline-none transition-colors"
+              className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] focus:border-[var(--fiori-border-focus)] rounded-[var(--fiori-radius-sm)] pr-9 pl-3 py-1.5 text-xs text-[var(--fiori-text-primary)] placeholder:text-[var(--fiori-text-muted)] focus:outline-none transition-colors"
             />
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 bg-white border border-[#d9d9d9] rounded px-2.5 py-1 text-[#333333]">
-                <Boxes className="w-3.5 h-3.5 text-[#007cc0]" />
-                <span className="text-[#666666]">نمای بخش:</span>
+              <div className="inline-flex items-center gap-1.5 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1 text-[var(--fiori-text-primary)]">
+                <Boxes className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                <span className="text-[var(--fiori-text-secondary)]">نمای بخش:</span>
                 <select
                   value={activeView}
                   onChange={e => handleChangeView(e.target.value as WipViewMode)}
-                  className="bg-transparent text-xs font-semibold text-[#333333] focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs font-semibold text-[var(--fiori-text-primary)] focus:outline-none cursor-pointer"
                 >
                   <option value="UNIFIED_DIRECTORY">
                     نمای درختی یکپارچه (همه دستورات کار و ایستگاه‌ها)
@@ -951,12 +1041,12 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                 </select>
               </div>
 
-              <div className="inline-flex items-center gap-1.5 bg-white border border-[#d9d9d9] rounded px-2.5 py-1 text-[#333333]">
-                <Filter className="w-3.5 h-3.5 text-[#666666]" />
+              <div className="inline-flex items-center gap-1.5 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1 text-[var(--fiori-text-primary)]">
+                <Filter className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)]" />
                 <select
                   value={statusFilter}
                   onChange={e => setStatusFilter(e.target.value)}
-                  className="bg-transparent text-xs font-medium text-[#333333] focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs font-medium text-[var(--fiori-text-primary)] focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">وضعیت MO: همه</option>
                   <option value="IN_PROGRESS">در جریان ساخت</option>
@@ -966,12 +1056,12 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                 </select>
               </div>
 
-              <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-[#d9d9d9] bg-white text-[#333333] cursor-pointer select-none hover:bg-[#f5f5f5]">
+              <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-primary)] cursor-pointer select-none hover:bg-[var(--fiori-bg-hover)]">
                 <input
                   type="checkbox"
                   checked={onlyActiveQueue}
                   onChange={e => setOnlyActiveQueue(e.target.checked)}
-                  className="rounded border-[#bfbfbf] text-[#007cc0] focus:ring-0"
+                  className="rounded border-[var(--fiori-border-input)] text-[var(--fiori-brand)] focus:ring-0"
                 />
                 <span>فقط دارای موجودی در صف</span>
               </label>
@@ -983,12 +1073,12 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                 onClick={() =>
                   handleChangeView(activeView === 'BOTTLENECK' ? 'UNIFIED_DIRECTORY' : 'BOTTLENECK')
                 }
-                className={`px-2.5 py-1 rounded border text-[11px] font-semibold cursor-pointer flex items-center gap-1.5 transition-colors ${
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] border text-[11px] font-semibold cursor-pointer flex items-center gap-1.5 transition-colors tabular-nums ${
                   activeView === 'BOTTLENECK'
-                    ? 'bg-[#007cc0] text-white border-[#007cc0]'
+                    ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)]'
                     : bottleneckAnalysis.criticalCount > 0
-                    ? 'bg-[#fde8e8] text-[#bb0000] border-[#f5b8b8] hover:bg-[#fbd5d5]'
-                    : 'bg-white text-[#333333] border-[#d9d9d9] hover:bg-[#e5f3fa]'
+                    ? 'bg-[var(--fiori-negative-bg)] text-[var(--fiori-negative)] border-[var(--fiori-negative-border)] hover:opacity-90'
+                    : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-primary)] border-[var(--fiori-border-default)] hover:bg-[var(--fiori-bg-selected)]'
                 }`}
               >
                 <Gauge className="w-3.5 h-3.5" />
@@ -1008,115 +1098,17 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
             </div>
           </div>
         </div>
-      </div>
-
+      }
+    >
       {/* Toast Notification */}
       {notification && (
-        <div
-          className={`p-3.5 rounded-xl border flex items-center justify-between text-xs ${
-            notification.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-rose-50 border-rose-200 text-rose-800'
-          }`}
+        <FioriMessageStrip
+          tone={notification.type === 'success' ? 'success' : 'error'}
+          compact
+          onClose={() => setNotification(null)}
         >
-          <div className="flex items-center gap-2">
-            {notification.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            )}
-            <span className="font-semibold">{notification.message}</span>
-          </div>
-          <button
-            onClick={() => setNotification(null)}
-            className="text-xs opacity-70 hover:opacity-100 cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Compact 6-Stage Summary Strip */}
-      {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          {Array.from({ length: 6 }).map((_, idx) => (
-            <div
-              key={idx}
-              className="bg-white p-3 rounded-md border border-[#d9d9d9] space-y-2"
-            >
-              <div className="flex items-center justify-between">
-                <Skeleton variant="text" className="w-20 h-3" />
-                <Skeleton variant="circle" className="w-4 h-4" />
-              </div>
-              <Skeleton variant="block" className="w-16 h-6" />
-              <Skeleton variant="text" className="w-24 h-2.5" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          <div className="bg-white px-3 py-2 rounded-md border border-[#d9d9d9]">
-            <div className="flex items-center justify-between text-[#666666] text-[11px]">
-              <span>صف ورودی ایستگاه</span>
-              <Clock className="w-3.5 h-3.5 text-[#007cc0]" />
-            </div>
-            <div className="text-sm font-bold text-[#333333] font-mono tabular-nums mt-0.5">
-              {formatNumber(metrics?.totalWaitingQty || 0)}
-            </div>
-          </div>
-
-          <div className="bg-white px-3 py-2 rounded-md border border-[#d9d9d9]">
-            <div className="flex items-center justify-between text-[#666666] text-[11px]">
-              <span>در حال ساخت پای دستگاه</span>
-              <Play className="w-3.5 h-3.5 text-[#007cc0]" />
-            </div>
-            <div className="text-sm font-bold text-[#007cc0] font-mono tabular-nums mt-0.5">
-              {formatNumber(metrics?.totalInProgressQty || 0)}
-            </div>
-          </div>
-
-          <div className="bg-white px-3 py-2 rounded-md border border-[#d9d9d9]">
-            <div className="flex items-center justify-between text-[#666666] text-[11px]">
-              <span>آماده انتقال به مرحله بعد</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#107e3e]" />
-            </div>
-            <div className="text-sm font-bold text-[#107e3e] font-mono tabular-nums mt-0.5">
-              {formatNumber(metrics?.totalReadyForTransferQty || 0)}
-            </div>
-          </div>
-
-          <div className="bg-white px-3 py-2 rounded-md border border-[#d9d9d9]">
-            <div className="flex items-center justify-between text-[#666666] text-[11px]">
-              <span>در حال انتقال (حواله باز)</span>
-              <ArrowRightLeft className="w-3.5 h-3.5 text-[#e9730c]" />
-            </div>
-            <div className="text-sm font-bold text-[#b85a00] font-mono tabular-nums mt-0.5">
-              {formatNumber(metrics?.totalInTransitQty || 0)}
-            </div>
-          </div>
-
-          <div className="bg-white px-3 py-2 rounded-md border border-[#d9d9d9]">
-            <div className="flex items-center justify-between text-[#666666] text-[11px]">
-              <span>محصول تکمیل‌شده</span>
-              <Layers className="w-3.5 h-3.5 text-[#007cc0]" />
-            </div>
-            <div className="text-sm font-bold text-[#333333] font-mono tabular-nums mt-0.5">
-              {formatNumber(metrics?.totalCompletedQty || 0)}
-            </div>
-          </div>
-
-          <div className="bg-white px-3 py-2 rounded-md border border-[#d9d9d9]">
-            <div className="flex items-center justify-between text-[#666666] text-[11px]">
-              <span>ضایعات و دوباره‌کاری</span>
-              <AlertCircle className="w-3.5 h-3.5 text-[#bb0000]" />
-            </div>
-            <div className="text-sm font-bold text-[#bb0000] font-mono tabular-nums mt-0.5">
-              {formatNumber(
-                (metrics?.totalScrapQty || 0) + (metrics?.totalReworkQty || 0)
-              )}
-            </div>
-          </div>
-        </div>
+          {notification.message}
+        </FioriMessageStrip>
       )}
 
       {/* Visual MO Status Distribution Chart across Production Halls */}
@@ -1136,97 +1128,96 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
 
       {/* Real-Time Stage Bottleneck Visualizer (Embedded strip in Unified/Dashboard OR Full Panel in BOTTLENECK mode) */}
       {(activeView === 'BOTTLENECK' || activeView === 'UNIFIED_DIRECTORY' || activeView === 'DASHBOARD') && (
-        <div className="bg-white border border-[#d9d9d9] rounded-md shadow-2xs overflow-hidden">
-          <div className="px-4 py-2.5 bg-[#fafafa] border-b border-[#e5e5e5] flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Gauge className="w-4 h-4 text-[#007cc0]" />
-              <div>
-                <h2 className="text-xs font-bold text-[#333333]">
-                  پایش لحظه‌ای گلوگاه و زمان گذر ایستگاه‌ها (Real-Time Stage Bottleneck & Throughput Visualizer)
-                </h2>
-                <p className="text-[11px] text-[#666666]">
-                  محاسبه‌شده از روی موجودی لحظه‌ای ایستگاه‌ها و زمان سیکل/ستاپ مسیر عملیات (Routing) — مبنای هشدار: شیفت ۷٫۵ ساعته
-                </p>
+        <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-hidden">
+          <FioriToolbar
+            variant="table"
+            title="پایش لحظه‌ای گلوگاه و زمان گذر ایستگاه‌ها (Real-Time Stage Bottleneck & Throughput Visualizer)"
+            subtitle="محاسبه‌شده از روی موجودی لحظه‌ای ایستگاه‌ها و زمان سیکل/ستاپ مسیر عملیات (Routing) — مبنای هشدار: شیفت ۷٫۵ ساعته"
+            startContent={<Gauge className="w-4 h-4 text-[var(--fiori-brand)]" />}
+            endContent={
+              <div className="flex items-center gap-2.5 text-[11px] flex-wrap font-mono tabular-nums">
+                <span className="font-sans text-[var(--fiori-text-secondary)]">
+                  جمع WIP ایستگاه‌ها:{' '}
+                  <strong className="font-mono text-[var(--fiori-text-primary)]">
+                    {formatNumber(bottleneckAnalysis.totalWipQtyAllStages)}
+                  </strong>{' '}
+                  عدد
+                </span>
+                <span className="text-[var(--fiori-border-default)]">|</span>
+                <span className="font-sans text-[var(--fiori-text-secondary)]">
+                  کل زمان گذر صف:{' '}
+                  <strong className="font-mono text-[var(--fiori-brand)]">
+                    {toPersianDigits(bottleneckAnalysis.totalThroughputAllHours)}
+                  </strong>{' '}
+                  ساعت
+                </span>
+                {bottleneckAnalysis.criticalCount > 0 && (
+                  <FioriObjectStatus
+                    tone="negative"
+                    label={`${toPersianDigits(bottleneckAnalysis.criticalCount)} ایستگاه با تراکم بحرانی`}
+                  />
+                )}
+                {activeView !== 'BOTTLENECK' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBottleneckPanel(p => !p)}
+                    className="sap-btn-standard px-2.5 py-1 text-[11px] font-sans inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                  >
+                    <span>{showBottleneckPanel ? 'بستن جزئیات گلوگاه' : 'باز کردن نمودار گلوگاه'}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBottleneckPanel ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
               </div>
-            </div>
-
-            <div className="flex items-center gap-3 text-[11px] flex-wrap font-mono tabular-nums">
-              <span>
-                جمع WIP ایستگاه‌ها:{' '}
-                <strong className="text-[#333333]">{formatNumber(bottleneckAnalysis.totalWipQtyAllStages)}</strong> عدد
-              </span>
-              <span className="text-[#d9d9d9]">|</span>
-              <span>
-                کل زمان گذر صف:{' '}
-                <strong className="text-[#007cc0]">{toPersianDigits(bottleneckAnalysis.totalThroughputAllHours)}</strong> ساعت
-              </span>
-              {bottleneckAnalysis.criticalCount > 0 && (
-                <>
-                  <span className="text-[#d9d9d9]">|</span>
-                  <span className="font-sans font-bold text-[#bb0000]">
-                    {toPersianDigits(bottleneckAnalysis.criticalCount)} ایستگاه با تراکم بحرانی
-                  </span>
-                </>
-              )}
-              {activeView !== 'BOTTLENECK' && (
-                <button
-                  type="button"
-                  onClick={() => setShowBottleneckPanel(p => !p)}
-                  className="sap-btn-standard px-2.5 py-1 text-[11px] font-sans inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                >
-                  <span>{showBottleneckPanel ? 'بستن جزئیات گلوگاه' : 'باز کردن نمودار گلوگاه'}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBottleneckPanel ? 'rotate-180' : ''}`} />
-                </button>
-              )}
-            </div>
-          </div>
+            }
+          />
 
           {/* At-a-Glance Collapsed Bottleneck Strip */}
           {activeView !== 'BOTTLENECK' && !showBottleneckPanel && (
-            <div className="px-4 py-2 bg-[#fcfcfd] flex flex-wrap items-center justify-between gap-2.5 text-[11px]">
+            <div className="px-4 py-2 bg-[var(--fiori-bg-subtle)]/70 flex flex-wrap items-center justify-between gap-2.5 text-[11px]">
               <div className="flex items-center gap-2.5 flex-wrap">
                 {bottleneckAnalysis.peakStage && bottleneckAnalysis.peakStage.totalQty > 0 ? (
-                  <span className="inline-flex items-center gap-1.5 text-[#333333]">
+                  <span className="inline-flex items-center gap-1.5 text-[var(--fiori-text-primary)]">
                     <AlertTriangle
                       className={`w-3.5 h-3.5 shrink-0 ${
                         bottleneckAnalysis.peakStage.severity === 'CRITICAL'
-                          ? 'text-[#bb0000]'
+                          ? 'text-[var(--fiori-negative)]'
                           : bottleneckAnalysis.peakStage.severity === 'WARNING'
-                          ? 'text-[#e9730c]'
-                          : 'text-[#107e3e]'
+                          ? 'text-[var(--fiori-critical)]'
+                          : 'text-[var(--fiori-positive)]'
                       }`}
                     />
                     <span>گلوگاه اصلی:</span>
-                    <strong className="text-[#1d2d3e]">{bottleneckAnalysis.peakStage.stageName}</strong>
-                    <span className="font-mono tabular-nums text-[#556b82]">
+                    <strong className="text-[var(--fiori-text-primary)]">{bottleneckAnalysis.peakStage.stageName}</strong>
+                    <span className="font-mono tabular-nums text-[var(--fiori-text-secondary)]">
                       ({formatNumber(bottleneckAnalysis.peakStage.totalQty)} عدد ·{' '}
-                      <strong className="text-[#007cc0]">{toPersianDigits(bottleneckAnalysis.peakStage.throughputHours)}h</strong> ·{' '}
-                      {toPersianDigits(bottleneckAnalysis.peakStage.shiftLoad)} شیفت)
+                      <strong className="text-[var(--fiori-brand)]">
+                        {toPersianDigits(bottleneckAnalysis.peakStage.throughputHours)}h
+                      </strong>{' '}
+                      · {toPersianDigits(bottleneckAnalysis.peakStage.shiftLoad)} شیفت)
                     </span>
                   </span>
                 ) : (
-                  <span className="text-[#107e3e] font-medium">صف ایستگاه‌ها متعادل و بدون انباشت بحرانی است</span>
+                  <FioriObjectStatus tone="positive" variant="text" label="صف ایستگاه‌ها متعادل و بدون انباشت بحرانی است" />
                 )}
               </div>
 
-              <div className="flex items-center gap-3 flex-wrap font-mono tabular-nums text-[#556b82]">
+              <div className="flex items-center gap-3 flex-wrap font-mono tabular-nums text-[var(--fiori-text-secondary)]">
                 {bottleneckAnalysis.stages
                   .filter(s => s.totalQty > 0)
                   .slice(0, 4)
                   .map(s => (
-                    <span key={s.stageId} className="inline-flex items-center gap-1 font-sans">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          s.severity === 'CRITICAL'
-                            ? 'bg-[#bb0000]'
-                            : s.severity === 'WARNING'
-                            ? 'bg-[#e9730c]'
-                            : 'bg-[#107e3e]'
-                        }`}
-                      />
-                      <span className="text-[#333333]">{s.stageName}:</span>
-                      <strong className="font-mono text-[#1d2d3e]">{toPersianDigits(s.throughputHours)}h</strong>
-                    </span>
+                    <FioriObjectStatus
+                      key={s.stageId}
+                      variant="dot"
+                      tone={
+                        s.severity === 'CRITICAL'
+                          ? 'negative'
+                          : s.severity === 'WARNING'
+                          ? 'critical'
+                          : 'positive'
+                      }
+                      label={`${s.stageName}: ${toPersianDigits(s.throughputHours)}h`}
+                    />
                   ))}
               </div>
             </div>
@@ -1236,33 +1227,16 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
             <div className="p-4 space-y-4">
               {/* Peak Bottleneck Alert Banner */}
               {bottleneckAnalysis.peakStage && bottleneckAnalysis.peakStage.totalQty > 0 && (
-                <div
-                  className={`p-3 rounded border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs ${
+                <FioriMessageStrip
+                  tone={
                     bottleneckAnalysis.peakStage.severity === 'CRITICAL'
-                      ? 'bg-[#fde8e8] border-[#f5b8b8] text-[#bb0000]'
+                      ? 'error'
                       : bottleneckAnalysis.peakStage.severity === 'WARNING'
-                      ? 'bg-[#fff4e5] border-[#f9d6a7] text-[#b85a00]'
-                      : 'bg-[#ebf5ec] border-[#b7dfbf] text-[#107e3e]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>
-                      <strong>گلوگاه اول خط:</strong> {bottleneckAnalysis.peakStage.stageName} با{' '}
-                      <strong className="font-mono tabular-nums">
-                        {formatNumber(bottleneckAnalysis.peakStage.totalQty)}
-                      </strong>{' '}
-                      عدد انباشت WIP و زمان گذر برآوردی{' '}
-                      <strong className="font-mono tabular-nums">
-                        {toPersianDigits(bottleneckAnalysis.peakStage.throughputHours)} ساعت
-                      </strong>{' '}
-                      (معادل{' '}
-                      <strong className="font-mono tabular-nums">
-                        {toPersianDigits(bottleneckAnalysis.peakStage.shiftLoad)}
-                      </strong>{' '}
-                      شیفت کاری)
-                    </span>
-                  </div>
+                      ? 'warning'
+                      : 'success'
+                  }
+                  compact
+                  actions={
                     <button
                       type="button"
                       onClick={() => {
@@ -1271,95 +1245,112 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                         const nextId = selectedBottleneckStageId === peak.stageId ? null : peak.stageId;
                         selectBottleneckStage(nextId, peak.stageName);
                       }}
-                      className="px-2.5 py-1 rounded bg-white/80 hover:bg-white border border-current text-[11px] font-semibold cursor-pointer shrink-0 whitespace-nowrap"
+                      className="sap-btn-standard px-2.5 py-1 text-[11px] font-semibold cursor-pointer whitespace-nowrap"
                     >
                       مشاهده قطعات متوقف در این گلوگاه
                     </button>
-                  </div>
-                )}
+                  }
+                >
+                  <span>
+                    <strong>گلوگاه اول خط:</strong> {bottleneckAnalysis.peakStage.stageName} با{' '}
+                    <strong className="font-mono tabular-nums">
+                      {formatNumber(bottleneckAnalysis.peakStage.totalQty)}
+                    </strong>{' '}
+                    عدد انباشت WIP و زمان گذر برآوردی{' '}
+                    <strong className="font-mono tabular-nums">
+                      {toPersianDigits(bottleneckAnalysis.peakStage.throughputHours)} ساعت
+                    </strong>{' '}
+                    (معادل{' '}
+                    <strong className="font-mono tabular-nums">
+                      {toPersianDigits(bottleneckAnalysis.peakStage.shiftLoad)}
+                    </strong>{' '}
+                    شیفت کاری)
+                  </span>
+                </FioriMessageStrip>
+              )}
 
-                {/* Visual Color-Coded Throughput Bars Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                  {bottleneckAnalysis.stages.map(st => {
-                    const isSelected = selectedBottleneckStageId === st.stageId;
-                    const borderAccent =
-                      st.severity === 'CRITICAL'
-                        ? 'border-[#f5b8b8] border-r-4 border-r-[#bb0000] bg-[#fde8e8]/30'
-                        : st.severity === 'WARNING'
-                        ? 'border-[#f9d6a7] border-r-4 border-r-[#e9730c] bg-[#fff4e5]/40'
-                        : st.severity === 'NORMAL'
-                        ? 'border-[#d9d9d9] border-r-4 border-r-[#107e3e] bg-white'
-                        : 'border-[#e5e5e5] border-r-4 border-r-[#bfbfbf] bg-[#fafafa]';
+              {/* Visual Color-Coded Throughput Bars Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {bottleneckAnalysis.stages.map(st => {
+                  const isSelected = selectedBottleneckStageId === st.stageId;
+                  const cardSurface =
+                    st.severity === 'CRITICAL'
+                      ? 'border-[var(--fiori-negative-border)] bg-[var(--fiori-negative-bg)]/35'
+                      : st.severity === 'WARNING'
+                      ? 'border-[var(--fiori-critical-border)] bg-[var(--fiori-critical-bg)]/45'
+                      : st.severity === 'NORMAL'
+                      ? 'border-[var(--fiori-border-default)] bg-[var(--fiori-bg-surface)]'
+                      : 'border-[var(--fiori-border-subtle)] bg-[var(--fiori-bg-subtle)]';
 
-                    const barColor =
-                      st.severity === 'CRITICAL'
-                        ? 'bg-[#bb0000]'
-                        : st.severity === 'WARNING'
-                        ? 'bg-[#e9730c]'
-                        : st.severity === 'NORMAL'
-                        ? 'bg-[#107e3e]'
-                        : 'bg-[#cccccc]';
+                  const barColor =
+                    st.severity === 'CRITICAL'
+                      ? 'bg-[var(--fiori-negative)]'
+                      : st.severity === 'WARNING'
+                      ? 'bg-[var(--fiori-critical)]'
+                      : st.severity === 'NORMAL'
+                      ? 'bg-[var(--fiori-positive)]'
+                      : 'bg-[var(--fiori-border-input)]';
 
-                    const statusTextColor =
-                      st.severity === 'CRITICAL'
-                        ? 'text-[#bb0000]'
-                        : st.severity === 'WARNING'
-                        ? 'text-[#b85a00]'
-                        : st.severity === 'NORMAL'
-                        ? 'text-[#107e3e]'
-                        : 'text-[#777777]';
+                  const statusTone =
+                    st.severity === 'CRITICAL'
+                      ? 'negative'
+                      : st.severity === 'WARNING'
+                      ? 'critical'
+                      : st.severity === 'NORMAL'
+                      ? 'positive'
+                      : 'neutral';
 
-                    const statusLabel =
-                      st.severity === 'CRITICAL'
-                        ? 'انباشت بحرانی'
-                        : st.severity === 'WARNING'
-                        ? 'تراکم بالا'
-                        : st.severity === 'NORMAL'
-                        ? 'جریان پایدار'
-                        : 'صف خالی';
+                  const statusLabel =
+                    st.severity === 'CRITICAL'
+                      ? 'انباشت بحرانی'
+                      : st.severity === 'WARNING'
+                      ? 'تراکم بالا'
+                      : st.severity === 'NORMAL'
+                      ? 'جریان پایدار'
+                      : 'صف خالی';
 
-                    return (
-                      <button
-                        key={st.stageId}
-                        type="button"
-                        onClick={() =>
-                          selectBottleneckStage(isSelected ? null : st.stageId, st.stageName)
-                        }
-                        className={`p-3 rounded border text-right cursor-pointer transition-all flex flex-col justify-between gap-2 ${borderAccent} ${
-                          isSelected ? 'ring-2 ring-[#007cc0]' : 'hover:shadow-sm'
-                        }`}
-                      >
+                  return (
+                    <button
+                      key={st.stageId}
+                      type="button"
+                      onClick={() =>
+                        selectBottleneckStage(isSelected ? null : st.stageId, st.stageName)
+                      }
+                      className={`p-3 rounded-[var(--fiori-radius-md)] border text-right cursor-pointer transition-all flex flex-col justify-between gap-2 ${cardSurface} ${
+                        isSelected ? 'ring-2 ring-[var(--fiori-brand)]' : 'hover:shadow-sm'
+                      }`}
+                    >
                       <div className="space-y-1 w-full">
                         <div className="flex items-center justify-between gap-1 text-[10px]">
-                          <span className={`font-bold ${statusTextColor}`}>{statusLabel}</span>
-                          <span className="font-mono tabular-nums text-[#666666]">
+                          <FioriObjectStatus tone={statusTone} variant="text" label={statusLabel} />
+                          <span className="font-mono tabular-nums text-[var(--fiori-text-secondary)]">
                             {toPersianDigits(st.wipSharePercent)}٪ کل WIP
                           </span>
                         </div>
-                        <div className="text-xs font-bold text-[#333333] leading-snug line-clamp-1">
+                        <div className="text-xs font-bold text-[var(--fiori-text-primary)] leading-snug line-clamp-1">
                           {st.stageName}
                         </div>
                       </div>
 
                       <div className="space-y-1.5 w-full font-mono tabular-nums">
                         <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-sm font-bold text-[#333333]">
+                          <span className="text-sm font-bold text-[var(--fiori-text-primary)]">
                             {toPersianDigits(st.throughputHours)}{' '}
-                            <span className="text-[10px] font-sans font-normal text-[#666666]">ساعت</span>
+                            <span className="text-[10px] font-sans font-normal text-[var(--fiori-text-secondary)]">ساعت</span>
                           </span>
-                          <span className="text-[11px] text-[#555555]">
+                          <span className="text-[11px] text-[var(--fiori-text-secondary)]">
                             {formatNumber(st.totalQty)} <span className="font-sans">عدد</span>
                           </span>
                         </div>
 
-                        <div className="h-2 w-full bg-[#e8e8e8] rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-[var(--fiori-bg-hover)] rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-300 ${barColor}`}
                             style={{ width: `${st.barWidthPercent}%` }}
                           />
                         </div>
 
-                        <div className="flex items-center justify-between text-[10px] text-[#666666]">
+                        <div className="flex items-center justify-between text-[10px] text-[var(--fiori-text-secondary)]">
                           <span>سیکل میانگین: {toPersianDigits(st.avgCycleTimeSec)}s</span>
                           <span>{toPersianDigits(st.partsCount)} کد قطعه</span>
                         </div>
@@ -1371,146 +1362,204 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
 
               {/* Drill-down table for selected stage OR top accumulating stages in BOTTLENECK mode */}
               {(selectedBottleneckStageId || activeView === 'BOTTLENECK') && (
-                <div className="border border-[#d9d9d9] rounded overflow-hidden">
-                  <div className="px-3.5 py-2 bg-[#f5f5f5] border-b border-[#d9d9d9] flex items-center justify-between text-xs">
-                    <span className="font-bold text-[#333333]">
-                      {selectedBottleneckStageId
-                        ? `ریز قطعات و زمان گذر در: ${
-                            bottleneckAnalysis.stages.find(s => s.stageId === selectedBottleneckStageId)?.stageName ||
-                            selectedBottleneckStageId
-                          }`
-                        : 'جدول کامل زمان گذر ایستگاه‌ها و جزئیات صف قطعات (برای مشاهده قطعات روی هر ایستگاه کلیک کنید)'}
-                    </span>
-                    {selectedBottleneckStageId && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedBottleneckStageId(null)}
-                        className="text-[11px] text-[#007cc0] hover:underline cursor-pointer"
-                      >
-                        بستن جزئیات ایستگاه
-                      </button>
-                    )}
-                  </div>
+                (() => {
+                  const selectedStageObj = selectedBottleneckStageId
+                    ? bottleneckAnalysis.stages.find(s => s.stageId === selectedBottleneckStageId)
+                    : null;
 
-                  {selectedBottleneckStageId ? (
-                    (() => {
-                      const stageObj = bottleneckAnalysis.stages.find(
-                        s => s.stageId === selectedBottleneckStageId,
-                      );
-                      if (!stageObj || stageObj.partBreakdown.length === 0) {
-                        return (
-                          <div className="p-4 text-center text-xs text-[#666666]">
-                            در حال حاضر هیچ قطعه‌ای در صف این ایستگاه انباشته نشده است.
+                  if (selectedBottleneckStageId) {
+                    const partColumns: FioriTableColumn<any>[] = [
+                      {
+                        key: 'part',
+                        header: 'کد و نام قطعه',
+                        render: p => (
+                          <div>
+                            <div className="font-semibold text-[var(--fiori-text-primary)]">{p.partName}</div>
+                            <div className="text-[10px] text-[var(--fiori-text-secondary)] font-mono fiori-ltr-code inline-block">
+                              {p.partCode}
+                              {!p.hasExactRouting ? ' (سیکل استاندارد پیش‌فرض)' : ''}
+                            </div>
                           </div>
-                        );
+                        ),
+                      },
+                      {
+                        key: 'qty',
+                        header: 'تعداد موجود در ایستگاه',
+                        isMono: true,
+                        cellClassName: 'font-bold text-[var(--fiori-text-primary)]',
+                        render: p => formatNumber(p.qty),
+                      },
+                      {
+                        key: 'usableQty',
+                        header: 'قابل استفاده',
+                        isMono: true,
+                        cellClassName: 'text-[var(--fiori-positive)]',
+                        render: p => formatNumber(p.usableQty),
+                      },
+                      {
+                        key: 'inTransitQty',
+                        header: 'در حال انتقال',
+                        isMono: true,
+                        cellClassName: 'text-[var(--fiori-critical)]',
+                        render: p => formatNumber(p.inTransitQty),
+                      },
+                      {
+                        key: 'cycleTimeSec',
+                        header: 'زمان سیکل مسیر',
+                        isMono: true,
+                        render: p => `${toPersianDigits(p.cycleTimeSec)} ثانیه`,
+                      },
+                      {
+                        key: 'setupTimeMin',
+                        header: 'ستاپ (دقیقه)',
+                        isMono: true,
+                        render: p => `${toPersianDigits(p.setupTimeMin)} دقیقه`,
+                      },
+                      {
+                        key: 'throughputHours',
+                        header: 'زمان گذر (ساعت)',
+                        isMono: true,
+                        cellClassName: 'font-bold text-[var(--fiori-brand)]',
+                        render: p => `${toPersianDigits(p.throughputHours)} ساعت`,
+                      },
+                      {
+                        key: 'trace',
+                        header: 'پیگیری',
+                        render: p => (
+                          <button
+                            type="button"
+                            onClick={() => router.traceDocument(p.partCode, 'INVENTORY_LEDGER')}
+                            className="sap-doc-link inline-flex items-center gap-1 text-[11px] cursor-pointer"
+                          >
+                            <span>کاردکس</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
+                        ),
+                      },
+                    ];
+
+                    return (
+                      <FioriDataTable
+                        columns={partColumns}
+                        data={selectedStageObj?.partBreakdown || []}
+                        rowKey={p => `${selectedStageObj?.stageId}-${p.partId}`}
+                        compact
+                        toolbar={
+                          <FioriToolbar
+                            variant="table"
+                            title={`ریز قطعات و زمان گذر در: ${selectedStageObj?.stageName || selectedBottleneckStageId}`}
+                            count={selectedStageObj?.partBreakdown?.length || 0}
+                            countLabel="قطعه"
+                            endContent={
+                              <button
+                                type="button"
+                                onClick={() => setSelectedBottleneckStageId(null)}
+                                className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer"
+                              >
+                                بستن جزئیات ایستگاه
+                              </button>
+                            }
+                          />
+                        }
+                        emptyState={
+                          <EmptyState
+                            variant="NO_WIP"
+                            compact
+                            title="قطعه انباشته‌شده‌ای در این ایستگاه نیست"
+                            description="در حال حاضر هیچ قطعه‌ای در صف این ایستگاه انباشته نشده است."
+                          />
+                        }
+                      />
+                    );
+                  }
+
+                  const stageColumns: FioriTableColumn<any>[] = [
+                    {
+                      key: 'stageName',
+                      header: 'ایستگاه تولید',
+                      render: st => (
+                        <span className="font-semibold text-[var(--fiori-text-primary)]">{st.stageName}</span>
+                      ),
+                    },
+                    {
+                      key: 'totalQty',
+                      header: 'موجودی WIP',
+                      isMono: true,
+                      cellClassName: 'font-bold',
+                      render: st => formatNumber(st.totalQty),
+                    },
+                    {
+                      key: 'wipSharePercent',
+                      header: 'سهم انباشت',
+                      isMono: true,
+                      render: st => `${toPersianDigits(st.wipSharePercent)}٪`,
+                    },
+                    {
+                      key: 'avgCycleTimeSec',
+                      header: 'سیکل میانگین',
+                      isMono: true,
+                      render: st => `${toPersianDigits(st.avgCycleTimeSec)} ثانیه`,
+                    },
+                    {
+                      key: 'throughputHours',
+                      header: 'زمان گذر کل',
+                      isMono: true,
+                      cellClassName: 'font-bold text-[var(--fiori-brand)]',
+                      render: st => `${toPersianDigits(st.throughputHours)} ساعت`,
+                    },
+                    {
+                      key: 'shiftLoad',
+                      header: 'بار شیفت (۷.۵h)',
+                      isMono: true,
+                      render: st => `${toPersianDigits(st.shiftLoad)} شیفت`,
+                    },
+                    {
+                      key: 'severity',
+                      header: 'وضعیت گلوگاه',
+                      render: st => (
+                        <FioriObjectStatus
+                          variant="text"
+                          tone={
+                            st.severity === 'CRITICAL'
+                              ? 'negative'
+                              : st.severity === 'WARNING'
+                              ? 'critical'
+                              : st.severity === 'NORMAL'
+                              ? 'positive'
+                              : 'neutral'
+                          }
+                          label={
+                            st.severity === 'CRITICAL'
+                              ? 'گلوگاه بحرانی'
+                              : st.severity === 'WARNING'
+                              ? 'هشدار انباشت'
+                              : st.severity === 'NORMAL'
+                              ? 'عادی'
+                              : 'خالی'
+                          }
+                        />
+                      ),
+                    },
+                  ];
+
+                  return (
+                    <FioriDataTable
+                      columns={stageColumns}
+                      data={bottleneckAnalysis.stages}
+                      rowKey={st => st.stageId}
+                      onRowClick={st => selectBottleneckStage(st.stageId, st.stageName)}
+                      compact
+                      toolbar={
+                        <FioriToolbar
+                          variant="table"
+                          title="جدول کامل زمان گذر ایستگاه‌ها و جزئیات صف قطعات (برای مشاهده قطعات روی هر ایستگاه کلیک کنید)"
+                          count={bottleneckAnalysis.stages.length}
+                          countLabel="ایستگاه"
+                        />
                       }
-                      return (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-right border-collapse text-[11px]">
-                            <thead>
-                              <tr className="bg-[#fafafa] border-b border-[#e5e5e5] text-[#555555]">
-                                <th className="py-2 px-3 font-semibold">کد و نام قطعه</th>
-                                <th className="py-2 px-2.5 font-semibold">تعداد موجود در ایستگاه</th>
-                                <th className="py-2 px-2.5 font-semibold">قابل استفاده</th>
-                                <th className="py-2 px-2.5 font-semibold">در حال انتقال</th>
-                                <th className="py-2 px-2.5 font-semibold">زمان سیکل مسیر</th>
-                                <th className="py-2 px-2.5 font-semibold">ستاپ (دقیقه)</th>
-                                <th className="py-2 px-2.5 font-semibold">زمان گذر (ساعت)</th>
-                                <th className="py-2 px-3 font-semibold">پیگیری</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#eeeeee] font-mono tabular-nums">
-                              {stageObj.partBreakdown.map(p => (
-                                <tr key={`${stageObj.stageId}-${p.partId}`} className="hover:bg-[#f7fbfe]">
-                                  <td className="py-2 px-3 font-sans">
-                                    <div className="font-semibold text-[#333333]">{p.partName}</div>
-                                    <div className="text-[10px] text-[#666666] font-mono">
-                                      {p.partCode}
-                                      {!p.hasExactRouting ? ' (سیکل استاندارد پیش‌فرض)' : ''}
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-2.5 font-bold text-[#333333]">{formatNumber(p.qty)}</td>
-                                  <td className="py-2 px-2.5 text-[#107e3e]">{formatNumber(p.usableQty)}</td>
-                                  <td className="py-2 px-2.5 text-[#e9730c]">{formatNumber(p.inTransitQty)}</td>
-                                  <td className="py-2 px-2.5">{toPersianDigits(p.cycleTimeSec)} ثانیه</td>
-                                  <td className="py-2 px-2.5">{toPersianDigits(p.setupTimeMin)} دقیقه</td>
-                                  <td className="py-2 px-2.5 font-bold text-[#007cc0]">
-                                    {toPersianDigits(p.throughputHours)} ساعت
-                                  </td>
-                                  <td className="py-2 px-3 font-sans">
-                                    <button
-                                      type="button"
-                                      onClick={() => router.traceDocument(p.partCode, 'INVENTORY_LEDGER')}
-                                      className="sap-doc-link inline-flex items-center gap-1 text-[11px] cursor-pointer"
-                                    >
-                                      <span>کاردکس</span>
-                                      <ExternalLink className="w-3 h-3" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-right border-collapse text-[11px]">
-                        <thead>
-                          <tr className="bg-[#fafafa] border-b border-[#e5e5e5] text-[#555555]">
-                            <th className="py-2 px-3 font-semibold">ایستگاه تولید</th>
-                            <th className="py-2 px-2.5 font-semibold">موجودی WIP</th>
-                            <th className="py-2 px-2.5 font-semibold">سهم انباشت</th>
-                            <th className="py-2 px-2.5 font-semibold">سیکل میانگین</th>
-                            <th className="py-2 px-2.5 font-semibold">زمان گذر کل</th>
-                            <th className="py-2 px-2.5 font-semibold">بار شیفت (۷.۵h)</th>
-                            <th className="py-2 px-3 font-semibold">وضعیت گلوگاه</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#eeeeee] font-mono tabular-nums">
-                          {bottleneckAnalysis.stages.map(st => (
-                            <tr
-                              key={st.stageId}
-                              onClick={() => selectBottleneckStage(st.stageId, st.stageName)}
-                              className="hover:bg-[#f7fbfe] cursor-pointer"
-                            >
-                              <td className="py-2 px-3 font-sans font-semibold text-[#333333]">{st.stageName}</td>
-                              <td className="py-2 px-2.5 font-bold">{formatNumber(st.totalQty)}</td>
-                              <td className="py-2 px-2.5">{toPersianDigits(st.wipSharePercent)}٪</td>
-                              <td className="py-2 px-2.5">{toPersianDigits(st.avgCycleTimeSec)} ثانیه</td>
-                              <td className="py-2 px-2.5 font-bold text-[#007cc0]">
-                                {toPersianDigits(st.throughputHours)} ساعت
-                              </td>
-                              <td className="py-2 px-2.5">{toPersianDigits(st.shiftLoad)} شیفت</td>
-                              <td className="py-2 px-3 font-sans font-bold">
-                                <span
-                                  className={
-                                    st.severity === 'CRITICAL'
-                                      ? 'text-[#bb0000]'
-                                      : st.severity === 'WARNING'
-                                      ? 'text-[#e9730c]'
-                                      : st.severity === 'NORMAL'
-                                      ? 'text-[#107e3e]'
-                                      : 'text-[#777777]'
-                                  }
-                                >
-                                  {st.severity === 'CRITICAL'
-                                    ? 'گلوگاه بحرانی'
-                                    : st.severity === 'WARNING'
-                                    ? 'هشدار انباشت'
-                                    : st.severity === 'NORMAL'
-                                    ? 'عادی'
-                                    : 'خالی'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                    />
+                  );
+                })()
               )}
             </div>
           )}
@@ -1529,32 +1578,37 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
 
       {/* UNIFIED SAP HANA DIRECTORY VIEW */}
       {activeView === 'UNIFIED_DIRECTORY' && (
-        <div className="bg-white border border-[#d9d9d9] rounded-md overflow-hidden shadow-2xs">
-          <div className="px-3.5 py-2 bg-white border-b border-[#d9d9d9] flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-[#333333]">
-            <span>نام دستور کار (MO) / مرحله عملیات و ایستگاه</span>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => {
-                  expandAllGroups(['orders_group', 'transfers_group']);
-                  expandAllMos(filteredOrders.map(m => m.id));
-                }}
-                className="sap-btn-standard px-2 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
-              >
-                باز کردن همه
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  collapseAllMos();
-                  collapseAllGroups();
-                }}
-                className="sap-btn-standard px-2 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
-              >
-                بستن همه
-              </button>
-            </div>
-          </div>
+        <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] overflow-hidden shadow-[var(--fiori-shadow-card)]">
+          <FioriToolbar
+            variant="table"
+            title="نام دستور کار (MO) / مرحله عملیات و ایستگاه"
+            count={filteredOrders.length}
+            countLabel="دستور کار"
+            endContent={
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    expandAllGroups(['orders_group', 'transfers_group']);
+                    expandAllMos(filteredOrders.map(m => m.id));
+                  }}
+                  className="sap-btn-standard px-2 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
+                >
+                  باز کردن همه
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    collapseAllMos();
+                    collapseAllGroups();
+                  }}
+                  className="sap-btn-standard px-2 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
+                >
+                  بستن همه
+                </button>
+              </div>
+            }
+          />
 
           <div className="divide-y divide-[#e5e5e5] text-xs">
             {/* Folder 1: Active Manufacturing Orders (Expandable inline) */}
@@ -1692,17 +1746,26 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                           </div>
 
                           <div className="flex items-center gap-1.5 self-end md:self-center flex-wrap">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#f1f8f3] text-[#107e3e] border border-[#b7dfc4]">
-                              {toPersianDigits(completedOps)} از{' '}
-                              {toPersianDigits(mo.operations.length)} مرحله
-                            </span>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2]">
-                              {mo.status === 'IN_PROGRESS'
-                                ? 'در جریان ساخت'
-                                : mo.status === 'COMPLETED'
-                                ? 'تکمیل‌شده'
-                                : 'صادرشده'}
-                            </span>
+                            <FioriObjectStatus
+                              tone="positive"
+                              label={`${toPersianDigits(completedOps)} از ${toPersianDigits(mo.operations.length)} مرحله`}
+                            />
+                            <FioriObjectStatus
+                              tone={
+                                mo.status === 'COMPLETED'
+                                  ? 'positive'
+                                  : mo.status === 'IN_PROGRESS'
+                                  ? 'brand'
+                                  : 'info'
+                              }
+                              label={
+                                mo.status === 'IN_PROGRESS'
+                                  ? 'در جریان ساخت'
+                                  : mo.status === 'COMPLETED'
+                                  ? 'تکمیل‌شده'
+                                  : 'صادرشده'
+                              }
+                            />
                             {mo.status !== 'COMPLETED' && (
                               <button
                                 type="button"
@@ -1873,21 +1936,22 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                       </div>
 
                       <div className="flex items-center gap-2 self-end sm:self-center">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
+                        <FioriObjectStatus
+                          tone={
                             tr.status === 'APPROVED'
-                              ? 'bg-[#f1f8f3] text-[#107e3e] border-[#b7dfc4]'
+                              ? 'positive'
                               : tr.status === 'REJECTED'
-                              ? 'bg-[#fff0f0] text-[#bb0000] border-[#f2b8b5]'
-                              : 'bg-[#fef7f1] text-[#b85a00] border-[#f5d0b3]'
-                          }`}
-                        >
-                          {tr.status === 'APPROVED'
-                            ? 'تحویل‌گرفته در ایستگاه مقصد'
-                            : tr.status === 'REJECTED'
-                            ? 'رد شده'
-                            : 'در انتظار تایید دریافت'}
-                        </span>
+                              ? 'negative'
+                              : 'critical'
+                          }
+                          label={
+                            tr.status === 'APPROVED'
+                              ? 'تحویل‌گرفته در ایستگاه مقصد'
+                              : tr.status === 'REJECTED'
+                              ? 'رد شده'
+                              : 'در انتظار تایید دریافت'
+                          }
+                        />
                         {tr.status === 'PENDING_APPROVAL' && (
                           <button
                             type="button"
@@ -2018,323 +2082,305 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
         onOpenCreateMo={() => setIsCreateMoOpen(true)}
       />
 
-      {loadMatModalMo && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-md shadow-lg w-full max-w-md overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#e5e5e5] flex items-center justify-between bg-[#f8f9fa]">
-              <h3 className="text-xs font-bold text-[#333333]">
-                بارگذاری مواد اولیه / بلنک به دستور کار {loadMatModalMo.moNumber}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setLoadMatModalMo(null)}
-                className="text-xs text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                ✕
-              </button>
+      <FioriDialog
+        isOpen={Boolean(loadMatModalMo)}
+        onClose={() => setLoadMatModalMo(null)}
+        title={
+          loadMatModalMo
+            ? `بارگذاری مواد اولیه / بلنک به دستور کار ${loadMatModalMo.moNumber}`
+            : 'بارگذاری مواد اولیه'
+        }
+        tone="brand"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setLoadMatModalMo(null)}
+              className="sap-btn-standard text-xs px-3 py-1.5 cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="wip-load-material-form"
+              disabled={loadMatSubmitting || loadMatQty <= 0 || !loadMatSourceBalanceId}
+              className="sap-btn-emphasized text-xs px-3.5 py-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {loadMatSubmitting ? 'در حال ثبت...' : 'تایید بارگذاری در صف خط'}
+            </button>
+          </>
+        }
+      >
+        {loadMatModalMo && (
+          <form id="wip-load-material-form" onSubmit={handleLoadMaterial} className="space-y-3 text-xs">
+            <div className="bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] p-2.5 text-[var(--fiori-text-primary)]">
+              <div className="font-semibold">{loadMatModalMo.partName}</div>
+              <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-0.5 font-mono tabular-nums">
+                هدف: {formatNumber(loadMatModalMo.targetQuantity)} • بارگذاری فعلی: {formatNumber(loadMatModalMo.initialInputQuantity)}
+              </div>
             </div>
-            <form onSubmit={handleLoadMaterial} className="p-4 space-y-3 text-xs">
-              <div className="bg-[#f5f5f5] border border-[#d9d9d9] rounded p-2.5 text-[#333333]">
-                <div className="font-semibold">{loadMatModalMo.partName}</div>
-                <div className="text-[11px] text-[#666666] mt-0.5 font-mono">
-                  هدف: {formatNumber(loadMatModalMo.targetQuantity)} • بارگذاری فعلی: {formatNumber(loadMatModalMo.initialInputQuantity)}
+
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">
+                منبع موجودی انبار / کلاف <span className="text-[var(--fiori-negative)]">*</span>
+              </label>
+              <select
+                required
+                value={loadMatSourceBalanceId}
+                onChange={e => setLoadMatSourceBalanceId(e.target.value)}
+                disabled={materialSourcesLoading}
+                className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs focus:outline-none focus:border-[var(--fiori-border-focus)]"
+              >
+                <option value="">
+                  {materialSourcesLoading ? 'در حال بارگذاری منابع موجودی انبار...' : '-- انتخاب منبع موجودی آزاد از انبار --'}
+                </option>
+                {materialSources.map((src: any) => (
+                  <option key={src.id} value={src.id}>
+                    {src.partCode} — {src.partName} | {src.warehouseName} ({src.locationCode || '-'})
+                    {src.coilId ? ` | کلاف ${src.coilId}` : src.lotNumber ? ` | لات ${src.lotNumber}` : ''}
+                    {` | آزاد: ${formatNumber(src.quantityAvailable)} ${src.unitSymbol} (${formatNumber(src.weightKgAvailable)} kg)`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">
+                تعداد ورق / بلنک ورودی به مرحله نخست (عدد):
+              </label>
+              <input
+                type="number"
+                min={1}
+                required
+                value={loadMatQty || ''}
+                onChange={e => setLoadMatQty(Math.max(0, Number(e.target.value)))}
+                className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs font-mono tabular-nums focus:outline-none focus:border-[var(--fiori-border-focus)]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">
+                توضیحات / شماره کویل مرجع (اختیاری):
+              </label>
+              <input
+                type="text"
+                value={loadMatNotes}
+                onChange={e => setLoadMatNotes(e.target.value)}
+                placeholder="مثال: بارگذاری بلنک برش‌خورده از کلاف COIL-ECU-001"
+                className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs focus:outline-none focus:border-[var(--fiori-border-focus)]"
+              />
+            </div>
+          </form>
+        )}
+      </FioriDialog>
+
+      {/* Cascading MO Delete & Inventory Rollback Preview Modal */}
+      <FioriDialog
+        isOpen={Boolean(rollbackModalTarget)}
+        onClose={() => !rollbackSubmitting && setRollbackModalTarget(null)}
+        disableClose={rollbackSubmitting}
+        title={
+          rollbackModalTarget
+            ? `تأیید حذف کامل دستور تولید (${rollbackModalTarget.moNumber}) و بازگشت موجودی انبار`
+            : 'تأیید حذف دستور تولید'
+        }
+        subtitle="کلیه دستورات فرعی وابسته، حواله‌ها، گزارش‌های تولید و اسناد انبار مرتبط بررسی و به وضعیت قبل بازمی‌گردند"
+        tone="danger"
+        icon={<ShieldAlert className="w-5 h-5" />}
+        size="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={rollbackSubmitting}
+              onClick={() => setRollbackModalTarget(null)}
+              className="sap-btn-standard text-xs px-3.5 py-1.5 cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="mo-rollback-delete-form"
+              disabled={
+                rollbackLoading ||
+                rollbackSubmitting ||
+                !rollbackPreview?.canRollback ||
+                rollbackReason.trim().length < 3
+              }
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-negative)] hover:opacity-90 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>
+                {rollbackSubmitting
+                  ? 'در حال حذف و بازگشت موجودی...'
+                  : 'تأیید نهایی حذف و بازگشت کامل موجودی به قبل'}
+              </span>
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3.5 text-xs">
+          {rollbackLoading ? (
+            <div className="py-10 text-center text-[var(--fiori-text-secondary)]">
+              در حال شبیه‌سازی تأثیر حذف و محاسبه تراز موجودی انبارها...
+            </div>
+          ) : rollbackPreview ? (
+            <>
+              {rollbackPreview.blockingErrors.length > 0 && (
+                <FioriMessageStrip tone="error" title="موانع مسدودکننده بازگشت خودکار موجودی:">
+                  <ul className="list-disc pr-5 space-y-1 text-[11px]">
+                    {rollbackPreview.blockingErrors.map((errMsg, idx) => (
+                      <li key={idx}>{errMsg}</li>
+                    ))}
+                  </ul>
+                </FioriMessageStrip>
+              )}
+
+              {/* Summary metrics grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono tabular-nums">
+                <div className="p-2.5 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+                  <div className="text-[10px] font-sans text-[var(--fiori-text-secondary)]">دستورات تولید (اصلی+فرعی)</div>
+                  <div className="text-sm font-bold text-[var(--fiori-negative)] mt-0.5">
+                    {toPersianDigits(rollbackPreview.mosToDelete.length)}
+                  </div>
+                </div>
+                <div className="p-2.5 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+                  <div className="text-[10px] font-sans text-[var(--fiori-text-secondary)]">اسناد مواد برگشتی به انبار</div>
+                  <div className="text-sm font-bold text-[var(--fiori-positive)] mt-0.5">
+                    {toPersianDigits(rollbackPreview.materialsToReturn.length)}
+                  </div>
+                </div>
+                <div className="p-2.5 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+                  <div className="text-[10px] font-sans text-[var(--fiori-text-secondary)]">رسیدهای محصول کسری</div>
+                  <div className="text-sm font-bold text-[var(--fiori-critical)] mt-0.5">
+                    {toPersianDigits(rollbackPreview.outputsToDeduct.length)}
+                  </div>
+                </div>
+                <div className="p-2.5 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+                  <div className="text-[10px] font-sans text-[var(--fiori-text-secondary)]">حواله‌ها / رزرو / کاردکس</div>
+                  <div className="text-sm font-bold text-[var(--fiori-text-primary)] mt-0.5">
+                    {toPersianDigits(
+                      rollbackPreview.wipTransfersCount +
+                        rollbackPreview.productionLogsCount +
+                        rollbackPreview.reservationsCount +
+                        rollbackPreview.kardexTransactionsCount,
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">
-                  منبع موجودی انبار / کلاف <span className="text-[#bb0000]">*</span>
-                </label>
-                <select
-                  required
-                  value={loadMatSourceBalanceId}
-                  onChange={e => setLoadMatSourceBalanceId(e.target.value)}
-                  disabled={materialSourcesLoading}
-                  className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#007cc0]"
-                >
-                  <option value="">
-                    {materialSourcesLoading ? 'در حال بارگذاری منابع موجودی انبار...' : '-- انتخاب منبع موجودی آزاد از انبار --'}
-                  </option>
-                  {materialSources.map((src: any) => (
-                    <option key={src.id} value={src.id}>
-                      {src.partCode} — {src.partName} | {src.warehouseName} ({src.locationCode || '-'})
-                      {src.coilId ? ` | کلاف ${src.coilId}` : src.lotNumber ? ` | لات ${src.lotNumber}` : ''}
-                      {` | آزاد: ${formatNumber(src.quantityAvailable)} ${src.unitSymbol} (${formatNumber(src.weightKgAvailable)} kg)`}
-                    </option>
+              {/* MOs to Delete */}
+              <div className="border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] overflow-hidden">
+                <div className="px-3 py-1.5 bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-default)] font-bold text-[var(--fiori-text-primary)]">
+                  ۱. دستورات تولید قابل حذف (اصلی و زیرمجموعه‌های فرعی):
+                </div>
+                <div className="divide-y divide-[var(--fiori-border-subtle)] max-h-40 overflow-y-auto">
+                  {rollbackPreview.mosToDelete.map(m => (
+                    <div key={m.id} className="px-3 py-1.5 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono fiori-ltr-code font-bold text-[var(--fiori-brand)]">{m.moNumber}</span>
+                        {m.isSubMo && (
+                          <FioriObjectStatus tone="critical" label="زیرمجموعه فرعی" />
+                        )}
+                        <span className="truncate text-[var(--fiori-text-primary)]">
+                          {m.partName} ({m.partCode})
+                        </span>
+                      </div>
+                      <span className="font-mono tabular-nums text-[11px] text-[var(--fiori-text-secondary)] whitespace-nowrap">
+                        تیراژ: {formatNumber(m.targetQuantity)}
+                      </span>
+                    </div>
                   ))}
-                </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">
-                  تعداد ورق / بلنک ورودی به مرحله نخست (عدد):
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  required
-                  value={loadMatQty || ''}
-                  onChange={e => setLoadMatQty(Math.max(0, Number(e.target.value)))}
-                  className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
+              {/* Materials returning to warehouse */}
+              {rollbackPreview.materialsToReturn.length > 0 && (
+                <div className="border border-[var(--fiori-positive-border)] rounded-[var(--fiori-radius-sm)] overflow-hidden">
+                  <div className="px-3 py-1.5 bg-[var(--fiori-positive-bg)] border-b border-[var(--fiori-positive-border)] font-bold text-[var(--fiori-positive)]">
+                    ۲. مواد اولیه و کلاف‌های برگشتی به انبار:
+                  </div>
+                  <div className="divide-y divide-[var(--fiori-border-subtle)] max-h-36 overflow-y-auto">
+                    {rollbackPreview.materialsToReturn.map((mat, i) => (
+                      <div key={`${mat.documentId}-${i}`} className="px-3 py-1.5 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="font-semibold text-[var(--fiori-text-primary)]">{mat.partName}</span>{' '}
+                          <span className="font-mono text-[10px] text-[var(--fiori-text-secondary)]">
+                            ({mat.partCode} • سند {mat.documentNumber})
+                          </span>
+                          <div className="text-[10px] text-[var(--fiori-text-secondary)]">
+                            بازگشت به: {mat.warehouseName}
+                            {mat.lotNumber ? ` • لات: ${mat.lotNumber}` : ''}
+                          </div>
+                        </div>
+                        <span className="font-mono tabular-nums font-bold text-[var(--fiori-positive)] whitespace-nowrap">
+                          +{formatNumber(mat.quantity)} {mat.unit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">
-                  توضیحات / شماره کویل مرجع (اختیاری):
+              {/* Produced outputs to deduct */}
+              {rollbackPreview.outputsToDeduct.length > 0 && (
+                <div className="border border-[var(--fiori-critical-border)] rounded-[var(--fiori-radius-sm)] overflow-hidden">
+                  <div className="px-3 py-1.5 bg-[var(--fiori-critical-bg)] border-b border-[var(--fiori-critical-border)] font-bold text-[var(--fiori-critical)]">
+                    ۳. محصولات رسیدشده قابل کسر از انبار:
+                  </div>
+                  <div className="divide-y divide-[var(--fiori-border-subtle)] max-h-36 overflow-y-auto">
+                    {rollbackPreview.outputsToDeduct.map((out, i) => (
+                      <div key={`${out.documentId}-${i}`} className="px-3 py-1.5 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="font-semibold text-[var(--fiori-text-primary)]">{out.partName}</span>{' '}
+                          <span className="font-mono text-[10px] text-[var(--fiori-text-secondary)]">
+                            ({out.partCode} • سند {out.documentNumber})
+                          </span>
+                          <div className="text-[10px] text-[var(--fiori-text-secondary)]">
+                            انبار: {out.warehouseName} • قابل کسر: {formatNumber(out.availableAfterIssueReturn)}
+                            {out.shortage > 0 && (
+                              <span className="text-[var(--fiori-negative)] font-bold">
+                                {' '}
+                                • کسری: {formatNumber(out.shortage)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="font-mono tabular-nums font-bold text-[var(--fiori-negative)] whitespace-nowrap">
+                          -{formatNumber(out.quantity)} {out.unit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Audit Reason Input */}
+              <form id="mo-rollback-delete-form" onSubmit={handleConfirmMoDeleteRollback} className="space-y-1.5">
+                <label className="block font-bold text-[var(--fiori-text-primary)]">
+                  دلیل حذف دستور تولید و ابطال اسناد انبار (ثبت در لاگ ممیزی) <span className="text-[var(--fiori-negative)]">*</span>
                 </label>
                 <input
                   type="text"
-                  value={loadMatNotes}
-                  onChange={e => setLoadMatNotes(e.target.value)}
-                  placeholder="مثال: بارگذاری بلنک برش‌خورده از کلاف COIL-ECU-001"
-                  className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#007cc0]"
+                  required
+                  minLength={3}
+                  value={rollbackReason}
+                  onChange={e => setRollbackReason(e.target.value)}
+                  placeholder="مثال: اشتباه در تیراژ ابلاغی یا لغو برنامه برش توسط مشتری..."
+                  className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-3 py-2 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
                 />
-              </div>
+              </form>
+            </>
+          ) : null}
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#e5e5e5]">
-                <button
-                  type="button"
-                  onClick={() => setLoadMatModalMo(null)}
-                  className="sap-btn-standard text-xs px-3 py-1.5 cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  disabled={loadMatSubmitting || loadMatQty <= 0 || !loadMatSourceBalanceId}
-                  className="sap-btn-emphasized text-xs px-3.5 py-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {loadMatSubmitting ? 'در حال ثبت...' : 'تایید بارگذاری در صف خط'}
-                </button>
-              </div>
-            </form>
-          </div>
+          {rollbackError && (
+            <FioriMessageStrip tone="error" compact>
+              {rollbackError}
+            </FioriMessageStrip>
+          )}
         </div>
-      )}
-      {/* Cascading MO Delete & Inventory Rollback Preview Modal */}
-      {rollbackModalTarget && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" dir="rtl">
-          <div className="bg-white border border-[#d9d9d9] rounded-md shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-4 py-3 border-b border-[#e5e5e5] flex items-center justify-between bg-[#fff5f5]">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-[#bb0000] shrink-0" />
-                <div>
-                  <h3 className="text-sm font-bold text-[#990000]">
-                    تأیید حذف کامل دستور تولید ({rollbackModalTarget.moNumber}) و بازگشت موجودی انبار
-                  </h3>
-                  <p className="text-[11px] text-[#666666]">
-                    کلیه دستورات فرعی وابسته، حواله‌ها، گزارش‌های تولید و اسناد انبار مرتبط بررسی و به وضعیت قبل بازمی‌گردند
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => !rollbackSubmitting && setRollbackModalTarget(null)}
-                className="text-xs text-[#666666] hover:text-[#333333] cursor-pointer px-1.5 py-0.5"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-4 overflow-y-auto space-y-3.5 text-xs flex-1">
-              {rollbackLoading ? (
-                <div className="py-10 text-center text-[#556b82]">
-                  در حال شبیه‌سازی تأثیر حذف و محاسبه تراز موجودی انبارها...
-                </div>
-              ) : rollbackPreview ? (
-                <>
-                  {rollbackPreview.blockingErrors.length > 0 && (
-                    <div className="p-3 bg-[#fde8e8] border border-[#f5b8b8] rounded text-[#990000] space-y-1">
-                      <div className="font-bold flex items-center gap-1.5">
-                        <AlertTriangle className="w-4 h-4 shrink-0" />
-                        <span>موانع مسدودکننده بازگشت خودکار موجودی:</span>
-                      </div>
-                      <ul className="list-disc pr-5 space-y-1 text-[11px]">
-                        {rollbackPreview.blockingErrors.map((errMsg, idx) => (
-                          <li key={idx}>{errMsg}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Summary metrics grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono tabular-nums">
-                    <div className="p-2.5 bg-[#fafafa] border border-[#e5e5e5] rounded">
-                      <div className="text-[10px] font-sans text-[#666666]">دستورات تولید (اصلی+فرعی)</div>
-                      <div className="text-sm font-bold text-[#bb0000] mt-0.5">
-                        {toPersianDigits(rollbackPreview.mosToDelete.length)}
-                      </div>
-                    </div>
-                    <div className="p-2.5 bg-[#fafafa] border border-[#e5e5e5] rounded">
-                      <div className="text-[10px] font-sans text-[#666666]">اسناد مواد برگشتی به انبار</div>
-                      <div className="text-sm font-bold text-[#107e3e] mt-0.5">
-                        {toPersianDigits(rollbackPreview.materialsToReturn.length)}
-                      </div>
-                    </div>
-                    <div className="p-2.5 bg-[#fafafa] border border-[#e5e5e5] rounded">
-                      <div className="text-[10px] font-sans text-[#666666]">رسیدهای محصول کسری</div>
-                      <div className="text-sm font-bold text-[#e9730c] mt-0.5">
-                        {toPersianDigits(rollbackPreview.outputsToDeduct.length)}
-                      </div>
-                    </div>
-                    <div className="p-2.5 bg-[#fafafa] border border-[#e5e5e5] rounded">
-                      <div className="text-[10px] font-sans text-[#666666]">حواله‌ها / رزرو / کاردکس</div>
-                      <div className="text-sm font-bold text-[#333333] mt-0.5">
-                        {toPersianDigits(
-                          rollbackPreview.wipTransfersCount +
-                            rollbackPreview.productionLogsCount +
-                            rollbackPreview.reservationsCount +
-                            rollbackPreview.kardexTransactionsCount,
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* MOs to Delete */}
-                  <div className="border border-[#e5e5e5] rounded overflow-hidden">
-                    <div className="px-3 py-1.5 bg-[#f5f5f5] border-b border-[#e5e5e5] font-bold text-[#333333]">
-                      ۱. دستورات تولید قابل حذف (اصلی و زیرمجموعه‌های فرعی):
-                    </div>
-                    <div className="divide-y divide-[#eeeeee] max-h-40 overflow-y-auto">
-                      {rollbackPreview.mosToDelete.map(m => (
-                        <div key={m.id} className="px-3 py-1.5 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-mono font-bold text-[#007cc0]">{m.moNumber}</span>
-                            {m.isSubMo && (
-                              <span className="px-1.5 py-0.5 rounded bg-[#fff4e5] text-[#b85a00] border border-[#f9d6a7] text-[10px] font-semibold">
-                                زیرمجموعه فرعی
-                              </span>
-                            )}
-                            <span className="truncate text-[#333333]">
-                              {m.partName} ({m.partCode})
-                            </span>
-                          </div>
-                          <span className="font-mono tabular-nums text-[11px] text-[#666666] whitespace-nowrap">
-                            تیراژ: {formatNumber(m.targetQuantity)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Materials returning to warehouse */}
-                  {rollbackPreview.materialsToReturn.length > 0 && (
-                    <div className="border border-[#b7dfc4] rounded overflow-hidden">
-                      <div className="px-3 py-1.5 bg-[#f1f8f3] border-b border-[#b7dfc4] font-bold text-[#107e3e]">
-                        ۲. مواد اولیه و کلاف‌های برگشتی به انبار:
-                      </div>
-                      <div className="divide-y divide-[#e8f3ec] max-h-36 overflow-y-auto">
-                        {rollbackPreview.materialsToReturn.map((mat, i) => (
-                          <div key={`${mat.documentId}-${i}`} className="px-3 py-1.5 flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <span className="font-semibold text-[#333333]">{mat.partName}</span>{' '}
-                              <span className="font-mono text-[10px] text-[#666666]">
-                                ({mat.partCode} • سند {mat.documentNumber})
-                              </span>
-                              <div className="text-[10px] text-[#666666]">
-                                بازگشت به: {mat.warehouseName}
-                                {mat.lotNumber ? ` • لات: ${mat.lotNumber}` : ''}
-                              </div>
-                            </div>
-                            <span className="font-mono tabular-nums font-bold text-[#107e3e] whitespace-nowrap">
-                              +{formatNumber(mat.quantity)} {mat.unit}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Produced outputs to deduct */}
-                  {rollbackPreview.outputsToDeduct.length > 0 && (
-                    <div className="border border-[#f9d6a7] rounded overflow-hidden">
-                      <div className="px-3 py-1.5 bg-[#fff8ed] border-b border-[#f9d6a7] font-bold text-[#b85a00]">
-                        ۳. محصولات رسیدشده قابل کسر از انبار:
-                      </div>
-                      <div className="divide-y divide-[#fbe8cc] max-h-36 overflow-y-auto">
-                        {rollbackPreview.outputsToDeduct.map((out, i) => (
-                          <div key={`${out.documentId}-${i}`} className="px-3 py-1.5 flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <span className="font-semibold text-[#333333]">{out.partName}</span>{' '}
-                              <span className="font-mono text-[10px] text-[#666666]">
-                                ({out.partCode} • سند {out.documentNumber})
-                              </span>
-                              <div className="text-[10px] text-[#666666]">
-                                انبار: {out.warehouseName} • قابل کسر: {formatNumber(out.availableAfterIssueReturn)}
-                                {out.shortage > 0 && (
-                                  <span className="text-[#bb0000] font-bold">
-                                    {' '}
-                                    • کسری: {formatNumber(out.shortage)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <span className="font-mono tabular-nums font-bold text-[#bb0000] whitespace-nowrap">
-                              -{formatNumber(out.quantity)} {out.unit}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Audit Reason Input */}
-                  <form id="mo-rollback-delete-form" onSubmit={handleConfirmMoDeleteRollback} className="space-y-1.5">
-                    <label className="block font-bold text-[#333333]">
-                      دلیل حذف دستور تولید و ابطال اسناد انبار (ثبت در لاگ ممیزی) <span className="text-[#bb0000]">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      minLength={3}
-                      value={rollbackReason}
-                      onChange={e => setRollbackReason(e.target.value)}
-                      placeholder="مثال: اشتباه در تیراژ ابلاغی یا لغو برنامه برش توسط مشتری..."
-                      className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                    />
-                  </form>
-                </>
-              ) : null}
-
-              {rollbackError && (
-                <div className="p-2.5 rounded bg-[#fde8e8] border border-[#f5b8b8] text-[#bb0000] text-xs font-semibold">
-                  {rollbackError}
-                </div>
-              )}
-            </div>
-
-            <div className="px-4 py-3 border-t border-[#e5e5e5] bg-[#fafafa] flex items-center justify-end gap-2">
-              <button
-                type="button"
-                disabled={rollbackSubmitting}
-                onClick={() => setRollbackModalTarget(null)}
-                className="sap-btn-standard text-xs px-3.5 py-1.5 cursor-pointer"
-              >
-                انصراف
-              </button>
-              <button
-                type="submit"
-                form="mo-rollback-delete-form"
-                disabled={
-                  rollbackLoading ||
-                  rollbackSubmitting ||
-                  !rollbackPreview?.canRollback ||
-                  rollbackReason.trim().length < 3
-                }
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded bg-[#bb0000] hover:bg-[#990000] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>
-                  {rollbackSubmitting
-                    ? 'در حال حذف و بازگشت موجودی...'
-                    : 'تأیید نهایی حذف و بازگشت کامل موجودی به قبل'}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </FioriDialog>
+    </FioriDynamicPage>
   );
 };

@@ -48,7 +48,7 @@ import {
   CarModel,
   OperationDefinition,
 } from '../types/inventory';
-import { ErpColorTheme, ErpLayoutTemplate, COLOR_THEMES } from '../types/theme';
+import { ErpColorTheme, ErpLayoutTemplate } from '../types/theme';
 import { PartsView } from './PartsView';
 import { RoutingsView } from './RoutingsView';
 import { MachinesView } from './MachinesView';
@@ -60,6 +60,8 @@ import { toPersianDigits } from '../utils/formatters';
 import { MasterDataSkeleton } from './ui/Skeleton';
 import { useEnterpriseUx } from '../context/EnterpriseUxContext';
 import { useErpRouter } from '../context/RouterContext';
+import { FioriDialog, FioriMessageStrip, FioriObjectStatus, FioriToolbar } from './fiori/ui';
+import { EmptyState } from './common/EmptyState';
 import {
   MaterialGradeCategory,
   MaterialGradeItem,
@@ -263,8 +265,6 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
   onNavigateToInventoryCoils,
   onNavigateToPlanning,
 }) => {
-  const themeMeta = COLOR_THEMES[colorTheme];
-
   // View mode: 'CARDS_HUB' (Image 1 / ERPNext) vs 'SEGMENTED_TABS' (Image 2)
   const [viewMode, setViewMode] = useState<'CARDS_HUB' | 'SEGMENTED_TABS'>(
     layoutTemplate === 'HUB_WORKSPACE' || layoutTemplate === 'ODOO_ENTERPRISE'
@@ -1356,43 +1356,37 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
   return (
     <div className="space-y-5">
       {masterBanner && (
-        <div
-          className={`px-4 py-3 rounded-xl border text-xs font-bold flex items-center justify-between shadow-2xs ${
-            masterBanner.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-rose-50 border-rose-200 text-rose-800'
-          }`}
+        <FioriMessageStrip
+          tone={masterBanner.type === 'success' ? 'success' : 'error'}
+          onClose={() => setMasterBanner(null)}
         >
-          <span>{masterBanner.message}</span>
-          <button type="button" onClick={() => setMasterBanner(null)} className="cursor-pointer opacity-70 hover:opacity-100">
-            ✕
-          </button>
-        </div>
+          {masterBanner.message}
+        </FioriMessageStrip>
       )}
       {/* SAP Fiori Dynamic Page Header & Launchpad Section Bar */}
       <div className="sap-card overflow-hidden">
-        <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#D9DFE5]">
+        <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--fiori-border-default)]">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#EBF5FF] border border-[#B3D7FF] text-[#0070F2] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] text-[var(--fiori-brand)] flex items-center justify-center shrink-0">
               <Boxes className="w-4 h-4" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold text-[#1D2D3E]">اطلاعات پایه کارخانه (SAP Master Data)</h1>
-              <p className="text-xs text-[#556B82] mt-0.5">
+              <h1 className="text-sm font-semibold text-[var(--fiori-text-primary)]">اطلاعات پایه کارخانه (SAP Master Data)</h1>
+              <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
                 مدیریت یکپارچه قطعات، ورق‌ها، درخت محصول (BOM)، مسیر تولید، ماشین‌آلات، انبارها و مشتریان
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-end md:self-auto">
-            <div className="inline-flex items-center bg-[#F2F4F7] p-1 rounded-md border border-[#D9DFE5]">
+            <div className="inline-flex items-center bg-[var(--fiori-bg-subtle)] p-1 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
               <button
                 type="button"
                 onClick={() => handleSelectSection('HUB')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-xs font-medium transition-colors cursor-pointer ${
                   viewMode === 'CARDS_HUB' && activeSection === 'HUB'
-                    ? 'bg-[#0070F2] text-white'
-                    : 'text-[#556B82] hover:text-[#1D2D3E]'
+                    ? 'bg-[var(--fiori-brand)] text-white'
+                    : 'text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)]'
                 }`}
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
@@ -1404,10 +1398,10 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                   setViewMode('SEGMENTED_TABS');
                   if (activeSection === 'HUB') handleSelectSection('RAW_MATERIALS');
                 }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-xs font-medium transition-colors cursor-pointer ${
                   activeSection !== 'HUB'
-                    ? 'bg-[#0070F2] text-white'
-                    : 'text-[#556B82] hover:text-[#1D2D3E]'
+                    ? 'bg-[var(--fiori-brand)] text-white'
+                    : 'text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)]'
                 }`}
               >
                 <Table2 className="w-3.5 h-3.5" />
@@ -1427,14 +1421,14 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
         </div>
 
         {/* SAP Fiori IconTabBar & Master Table Selector */}
-        <div className="px-3 flex flex-wrap items-center justify-between gap-2 text-xs bg-white">
+        <div className="px-3 flex flex-wrap items-center justify-between gap-2 text-xs bg-[var(--fiori-bg-surface)]">
           <div className="flex flex-wrap items-center gap-2 flex-1">
-            <div className="inline-flex items-center gap-2 bg-[#F5F6F7] border border-[#D9DFE5] rounded-md px-2.5 py-1 my-1.5">
-              <span className="text-[#556B82] font-normal">جدول:</span>
+            <div className="inline-flex items-center gap-2 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1 my-1.5">
+              <span className="text-[var(--fiori-text-secondary)] font-normal">جدول:</span>
               <select
                 value={activeSection}
                 onChange={e => handleSelectSection(e.target.value as MasterSubSection)}
-                className="bg-transparent font-semibold text-[#1D2D3E] focus:outline-none cursor-pointer"
+                className="bg-transparent font-semibold text-[var(--fiori-text-primary)] focus:outline-none cursor-pointer"
               >
                 <option value="HUB">پیشخوان همه جداول اطلاعات پایه (۱۳ بخش)</option>
                 {segmentedTabs.map(t => (
@@ -1473,7 +1467,7 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
             <button
               type="button"
               onClick={() => handleSelectSection('HUB')}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#0064D9] hover:underline cursor-pointer py-1.5"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--fiori-brand)] hover:underline cursor-pointer py-1.5"
             >
               <ArrowRight className="w-3.5 h-3.5" />
               <span>بازگشت به فهرست کارتی</span>
@@ -1492,34 +1486,32 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                 <div
                   key={card.id}
                   onClick={() => handleSelectSection(card.id)}
-                  className="group bg-white hover:bg-[#F5F6F7]/70 border border-[#D9DFE5] hover:border-[#0070F2] rounded-lg p-4 flex flex-col justify-between transition-all cursor-pointer shadow-2xs"
+                  className="fiori-tile group bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-bg-hover)] border border-[var(--fiori-border-default)] hover:border-[var(--fiori-brand)] rounded-[var(--fiori-radius-md)] p-4 flex flex-col justify-between transition-colors cursor-pointer"
                 >
                   <div>
                     <div className="flex items-center justify-between gap-3 mb-2.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-lg bg-[#EBF5FF] border border-[#B3D7FF] text-[#0070F2] flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] text-[var(--fiori-brand)] flex items-center justify-center shrink-0">
                           <Icon className="w-4 h-4" />
                         </div>
-                        <h3 className="text-sm font-semibold text-[#1D2D3E] group-hover:text-[#0064D9] transition-colors">
+                        <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)] group-hover:text-[var(--fiori-brand)] transition-colors">
                           {card.title}
                         </h3>
                       </div>
                     </div>
 
-                    <p className="text-xs text-[#556B82] leading-relaxed min-h-[38px]">
+                    <p className="text-xs text-[var(--fiori-text-secondary)] leading-relaxed min-h-[38px]">
                       {card.description}
                     </p>
                   </div>
 
-                  <div className="mt-3.5 pt-2.5 border-t border-[#EAECEF] flex items-center justify-between">
+                  <div className="mt-3.5 pt-2.5 border-t border-[var(--fiori-border-subtle)] flex items-center justify-between gap-2">
                     {card.countBadge ? (
-                      <span className="px-2 py-0.5 rounded bg-[#F2F4F7] border border-[#D9DFE5] text-[10px] font-medium text-[#556B82]">
-                        {card.countBadge}
-                      </span>
+                      <FioriObjectStatus tone="neutral" size="sm" label={card.countBadge} />
                     ) : (
                       <span />
                     )}
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-[#0064D9] group-hover:underline">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--fiori-brand)] group-hover:underline">
                       <span>مشاهده</span>
                       <ArrowLeft className="w-3.5 h-3.5" />
                     </span>
@@ -1535,29 +1527,31 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
           ACTIVE SUB-SECTION CONTENT
          ===================================================================== */}
 
-      {/* 1. RAW MATERIALS & SHEET SPECS (Matches Table in Image 2: 2_5080a2ed.jpg) */}
+      {/* 1. RAW MATERIALS & SHEET SPECS */}
       {activeSection === 'RAW_MATERIALS' && (
         <div className="space-y-3">
-          <div className="sap-card p-3.5 bg-[#F5F6F7] flex items-start justify-between gap-3 text-xs">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-[#1D2D3E]">اتصال و یکپارچگی مواد اولیه با انبار قطعات (Master Item Catalog):</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#EBF5EC] text-[#107E3E] border border-[#B7DFBF]">
-                  {toPersianDigits(parts.filter(p => p.category === 'RAW_MATERIAL').length)} قلم ماده اولیه در انبار کالا
-                </span>
-              </div>
-              <p className="text-[#556B82] text-[11px] leading-relaxed">
-                در خطوط پرسکاری بدنه خودرو، کلیه اجناس اعم از <strong>مواد اولیه (ورق و رول)</strong>، <strong>قطعات نیمه‌ساخته (WIP)</strong> و <strong>محصول نهایی</strong> دارای هویت واحد به عنوان کالا هستند. این جدول مشخصات مهندسی ابعاد شیت (ضخامت، طول/عرض برش و وزن هر برگ برای موازنه خطوط پرس) را تنظیم می‌کند و هر ردیف آن مستقیماً با کاتالوگ قطعات همگام است.
-              </p>
+          <FioriMessageStrip
+            tone="info"
+            title="اتصال و یکپارچگی مواد اولیه با انبار قطعات (Master Item Catalog)"
+            actions={
+              <button
+                type="button"
+                onClick={() => setActiveSection('PARTS')}
+                className="sap-btn-standard px-3 py-1 text-[11px] whitespace-nowrap cursor-pointer"
+              >
+                مشاهده در انبار قطعات ←
+              </button>
+            }
+          >
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <FioriObjectStatus
+                tone="positive"
+                size="sm"
+                label={`${toPersianDigits(parts.filter(p => p.category === 'RAW_MATERIAL').length)} قلم ماده اولیه در انبار کالا`}
+              />
             </div>
-            <button
-              type="button"
-              onClick={() => setActiveSection('PARTS')}
-              className="sap-btn-standard px-3 py-1.5 text-[11px] whitespace-nowrap shrink-0"
-            >
-              مشاهده در انبار قطعات ←
-            </button>
-          </div>
+            در خطوط پرسکاری بدنه خودرو، کلیه اجناس اعم از <strong>مواد اولیه (ورق و رول)</strong>، <strong>قطعات نیمه‌ساخته (WIP)</strong> و <strong>محصول نهایی</strong> دارای هویت واحد به عنوان کالا هستند. این جدول مشخصات مهندسی ابعاد شیت (ضخامت، طول/عرض برش و وزن هر برگ برای موازنه خطوط پرس) را تنظیم می‌کند و هر ردیف آن مستقیماً با کاتالوگ قطعات همگام است.
+          </FioriMessageStrip>
 
           {/* Action Row above table */}
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1608,27 +1602,27 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                   setGradeFormNotes('');
                   setIsGradeManagerOpen(true);
                 }}
-                className="sap-btn-standard inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#007cc0] cursor-pointer"
+                className="sap-btn-standard inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[var(--fiori-brand)] cursor-pointer"
                 title="مشاهده، افزودن، ویرایش و حذف فهرست گریدها و جنس ورق‌های مجاز در سامانه"
               >
                 <Settings2 className="w-3.5 h-3.5" />
                 <span>مدیریت گریدها و جنس ورق ({toPersianDigits(materialGrades.length)} جنس)</span>
               </button>
 
-              <span className="text-xs font-medium text-[#556B82]">
+              <span className="text-xs font-medium text-[var(--fiori-text-secondary)] tabular-nums">
                 {toPersianDigits(filteredRawSheets.length)} ماده
               </span>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-[#556B82] absolute right-3 top-2.5 pointer-events-none" />
+                <Search className="w-3.5 h-3.5 text-[var(--fiori-text-muted)] absolute right-3 top-2.5 pointer-events-none" />
                 <input
                   type="text"
                   value={sheetSearch}
                   onChange={e => setSheetSearch(e.target.value)}
                   placeholder="جستجوی کد ورق، گرید (ST12/DC04) یا تأمین‌کننده..."
-                  className="bg-white border border-[#BCC6D0] rounded-md pr-8 pl-3 py-1.5 text-xs text-[#1D2D3E] focus:outline-none focus:border-[#0070F2] w-64"
+                  className="fiori-input pr-8 pl-3 py-1.5 text-xs w-64"
                 />
               </div>
               {onNavigateToInventoryCoils && (
@@ -1645,144 +1639,165 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
 
           {/* SAP ALV Table */}
           <div className="sap-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="sap-table-compact w-full text-right text-xs">
-                <thead className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                  <tr>
-                    <th>کد ماده</th>
-                    <th>نام ماده اولیه</th>
-                    <th>گرید / جنس</th>
-                    <th>شکل عرضه</th>
-                    <th>ضخامت (mm)</th>
-                    <th>ابعاد (mm)</th>
-                    <th>وزن واحد (kg)</th>
-                    <th>مالکیت / تأمین‌کننده</th>
-                    <th>نقطه سفارش</th>
-                    <th>وضعیت</th>
-                    <th className="text-center">عملیات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e8e8e8] text-[#333333]">
-                  {filteredRawSheets.map(sheet => {
-                    const gradeMeta = materialGrades.find(
-                      g => g.code.toUpperCase() === (sheet.grade || '').toUpperCase()
-                    );
-                    const formLabel =
-                      sheet.supplyForm === 'COIL'
-                        ? 'رول / کلاف'
-                        : sheet.supplyForm === 'STRIP'
-                        ? 'نوار برش‌خورده'
-                        : sheet.supplyForm === 'OTHER'
-                        ? 'سایر مواد'
-                        : 'شیت ورق';
-                    const ownershipLabel =
-                      sheet.ownership === 'LOCAL_PURCHASE'
-                        ? 'خرید بازار'
-                        : sheet.ownership === 'IMPORTED'
-                        ? 'وارداتی'
-                        : 'امانی ساپکو';
-                    return (
-                      <tr
-                        key={sheet.id}
-                        className="hover:bg-[#e5f3fa]/55 transition-colors"
-                      >
-                        <td className="font-mono font-semibold tabular-nums whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => traceDocument(sheet.code, 'INVENTORY_LEDGER')}
-                            className="sap-doc-link"
-                            title="رهگیری موجودی و کاردکس این ورق در انبار"
-                          >
-                            {sheet.code}
-                          </button>
-                        </td>
-                        <td className="font-medium text-[#333333]">
-                          <div>{sheet.name}</div>
-                          {sheet.standard && (
-                            <div className="text-[10px] text-[#666666] font-mono">{sheet.standard}</div>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap">
-                          <div className="font-mono font-bold text-[#007cc0]">{sheet.grade}</div>
-                          {gradeMeta && (
-                            <div className="text-[10px] text-[#666666] truncate max-w-[130px]">{gradeMeta.name}</div>
-                          )}
-                        </td>
-                        <td className="text-[#555555] whitespace-nowrap">{formLabel}</td>
-                        <td className="tabular-nums font-medium">
-                          {toPersianDigits(sheet.thicknessMm.toString().replace('.', '/'))}
-                        </td>
-                        <td className="tabular-nums text-[#666666] whitespace-nowrap">
-                          {sheet.dimensionsMm}
-                        </td>
-                        <td className="tabular-nums font-semibold text-[#333333] whitespace-nowrap">
-                          {toPersianDigits(sheet.sheetWeightKg.toFixed(1).replace('.', '/'))}{' '}
-                          <span className="text-[10px] font-normal text-[#666666]">{sheet.unit}</span>
-                        </td>
-                        <td className="text-[11px] text-[#555555]">
-                          <div className="font-medium text-[#333333]">{ownershipLabel}</div>
-                          {sheet.supplierName && (
-                            <div className="text-[10px] text-[#666666] truncate max-w-[120px]">{sheet.supplierName}</div>
-                          )}
-                        </td>
-                        <td className="tabular-nums font-mono text-[#555555]">
-                          {sheet.minStock ? toPersianDigits(sheet.minStock.toLocaleString('en-US')) : '—'}
-                        </td>
-                        <td>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-semibold ${
-                            sheet.active ? 'bg-[#eefaf2] text-[#107e3e] border border-[#b6e4c8]' : 'bg-[#f0f0f0] text-[#666666] border border-[#d9d9d9]'
-                          }`}>
-                            {sheet.active ? 'فعال' : 'غیرفعال'}
-                          </span>
-                        </td>
-                        <td className="text-center whitespace-nowrap">
-                          <div className="inline-flex items-center gap-2">
+            <FioriToolbar
+              variant="table"
+              title="فهرست مواد اولیه، ورق‌ها و رول‌ها"
+              count={filteredRawSheets.length}
+              countLabel="ماده"
+            />
+            {filteredRawSheets.length === 0 ? (
+              <EmptyState
+                compact
+                variant={sheetSearch.trim() ? 'SEARCH_NO_MATCH' : 'NO_DATA'}
+                title={sheetSearch.trim() ? 'ماده اولیه‌ای با این مشخصات یافت نشد' : 'ماده اولیه‌ای ثبت نشده است'}
+                description={
+                  sheetSearch.trim()
+                    ? 'عبارت جستجو را تغییر دهید یا فیلتر را پاک کنید.'
+                    : 'برای شروع، اولین ماده اولیه را تعریف کنید.'
+                }
+                actionLabel={sheetSearch.trim() ? 'پاک کردن جستجو' : undefined}
+                onAction={sheetSearch.trim() ? () => setSheetSearch('') : undefined}
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="sap-table-compact w-full text-right text-xs">
+                  <thead className="bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-default)] text-[var(--fiori-text-primary)] font-semibold">
+                    <tr>
+                      <th>کد ماده</th>
+                      <th>نام ماده اولیه</th>
+                      <th>گرید / جنس</th>
+                      <th>شکل عرضه</th>
+                      <th>ضخامت (mm)</th>
+                      <th>ابعاد (mm)</th>
+                      <th>وزن واحد (kg)</th>
+                      <th>مالکیت / تأمین‌کننده</th>
+                      <th>نقطه سفارش</th>
+                      <th>وضعیت</th>
+                      <th className="text-center">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--fiori-border-subtle)] text-[var(--fiori-text-primary)]">
+                    {filteredRawSheets.map(sheet => {
+                      const gradeMeta = materialGrades.find(
+                        g => g.code.toUpperCase() === (sheet.grade || '').toUpperCase()
+                      );
+                      const formLabel =
+                        sheet.supplyForm === 'COIL'
+                          ? 'رول / کلاف'
+                          : sheet.supplyForm === 'STRIP'
+                          ? 'نوار برش‌خورده'
+                          : sheet.supplyForm === 'OTHER'
+                          ? 'سایر مواد'
+                          : 'شیت ورق';
+                      const ownershipLabel =
+                        sheet.ownership === 'LOCAL_PURCHASE'
+                          ? 'خرید بازار'
+                          : sheet.ownership === 'IMPORTED'
+                          ? 'وارداتی'
+                          : 'امانی ساپکو';
+                      return (
+                        <tr
+                          key={sheet.id}
+                          className="hover:bg-[var(--fiori-bg-hover)] transition-colors"
+                        >
+                          <td className="fiori-ltr-code font-semibold tabular-nums whitespace-nowrap">
                             <button
                               type="button"
-                              onClick={() => {
-                                setEditingSheet(sheet);
-                                setShowInlineAddGrade(false);
-                                setSheetForm({
-                                  ...sheet,
-                                  supplyForm: sheet.supplyForm || 'SHEET',
-                                  densityGCm3: sheet.densityGCm3 || gradeMeta?.densityGCm3 || 7.85,
-                                  ownership: sheet.ownership || 'SAPCO_CONSIGNMENT',
-                                });
-                                setIsNewSheetModalOpen(true);
-                              }}
-                              className="inline-flex items-center gap-1 text-[#007cc0] hover:text-[#006299] font-semibold cursor-pointer"
+                              onClick={() => traceDocument(sheet.code, 'INVENTORY_LEDGER')}
+                              className="sap-doc-link"
+                              title="رهگیری موجودی و کاردکس این ورق در انبار"
                             >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>ویرایش</span>
+                              {sheet.code}
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                requestConfirm({
-                                  title: `حذف ماده اولیه «${sheet.code}»`,
-                                  message: `آیا از حذف مشخصات مهندسی «${sheet.name}» از جدول مواد اولیه مطمئن هستید؟`,
-                                  confirmLabel: 'بله، حذف شود',
-                                  cancelLabel: 'انصراف',
-                                  variant: 'danger',
-                                  onConfirm: () => {
-                                    setRawSheets(prev => prev.filter(r => r.id !== sheet.id));
-                                    notifyMaster('success', `ردیف ماده اولیه «${sheet.code}» حذف شد.`);
-                                  },
-                                });
-                              }}
-                              className="text-[#bb0000] hover:text-[#8b0000] cursor-pointer"
-                              title="حذف ردیف"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          </td>
+                          <td className="font-medium text-[var(--fiori-text-primary)]">
+                            <div>{sheet.name}</div>
+                            {sheet.standard && (
+                              <div className="text-[10px] text-[var(--fiori-text-muted)] fiori-ltr-code">{sheet.standard}</div>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap">
+                            <div className="fiori-ltr-code font-bold text-[var(--fiori-brand)]">{sheet.grade}</div>
+                            {gradeMeta && (
+                              <div className="text-[10px] text-[var(--fiori-text-muted)] truncate max-w-[130px]">{gradeMeta.name}</div>
+                            )}
+                          </td>
+                          <td className="text-[var(--fiori-text-secondary)] whitespace-nowrap">{formLabel}</td>
+                          <td className="tabular-nums font-medium">
+                            {toPersianDigits(sheet.thicknessMm.toString().replace('.', '/'))}
+                          </td>
+                          <td className="tabular-nums text-[var(--fiori-text-secondary)] whitespace-nowrap">
+                            {sheet.dimensionsMm}
+                          </td>
+                          <td className="tabular-nums font-semibold text-[var(--fiori-text-primary)] whitespace-nowrap">
+                            {toPersianDigits(sheet.sheetWeightKg.toFixed(1).replace('.', '/'))}{' '}
+                            <span className="text-[10px] font-normal text-[var(--fiori-text-muted)]">{sheet.unit}</span>
+                          </td>
+                          <td className="text-[11px] text-[var(--fiori-text-secondary)]">
+                            <div className="font-medium text-[var(--fiori-text-primary)]">{ownershipLabel}</div>
+                            {sheet.supplierName && (
+                              <div className="text-[10px] text-[var(--fiori-text-muted)] truncate max-w-[120px]">{sheet.supplierName}</div>
+                            )}
+                          </td>
+                          <td className="tabular-nums font-mono text-[var(--fiori-text-secondary)]">
+                            {sheet.minStock ? toPersianDigits(sheet.minStock.toLocaleString('en-US')) : '—'}
+                          </td>
+                          <td>
+                            <FioriObjectStatus
+                              tone={sheet.active ? 'positive' : 'neutral'}
+                              size="sm"
+                              label={sheet.active ? 'فعال' : 'غیرفعال'}
+                            />
+                          </td>
+                          <td className="text-center whitespace-nowrap">
+                            <div className="inline-flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSheet(sheet);
+                                  setShowInlineAddGrade(false);
+                                  setSheetForm({
+                                    ...sheet,
+                                    supplyForm: sheet.supplyForm || 'SHEET',
+                                    densityGCm3: sheet.densityGCm3 || gradeMeta?.densityGCm3 || 7.85,
+                                    ownership: sheet.ownership || 'SAPCO_CONSIGNMENT',
+                                  });
+                                  setIsNewSheetModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 text-[var(--fiori-brand)] hover:text-[var(--fiori-brand-hover)] font-semibold cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>ویرایش</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  requestConfirm({
+                                    title: `حذف ماده اولیه «${sheet.code}»`,
+                                    message: `آیا از حذف مشخصات مهندسی «${sheet.name}» از جدول مواد اولیه مطمئن هستید؟`,
+                                    confirmLabel: 'بله، حذف شود',
+                                    cancelLabel: 'انصراف',
+                                    variant: 'danger',
+                                    onConfirm: () => {
+                                      setRawSheets(prev => prev.filter(r => r.id !== sheet.id));
+                                      notifyMaster('success', `ردیف ماده اولیه «${sheet.code}» حذف شد.`);
+                                    },
+                                  });
+                                }}
+                                className="text-[var(--fiori-negative)] hover:opacity-80 cursor-pointer"
+                                title="حذف ردیف"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1826,159 +1841,184 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
       )}
 
       {/* 4.5 FACTORY HALLS (سالن‌های تولید و استقرار خطوط) */}
-      {activeSection === 'FACTORY_HALLS' && (
-        <div className="sap-card p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-[#EAECEF]">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-[#1D2D3E]">
-                  سالن‌های تولید و موقعیت‌های استقرار ماشین‌آلات (Factory Production Halls)
-                </h3>
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#EBF5FF] text-[#0064D9] border border-[#D1E8FF]">
-                  {toPersianDigits(hallsList.length)} سالن تولید
-                </span>
+      {activeSection === 'FACTORY_HALLS' && (() => {
+        const filteredHalls = hallsList.filter(h =>
+          !hallSearch.trim() ||
+          h.code.toLowerCase().includes(hallSearch.toLowerCase()) ||
+          h.name.toLowerCase().includes(hallSearch.toLowerCase()) ||
+          (h.supervisorName && h.supervisorName.toLowerCase().includes(hallSearch.toLowerCase())) ||
+          (h.capacityDesc && h.capacityDesc.toLowerCase().includes(hallSearch.toLowerCase()))
+        );
+
+        return (
+          <div className="sap-card p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-[var(--fiori-border-subtle)]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)]">
+                    سالن‌های تولید و موقعیت‌های استقرار ماشین‌آلات (Factory Production Halls)
+                  </h3>
+                  <FioriObjectStatus tone="info" size="sm" label={`${toPersianDigits(hallsList.length)} سالن تولید`} />
+                </div>
+                <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
+                  تعریف، ویرایش و مدیریت سالن‌های پرس سنگین، پرس متوسط، جوشکاری رباتیک، خط رنگ کاتافورز ED، مونتاژ و انبارها
+                </p>
               </div>
-              <p className="text-xs text-[#556B82] mt-0.5">
-                تعریف، ویرایش و مدیریت سالن‌های پرس سنگین، پرس متوسط، جوشکاری رباتیک، خط رنگ کاتافورز ED، مونتاژ و انبارها
-              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingHall(null);
+                  setHallForm({
+                    code: `HALL-${String(hallsList.length + 1).padStart(2, '0')}`,
+                    name: '',
+                    type: 'STAMPING',
+                    supervisorName: '',
+                    capacityDesc: '',
+                    description: '',
+                    active: true,
+                  });
+                  setIsHallModalOpen(true);
+                }}
+                className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>تعریف سالن تولید جدید</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingHall(null);
-                setHallForm({
-                  code: `HALL-${String(hallsList.length + 1).padStart(2, '0')}`,
-                  name: '',
-                  type: 'STAMPING',
-                  supervisorName: '',
-                  capacityDesc: '',
-                  description: '',
-                  active: true,
-                });
-                setIsHallModalOpen(true);
-              }}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>تعریف سالن تولید جدید</span>
-            </button>
-          </div>
 
-          {/* Search Bar */}
-          <div className="relative max-w-md">
-            <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#556B82]" />
-            <input
-              type="text"
-              placeholder="جستجو در کد، نام سالن، سرپرست یا مشخصات..."
-              value={hallSearch}
-              onChange={e => setHallSearch(e.target.value)}
-              className="w-full bg-white border border-[#BCC6D0] rounded-md pr-9 pl-3 py-2 text-xs text-[#1D2D3E] placeholder:text-[#89919A] focus:outline-none focus:border-[#0070F2] transition-colors"
-            />
-          </div>
+            {/* Search Bar */}
+            <div className="relative max-w-md">
+              <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fiori-text-muted)]" />
+              <input
+                type="text"
+                placeholder="جستجو در کد، نام سالن، سرپرست یا مشخصات..."
+                value={hallSearch}
+                onChange={e => setHallSearch(e.target.value)}
+                className="fiori-input w-full pr-9 pl-3 py-2 text-xs"
+              />
+            </div>
 
-          {/* Halls Table */}
-          <div className="overflow-x-auto border border-[#d9d9d9] rounded-sm">
-            <table className="sap-table-compact w-full text-right text-xs">
-              <thead className="bg-[#ffffff] text-[#333333] font-semibold border-b border-[#d9d9d9]">
-                <tr>
-                  <th className="text-center">کد سالن</th>
-                  <th>نام و عنوان سالن تولید</th>
-                  <th>نوع فرآیند کارگاهی</th>
-                  <th>سرپرست / مسئول سالن</th>
-                  <th>ظرفیت و تجهیزات مستقر</th>
-                  <th className="text-center">پرس‌ها و ماشین‌های مستقر</th>
-                  <th className="text-center">وضعیت</th>
-                  <th className="text-center">عملیات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8e8e8] text-[#333333]">
-                {hallsList
-                  .filter(h =>
-                    !hallSearch.trim() ||
-                    h.code.toLowerCase().includes(hallSearch.toLowerCase()) ||
-                    h.name.toLowerCase().includes(hallSearch.toLowerCase()) ||
-                    (h.supervisorName && h.supervisorName.toLowerCase().includes(hallSearch.toLowerCase())) ||
-                    (h.capacityDesc && h.capacityDesc.toLowerCase().includes(hallSearch.toLowerCase()))
-                  )
-                  .map(hall => {
-                    const machinesInHall = machines.filter(
-                      m => m.hallId === hall.id || m.location === hall.name || m.location?.includes(hall.name)
-                    );
-                    return (
-                      <tr key={hall.id} className="hover:bg-[#e5f3fa]/55 transition-colors">
-                        <td className="text-center font-mono font-bold text-[#333333]">
-                          <span className="px-2 py-0.5 rounded-sm bg-[#f0f0f0] border border-[#d9d9d9]">
-                            {hall.code}
-                          </span>
-                        </td>
-                        <td className="font-bold text-[#333333]">
-                          <div className="flex items-center gap-1.5">
-                            <Building2 className="w-4 h-4 text-[#007cc0] shrink-0" />
-                            <span>{hall.name}</span>
-                          </div>
-                          {hall.description && (
-                            <p className="text-[11px] text-[#666666] font-normal mt-0.5 line-clamp-1">
-                              {hall.description}
-                            </p>
-                          )}
-                        </td>
-                        <td>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold bg-[#f0f0f0] text-[#333333]">
-                            {hall.type === 'STAMPING' ? 'پرسکاری و کشش' :
-                             hall.type === 'WELDING' ? 'جوشکاری و مونتاژ' :
-                             hall.type === 'PAINT' ? 'خط رنگ و کاتافورز' :
-                             hall.type === 'ASSEMBLY' ? 'مونتاژ نهایی' : 'انبار و لجستیک'}
-                          </span>
-                        </td>
-                        <td className="text-[#333333]">
-                          {hall.supervisorName || 'تعیین‌نشده'}
-                        </td>
-                        <td className="text-[#666666] max-w-xs truncate" title={hall.capacityDesc}>
-                          {hall.capacityDesc || '—'}
-                        </td>
-                        <td className="text-center">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm font-bold text-[11px] bg-[#e5f3fa] text-[#007cc0] border border-[#b3d7ff]">
-                            <Cpu className="w-3 h-3 text-[#007cc0]" />
-                            {toPersianDigits(machinesInHall.length)} ماشین
-                          </span>
-                        </td>
-                        <td className="text-center">
-                          <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold ${
-                            hall.active !== false ? 'bg-[#eefaf2] text-[#107e3e] border border-[#b6e4c8]' : 'bg-[#f0f0f0] text-[#666666]'
-                          }`}>
-                            {hall.active !== false ? 'فعال' : 'غیرفعال'}
-                          </span>
-                        </td>
-                        <td className="text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingHall(hall);
-                                setHallForm({ ...hall });
-                                setIsHallModalOpen(true);
-                              }}
-                              className="px-2 py-0.5 rounded-sm text-[11px] font-semibold text-[#007cc0] bg-[#e5f3fa] hover:bg-[#d1ecfa] transition-colors cursor-pointer"
-                            >
-                              ویرایش
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteHall(hall.id)}
-                              className="px-2 py-0.5 rounded-sm text-[11px] font-semibold text-[#bb0000] bg-[#fff2f2] hover:bg-[#ffe5e5] transition-colors cursor-pointer"
-                            >
-                              حذف
-                            </button>
-                          </div>
-                        </td>
+            {/* Halls Table */}
+            <div className="sap-card overflow-hidden">
+              <FioriToolbar
+                variant="table"
+                title="فهرست سالن‌های کارخانه"
+                count={filteredHalls.length}
+                countLabel="سالن"
+              />
+              {filteredHalls.length === 0 ? (
+                <EmptyState
+                  compact
+                  variant={hallSearch.trim() ? 'SEARCH_NO_MATCH' : 'NO_DATA'}
+                  title={hallSearch.trim() ? 'سالنی با این مشخصات یافت نشد' : 'سالن تولیدی ثبت نشده است'}
+                  description={hallSearch.trim() ? 'عبارت جستجو را تغییر دهید.' : 'اولین سالن تولید را تعریف کنید.'}
+                  actionLabel={hallSearch.trim() ? 'پاک کردن جستجو' : undefined}
+                  onAction={hallSearch.trim() ? () => setHallSearch('') : undefined}
+                />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="sap-table-compact w-full text-right text-xs">
+                    <thead className="bg-[var(--fiori-bg-subtle)] text-[var(--fiori-text-primary)] font-semibold border-b border-[var(--fiori-border-default)]">
+                      <tr>
+                        <th className="text-center">کد سالن</th>
+                        <th>نام و عنوان سالن تولید</th>
+                        <th>نوع فرآیند کارگاهی</th>
+                        <th>سرپرست / مسئول سالن</th>
+                        <th>ظرفیت و تجهیزات مستقر</th>
+                        <th className="text-center">پرس‌ها و ماشین‌های مستقر</th>
+                        <th className="text-center">وضعیت</th>
+                        <th className="text-center">عملیات</th>
                       </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--fiori-border-subtle)] text-[var(--fiori-text-primary)]">
+                      {filteredHalls.map(hall => {
+                        const machinesInHall = machines.filter(
+                          m => m.hallId === hall.id || m.location === hall.name || m.location?.includes(hall.name)
+                        );
+                        return (
+                          <tr key={hall.id} className="hover:bg-[var(--fiori-bg-hover)] transition-colors">
+                            <td className="text-center">
+                              <span className="fiori-ltr-code font-bold px-2 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)]">
+                                {hall.code}
+                              </span>
+                            </td>
+                            <td className="font-bold text-[var(--fiori-text-primary)]">
+                              <div className="flex items-center gap-1.5">
+                                <Building2 className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
+                                <span>{hall.name}</span>
+                              </div>
+                              {hall.description && (
+                                <p className="text-[11px] text-[var(--fiori-text-secondary)] font-normal mt-0.5 line-clamp-1">
+                                  {hall.description}
+                                </p>
+                              )}
+                            </td>
+                            <td>
+                              <FioriObjectStatus
+                                tone="neutral"
+                                size="sm"
+                                label={
+                                  hall.type === 'STAMPING' ? 'پرسکاری و کشش' :
+                                  hall.type === 'WELDING' ? 'جوشکاری و مونتاژ' :
+                                  hall.type === 'PAINT' ? 'خط رنگ و کاتافورز' :
+                                  hall.type === 'ASSEMBLY' ? 'مونتاژ نهایی' : 'انبار و لجستیک'
+                                }
+                              />
+                            </td>
+                            <td className="text-[var(--fiori-text-primary)]">
+                              {hall.supervisorName || 'تعیین‌نشده'}
+                            </td>
+                            <td className="text-[var(--fiori-text-secondary)] max-w-xs truncate" title={hall.capacityDesc}>
+                              {hall.capacityDesc || '—'}
+                            </td>
+                            <td className="text-center">
+                              <FioriObjectStatus
+                                tone="info"
+                                size="sm"
+                                icon={<Cpu className="w-3 h-3" />}
+                                label={`${toPersianDigits(machinesInHall.length)} ماشین`}
+                              />
+                            </td>
+                            <td className="text-center">
+                              <FioriObjectStatus
+                                tone={hall.active !== false ? 'positive' : 'neutral'}
+                                size="sm"
+                                label={hall.active !== false ? 'فعال' : 'غیرفعال'}
+                              />
+                            </td>
+                            <td className="text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingHall(hall);
+                                    setHallForm({ ...hall });
+                                    setIsHallModalOpen(true);
+                                  }}
+                                  className="px-2 py-0.5 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-brand)] bg-[var(--fiori-info-bg)] hover:bg-[var(--fiori-bg-selected)] transition-colors cursor-pointer"
+                                >
+                                  ویرایش
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteHall(hall.id)}
+                                  className="px-2 py-0.5 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-negative)] bg-[var(--fiori-negative-bg)] hover:opacity-80 transition-colors cursor-pointer"
+                                >
+                                  حذف
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 5. BOM (درخت محصول پیشرفته چندسطحی) */}
       {activeSection === 'BOM' && (
@@ -2001,220 +2041,233 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
       )}
 
       {/* 6. OPERATIONS (عملیات تولید استاندارد) */}
-      {activeSection === 'OPERATIONS' && (
-        <div className="sap-card p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-[#EAECEF]">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-[#1D2D3E]">
-                  ایستگاه‌ها و عملیات استاندارد تولید (Standard Operations)
-                </h3>
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#EBF5FF] text-[#0064D9] border border-[#D1E8FF]">
-                  {toPersianDigits(operationsList.length)} عملیات تعریف‌شده
-                </span>
-              </div>
-              <p className="text-xs text-[#556B82] mt-0.5">
-                بانک اطلاعاتی عملیات استاندارد برش رول، بلنکینگ، کشش، خم، پرس‌جوش مهره، جوش CO2، پوشش الکتروفورز (ED) و بازرسی نهایی
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingOperation(null);
-                setOperationForm({
-                  code: `OP-${(operationsList.length + 1) * 10}`,
-                  name: '',
-                  stationType: '',
-                  cycleTimeSec: 4.5,
-                  setupTimeMin: 20,
-                  category: 'STAMPING',
-                  description: '',
-                  active: true,
-                });
-                setIsOperationModalOpen(true);
-              }}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>تعریف عملیات جدید</span>
-            </button>
-          </div>
+      {activeSection === 'OPERATIONS' && (() => {
+        const filteredOps = operationsList.filter(op => {
+          const matchCat =
+            operationCategoryFilter === 'ALL' || op.category === operationCategoryFilter;
+          const q = operationSearch.trim().toLowerCase();
+          const matchSearch =
+            !q ||
+            op.code.toLowerCase().includes(q) ||
+            op.name.toLowerCase().includes(q) ||
+            op.stationType.toLowerCase().includes(q) ||
+            (op.description && op.description.toLowerCase().includes(q));
+          return matchCat && matchSearch;
+        });
 
-          {/* Search & Filter Bar */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#666666]" />
-              <input
-                type="text"
-                placeholder="جستجو در کد، نام عملیات، ایستگاه یا توضیحات..."
-                value={operationSearch}
-                onChange={e => setOperationSearch(e.target.value)}
-                className="w-full bg-white border border-[#d9d9d9] rounded-sm pr-9 pl-3 py-1.5 text-xs text-[#333333] placeholder:text-[#666666] focus:outline-none focus:border-[#007cc0] transition-colors"
+        return (
+          <div className="sap-card p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-[var(--fiori-border-subtle)]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)]">
+                    ایستگاه‌ها و عملیات استاندارد تولید (Standard Operations)
+                  </h3>
+                  <FioriObjectStatus tone="info" size="sm" label={`${toPersianDigits(operationsList.length)} عملیات تعریف‌شده`} />
+                </div>
+                <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
+                  بانک اطلاعاتی عملیات استاندارد برش رول، بلنکینگ، کشش، خم، پرس‌جوش مهره، جوش CO2، پوشش الکتروفورز (ED) و بازرسی نهایی
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingOperation(null);
+                  setOperationForm({
+                    code: `OP-${(operationsList.length + 1) * 10}`,
+                    name: '',
+                    stationType: '',
+                    cycleTimeSec: 4.5,
+                    setupTimeMin: 20,
+                    category: 'STAMPING',
+                    description: '',
+                    active: true,
+                  });
+                  setIsOperationModalOpen(true);
+                }}
+                className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>تعریف عملیات جدید</span>
+              </button>
+            </div>
+
+            {/* Search & Filter Bar */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fiori-text-muted)]" />
+                <input
+                  type="text"
+                  placeholder="جستجو در کد، نام عملیات، ایستگاه یا توضیحات..."
+                  value={operationSearch}
+                  onChange={e => setOperationSearch(e.target.value)}
+                  className="fiori-input w-full pr-9 pl-3 py-1.5 text-xs"
+                />
+                {operationSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setOperationSearch('')}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--fiori-text-muted)] hover:text-[var(--fiori-text-primary)] cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 'ALL', label: 'همه دسته‌ها' },
+                  { id: 'SHEARING', label: 'برش و نواربری' },
+                  { id: 'STAMPING', label: 'پرسکاری و کشش' },
+                  { id: 'BENDING', label: 'خم‌کاری' },
+                  { id: 'WELDING', label: 'جوش مقاومتی و CO2' },
+                  { id: 'SURFACE_FINISH', label: 'رنگ و فسفاته' },
+                  { id: 'QC_PACK', label: 'کنترل کیفی و پکینگ' },
+                ].map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setOperationCategoryFilter(cat.id)}
+                    className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold transition-colors cursor-pointer border ${
+                      operationCategoryFilter === cat.id
+                        ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)]'
+                        : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-secondary)] border-[var(--fiori-border-default)] hover:bg-[var(--fiori-bg-hover)]'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Operations Table */}
+            <div className="sap-card overflow-hidden">
+              <FioriToolbar
+                variant="table"
+                title="فهرست عملیات استاندارد"
+                count={filteredOps.length}
+                countLabel="عملیات"
               />
-              {operationSearch && (
-                <button
-                  type="button"
-                  onClick={() => setOperationSearch('')}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666666] hover:text-[#333333]"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+              {filteredOps.length === 0 ? (
+                <EmptyState
+                  compact
+                  variant={operationSearch.trim() || operationCategoryFilter !== 'ALL' ? 'FILTER_NO_MATCH' : 'NO_DATA'}
+                  title="عملیاتی یافت نشد"
+                  description="جهت تعریف مرحله جدید دکمه «تعریف عملیات جدید» را بزنید یا فیلترها را پاک کنید."
+                  actionLabel={operationSearch.trim() || operationCategoryFilter !== 'ALL' ? 'پاک کردن فیلترها' : undefined}
+                  onAction={
+                    operationSearch.trim() || operationCategoryFilter !== 'ALL'
+                      ? () => {
+                          setOperationSearch('');
+                          setOperationCategoryFilter('ALL');
+                        }
+                      : undefined
+                  }
+                />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="sap-table-compact w-full text-right text-xs">
+                    <thead className="bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-default)] text-[var(--fiori-text-primary)] font-bold">
+                      <tr>
+                        <th>کد عملیات</th>
+                        <th>عنوان عملیات</th>
+                        <th>نوع ایستگاه / تجهیزات</th>
+                        <th>دسته فرآیندی</th>
+                        <th>زمان چرخه (ثانیه)</th>
+                        <th>زمان تعویض قالب (دقیقه)</th>
+                        <th>وضعیت</th>
+                        <th className="text-center">اقدامات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--fiori-border-subtle)] bg-[var(--fiori-bg-surface)]">
+                      {filteredOps.map(op => {
+                        const categoryMeta: Record<string, { label: string; tone: 'info' | 'critical' | 'neutral' | 'positive' }> = {
+                          SHEARING: { label: 'برشکاری', tone: 'critical' },
+                          STAMPING: { label: 'پرسکاری', tone: 'info' },
+                          BENDING: { label: 'خم‌کاری', tone: 'info' },
+                          WELDING: { label: 'جوشکاری', tone: 'critical' },
+                          SURFACE_FINISH: { label: 'رنگ و پوشش', tone: 'neutral' },
+                          QC_PACK: { label: 'کنترل و بسته‌بندی', tone: 'positive' },
+                        };
+                        const catMeta = categoryMeta[op.category] || { label: op.category, tone: 'neutral' as const };
+
+                        return (
+                          <tr key={op.id || op.code} className="hover:bg-[var(--fiori-bg-hover)] transition-colors">
+                            <td className="fiori-ltr-code font-bold text-[var(--fiori-text-primary)]">{op.code}</td>
+                            <td>
+                              <div className="font-semibold text-[var(--fiori-text-primary)]">{op.name}</div>
+                              {op.description && (
+                                <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-0.5 line-clamp-1">{op.description}</div>
+                              )}
+                            </td>
+                            <td className="text-[var(--fiori-text-primary)] font-medium">{op.stationType}</td>
+                            <td>
+                              <FioriObjectStatus tone={catMeta.tone} size="sm" label={catMeta.label} />
+                            </td>
+                            <td className="tabular-nums font-bold text-[var(--fiori-text-primary)]">
+                              {toPersianDigits(op.cycleTimeSec)} ثانیه
+                            </td>
+                            <td className="tabular-nums text-[var(--fiori-text-secondary)]">
+                              {toPersianDigits(op.setupTimeMin)} دقیقه
+                            </td>
+                            <td>
+                              <FioriObjectStatus
+                                tone={op.active !== false ? 'positive' : 'neutral'}
+                                size="sm"
+                                label={op.active !== false ? 'فعال' : 'غیرفعال'}
+                              />
+                            </td>
+                            <td>
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingOperation(op);
+                                    setOperationForm({ ...op });
+                                    setIsOperationModalOpen(true);
+                                  }}
+                                  className="px-2 py-0.5 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-brand)] bg-[var(--fiori-info-bg)] hover:bg-[var(--fiori-bg-selected)] transition-colors cursor-pointer"
+                                >
+                                  ویرایش
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingOperation(null);
+                                    setOperationForm({
+                                      ...op,
+                                      id: undefined,
+                                      code: `${op.code}-COPY`,
+                                      name: `${op.name} (کپی)`,
+                                    });
+                                    setIsOperationModalOpen(true);
+                                  }}
+                                  className="sap-btn-standard px-2 py-0.5 text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                                  title="کپی‌گیری سریع (Duplicate) برای ایجاد عملیات مشابه"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  <span>کپی‌گیری</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteOperation(op.id || op.code)}
+                                  className="px-2 py-0.5 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-negative)] bg-[var(--fiori-negative-bg)] hover:opacity-80 transition-colors cursor-pointer"
+                                >
+                                  حذف
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
-
-            <div className="flex flex-wrap items-center gap-1.5">
-              {[
-                { id: 'ALL', label: 'همه دسته‌ها' },
-                { id: 'SHEARING', label: 'برش و نواربری' },
-                { id: 'STAMPING', label: 'پرسکاری و کشش' },
-                { id: 'BENDING', label: 'خم‌کاری' },
-                { id: 'WELDING', label: 'جوش مقاومتی و CO2' },
-                { id: 'SURFACE_FINISH', label: 'رنگ و فسفاته' },
-                { id: 'QC_PACK', label: 'کنترل کیفی و پکینگ' },
-              ].map(cat => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setOperationCategoryFilter(cat.id)}
-                  className={`px-2.5 py-1 rounded-sm text-[11px] font-semibold transition-all cursor-pointer border ${
-                    operationCategoryFilter === cat.id
-                      ? 'bg-[#007cc0] text-white border-[#007cc0]'
-                      : 'bg-white text-[#666666] border-[#d9d9d9] hover:bg-[#e5f3fa]'
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
           </div>
-
-          {/* Operations Table */}
-          <div className="overflow-x-auto border border-[#d9d9d9] rounded-sm">
-            <table className="sap-table-compact w-full text-right text-xs">
-              <thead className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333] font-bold">
-                <tr>
-                  <th>کد عملیات</th>
-                  <th>عنوان عملیات</th>
-                  <th>نوع ایستگاه / تجهیزات</th>
-                  <th>دسته فرآیندی</th>
-                  <th>زمان چرخه (ثانیه)</th>
-                  <th>زمان تعویض قالب (دقیقه)</th>
-                  <th>وضعیت</th>
-                  <th className="text-center">اقدامات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8e8e8] bg-white">
-                {operationsList
-                  .filter(op => {
-                    const matchCat =
-                      operationCategoryFilter === 'ALL' || op.category === operationCategoryFilter;
-                    const q = operationSearch.trim().toLowerCase();
-                    const matchSearch =
-                      !q ||
-                      op.code.toLowerCase().includes(q) ||
-                      op.name.toLowerCase().includes(q) ||
-                      op.stationType.toLowerCase().includes(q) ||
-                      (op.description && op.description.toLowerCase().includes(q));
-                    return matchCat && matchSearch;
-                  })
-                  .map(op => {
-                    const categoryLabels: Record<string, { label: string; color: string }> = {
-                      SHEARING: { label: 'برشکاری', color: 'bg-[#fff7eb] text-[#e9730c] border-[#f5d29c]' },
-                      STAMPING: { label: 'پرسکاری', color: 'bg-[#e5f3fa] text-[#007cc0] border-[#b3d7ff]' },
-                      BENDING: { label: 'خم‌کاری', color: 'bg-[#e5f3fa] text-[#007cc0] border-[#b3d7ff]' },
-                      WELDING: { label: 'جوشکاری', color: 'bg-[#fff7eb] text-[#e9730c] border-[#f5d29c]' },
-                      SURFACE_FINISH: { label: 'رنگ و پوشش', color: 'bg-[#f0f0f0] text-[#333333] border-[#d9d9d9]' },
-                      QC_PACK: { label: 'کنترل و بسته‌بندی', color: 'bg-[#eefaf2] text-[#107e3e] border-[#b6e4c8]' },
-                    };
-                    const catMeta = categoryLabels[op.category] || { label: op.category, color: 'bg-[#f0f0f0] text-[#333333] border-[#d9d9d9]' };
-
-                    return (
-                      <tr key={op.id || op.code} className="hover:bg-[#e5f3fa]/55 transition-colors">
-                        <td className="font-mono font-bold text-[#333333]">{op.code}</td>
-                        <td>
-                          <div className="font-semibold text-[#333333]">{op.name}</div>
-                          {op.description && (
-                            <div className="text-[11px] text-[#666666] mt-0.5 line-clamp-1">{op.description}</div>
-                          )}
-                        </td>
-                        <td className="text-[#333333] font-medium">{op.stationType}</td>
-                        <td>
-                          <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold border ${catMeta.color}`}>
-                            {catMeta.label}
-                          </span>
-                        </td>
-                        <td className="tabular-nums font-bold text-[#333333]">
-                          {toPersianDigits(op.cycleTimeSec)} ثانیه
-                        </td>
-                        <td className="tabular-nums text-[#666666]">
-                          {toPersianDigits(op.setupTimeMin)} دقیقه
-                        </td>
-                        <td>
-                          <span
-                            className={`px-2 py-0.5 rounded-sm text-[10px] font-bold ${
-                              op.active !== false
-                                ? 'bg-[#eefaf2] text-[#107e3e] border border-[#b6e4c8]'
-                                : 'bg-[#f0f0f0] text-[#666666]'
-                            }`}
-                          >
-                            {op.active !== false ? 'فعال' : 'غیرفعال'}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingOperation(op);
-                                setOperationForm({ ...op });
-                                setIsOperationModalOpen(true);
-                              }}
-                              className="px-2 py-0.5 rounded-sm text-[11px] font-semibold text-[#007cc0] bg-[#e5f3fa] hover:bg-[#d1ecfa] transition-colors cursor-pointer"
-                            >
-                              ویرایش
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingOperation(null);
-                                setOperationForm({
-                                  ...op,
-                                  id: undefined,
-                                  code: `${op.code}-COPY`,
-                                  name: `${op.name} (کپی)`,
-                                });
-                                setIsOperationModalOpen(true);
-                              }}
-                              className="sap-btn-standard px-2 py-0.5 rounded-sm text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
-                              title="کپی‌گیری سریع (Duplicate) برای ایجاد عملیات مشابه"
-                            >
-                              <Copy className="w-3 h-3" />
-                              <span>کپی‌گیری</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteOperation(op.id || op.code)}
-                              className="px-2 py-0.5 rounded-sm text-[11px] font-semibold text-[#bb0000] bg-[#fff2f2] hover:bg-[#ffe5e5] transition-colors cursor-pointer"
-                            >
-                              حذف
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                {operationsList.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-[#666666]">
-                      عملیاتی یافت نشد. جهت تعریف مرحله جدید دکمه «تعریف عملیات جدید» را بزنید.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 7. WAREHOUSES, UNITS, SHIFTS, CUSTOMERS, CAR_MODELS, ORDERS */}
       {(activeSection === 'WAREHOUSES' ||
@@ -2223,15 +2276,13 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
         activeSection === 'CUSTOMERS' ||
         activeSection === 'CAR_MODELS' ||
         activeSection === 'ORDERS') && (
-        <div
-          className={`bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs ${themeMeta.borderAccentClass}`}
-        >
+        <div className="sap-card p-5 space-y-4">
           {activeSection === 'WAREHOUSES' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-[var(--fiori-border-subtle)]">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">انبارها و موقعیت‌های استقرار مواد و قطعات</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">مدیریت انبارهای مواد اولیه، پای خط (WIP)، محصول نهایی و ضایعات</p>
+                  <h3 className="text-sm font-bold text-[var(--fiori-text-primary)]">انبارها و موقعیت‌های استقرار مواد و قطعات</h3>
+                  <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">مدیریت انبارهای مواد اولیه، پای خط (WIP)، محصول نهایی و ضایعات</p>
                 </div>
                 <button
                   type="button"
@@ -2246,69 +2297,75 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                     });
                     setIsWarehouseModalOpen(true);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${themeMeta.buttonPrimaryClass}`}
+                  className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>تعریف انبار جدید</span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                {warehousesList.map(w => (
-                  <div key={w.id || w.code} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2 relative group hover:border-slate-300 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 text-sm">{w.name}</span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                        {w.type === 'RAW_MATERIALS' ? 'مواد اولیه' : w.type === 'WIP' ? 'پای کار (WIP)' : w.type === 'FINISHED_GOODS' ? 'محصول نهایی' : w.type === 'SCRAP' ? 'ضایعات' : 'ابزار/قالب'}
-                      </span>
-                    </div>
-                    <div className="text-slate-600">
-                      کد انبار: <span className="font-mono font-bold text-slate-800">{w.code}</span>
-                      {w.managerName && <span> — مسوول: {w.managerName}</span>}
-                    </div>
-                    {w.locations && w.locations.length > 0 && (
-                      <div className="text-slate-500 text-[11px] flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>موقعیت‌ها: {w.locations.join(' ، ')}</span>
+              {warehousesList.length === 0 ? (
+                <EmptyState
+                  compact
+                  variant="NO_DATA"
+                  title="هیچ انباری تعریف نشده است"
+                  description="جهت ایجاد انبار دکمه «تعریف انبار جدید» را بزنید."
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                  {warehousesList.map(w => (
+                    <div key={w.id || w.code} className="p-4 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)] space-y-2 relative group hover:border-[var(--fiori-brand)] transition-colors">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-[var(--fiori-text-primary)] text-sm">{w.name}</span>
+                        <FioriObjectStatus
+                          tone="positive"
+                          size="sm"
+                          label={w.type === 'RAW_MATERIALS' ? 'مواد اولیه' : w.type === 'WIP' ? 'پای کار (WIP)' : w.type === 'FINISHED_GOODS' ? 'محصول نهایی' : w.type === 'SCRAP' ? 'ضایعات' : 'ابزار/قالب'}
+                        />
                       </div>
-                    )}
-                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-200/60">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingWarehouse(w);
-                          setWarehouseForm({ ...w });
-                          setIsWarehouseModalOpen(true);
-                        }}
-                        className="px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-200/80 transition-colors cursor-pointer"
-                      >
-                        ویرایش
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteWarehouse(w.id || w.code)}
-                        className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
-                      >
-                        حذف
-                      </button>
+                      <div className="text-[var(--fiori-text-secondary)]">
+                        کد انبار: <span className="fiori-ltr-code font-bold text-[var(--fiori-text-primary)]">{w.code}</span>
+                        {w.managerName && <span> — مسوول: {w.managerName}</span>}
+                      </div>
+                      {w.locations && w.locations.length > 0 && (
+                        <div className="text-[var(--fiori-text-secondary)] text-[11px] flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-[var(--fiori-text-muted)] shrink-0" />
+                          <span>موقعیت‌ها: {w.locations.join(' ، ')}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[var(--fiori-border-subtle)]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingWarehouse(w);
+                            setWarehouseForm({ ...w });
+                            setIsWarehouseModalOpen(true);
+                          }}
+                          className="px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-brand)] hover:bg-[var(--fiori-info-bg)] transition-colors cursor-pointer"
+                        >
+                          ویرایش
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteWarehouse(w.id || w.code)}
+                          className="px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] transition-colors cursor-pointer"
+                        >
+                          حذف
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {warehousesList.length === 0 && (
-                  <div className="col-span-full py-8 text-center text-slate-400">
-                    هیچ انباری تعریف نشده است. جهت ایجاد انبار دکمه «تعریف انبار جدید» را بزنید.
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {activeSection === 'UNITS' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-[var(--fiori-border-subtle)]">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">واحدهای شمارش و ضرایب تبدیل مهندسی</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">واحدهای پایه شمارش قطعات، وزن کلاف و تبدیل برگه به کیلوگرم</p>
+                  <h3 className="text-sm font-bold text-[var(--fiori-text-primary)]">واحدهای شمارش و ضرایب تبدیل مهندسی</h3>
+                  <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">واحدهای پایه شمارش قطعات، وزن کلاف و تبدیل برگه به کیلوگرم</p>
                 </div>
                 <button
                   type="button"
@@ -2317,7 +2374,7 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                     setUnitForm({ symbol: '', title: '', description: '', conversionFactorToKg: 1, isBaseUnit: false });
                     setIsUnitModalOpen(true);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${themeMeta.buttonPrimaryClass}`}
+                  className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>تعریف واحد جدید</span>
@@ -2325,9 +2382,8 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
               </div>
 
               {/* Informative helper box on conversion factors */}
-              <div className="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
-                <span className="font-bold text-amber-700 shrink-0 mt-0.5">💡 راهنمای مهندسی واحدها:</span>
-                <div className="space-y-1 text-[11px] leading-relaxed text-amber-800">
+              <FioriMessageStrip tone="warning" title="راهنمای مهندسی واحدها">
+                <div className="space-y-1 text-[11px] leading-relaxed">
                   <p>
                     <strong>ضریب تبدیل به کیلوگرم:</strong> نشان‌دهنده وزن معادل هر یک واحد به کیلوگرم است (مثلاً برای «برگ ورق ST12» برابر با ۲۴/۵ کیلوگرم و برای «رول استاندارد» برابر با ۵,۰۰۰ کیلوگرم). این ضریب در محاسبات موازنه جرم آهن (Mass Balance) و محاسبه کسری کلاف در MRP مبنای تبدیل است.
                   </p>
@@ -2335,25 +2391,25 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                     <strong>واحد مبنای سیستم:</strong> واحدی است که تمامی گزارش‌های کاردکس و تراز انبار بر اساس آن همگن‌سازی می‌شوند (کیلوگرم برای مواد وزنی و عدد برای قطعات پرس).
                   </p>
                 </div>
-              </div>
+              </FioriMessageStrip>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                 {unitsList.map(u => (
-                  <div key={u.id || u.symbol} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5 hover:border-slate-300 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-mono font-bold text-emerald-700">{u.symbol}</div>
+                  <div key={u.id || u.symbol} className="p-4 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)] space-y-1.5 hover:border-[var(--fiori-brand)] transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm fiori-ltr-code font-bold text-[var(--fiori-positive)]">{u.symbol}</div>
                       {u.isBaseUnit && (
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">واحد مبنا</span>
+                        <FioriObjectStatus tone="positive" size="sm" label="واحد مبنا" />
                       )}
                     </div>
-                    <div className="font-bold text-slate-900">{u.title}</div>
-                    <div className="text-slate-500 text-[11px] leading-relaxed">{u.description}</div>
+                    <div className="font-bold text-[var(--fiori-text-primary)]">{u.title}</div>
+                    <div className="text-[var(--fiori-text-secondary)] text-[11px] leading-relaxed">{u.description}</div>
                     {u.conversionFactorToKg !== undefined && (
-                      <div className="text-[11px] text-slate-700 font-medium bg-white px-2 py-1 rounded border border-slate-200 mt-1">
-                        ضریب به کیلوگرم: <span className="font-mono font-bold text-slate-900">{u.conversionFactorToKg}</span>
+                      <div className="text-[11px] text-[var(--fiori-text-primary)] font-medium bg-[var(--fiori-bg-surface)] px-2 py-1 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] mt-1">
+                        ضریب به کیلوگرم: <span className="font-mono font-bold tabular-nums">{u.conversionFactorToKg}</span>
                       </div>
                     )}
-                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-200/60">
+                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[var(--fiori-border-subtle)]">
                       <button
                         type="button"
                         onClick={() => {
@@ -2361,14 +2417,14 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                           setUnitForm({ ...u });
                           setIsUnitModalOpen(true);
                         }}
-                        className="px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-200/80 transition-colors cursor-pointer"
+                        className="px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-brand)] hover:bg-[var(--fiori-info-bg)] transition-colors cursor-pointer"
                       >
                         ویرایش
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteUnit(u.id || u.symbol)}
-                        className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                        className="px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] transition-colors cursor-pointer"
                       >
                         حذف
                       </button>
@@ -2381,10 +2437,10 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
 
           {activeSection === 'SHIFTS' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-[var(--fiori-border-subtle)]">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">شیفت‌های کاری، اضافه‌کاری و تقویم ظرفیت تولید</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">تعریف ساعات کاری شیفت‌ها، زمان خالص کارکرد و برنامه‌ریزی MRP</p>
+                  <h3 className="text-sm font-bold text-[var(--fiori-text-primary)]">شیفت‌های کاری، اضافه‌کاری و تقویم ظرفیت تولید</h3>
+                  <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">تعریف ساعات کاری شیفت‌ها، زمان خالص کارکرد و برنامه‌ریزی MRP</p>
                 </div>
                 <button
                   type="button"
@@ -2406,7 +2462,7 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                     });
                     setIsShiftModalOpen(true);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${themeMeta.buttonPrimaryClass}`}
+                  className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>تعریف شیفت جدید</span>
@@ -2414,66 +2470,70 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
               </div>
 
               {/* Weekly Shift Scenario Banner */}
-              <div className="p-4 bg-blue-50/70 border border-blue-200/80 rounded-2xl text-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-blue-900 text-sm">📅 سناریوی زمان‌بندی و تقویم ظرفیت شیفت کارخانه:</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[11px] font-bold">
-                    مجموع ظرفیت هفتگی: ۳۷/۵ ساعت کار عادی + ۱۰ تا ۱۲ ساعت اضافه‌کاری
-                  </span>
+              <div className="p-4 bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] rounded-[var(--fiori-radius-md)] text-xs space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-[var(--fiori-text-primary)] text-sm">سناریوی زمان‌بندی و تقویم ظرفیت شیفت کارخانه:</span>
+                  <FioriObjectStatus
+                    tone="info"
+                    size="sm"
+                    label="مجموع ظرفیت هفتگی: ۳۷/۵ ساعت کار عادی + ۱۰ تا ۱۲ ساعت اضافه‌کاری"
+                  />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] text-blue-900">
-                  <div className="bg-white/80 p-2.5 rounded-xl border border-blue-100 space-y-1">
-                    <span className="font-bold text-blue-800">۱. شیفت عادی (شنبه تا چهارشنبه):</span>
-                    <p className="text-slate-600">ساعت ۰۷:۰۰ صبح تا ۱۴:۳۰ بعدازظهر (۷ ساعت کار خالص مفید + ۳۰ دقیقه ناهار = ۴۵۰ دقیقه ظرفیت مفید اسمی)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] text-[var(--fiori-text-primary)]">
+                  <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-info-border)] space-y-1">
+                    <span className="font-bold text-[var(--fiori-brand)]">۱. شیفت عادی (شنبه تا چهارشنبه):</span>
+                    <p className="text-[var(--fiori-text-secondary)]">ساعت ۰۷:۰۰ صبح تا ۱۴:۳۰ بعدازظهر (۷ ساعت کار خالص مفید + ۳۰ دقیقه ناهار = ۴۵۰ دقیقه ظرفیت مفید اسمی)</p>
                   </div>
-                  <div className="bg-white/80 p-2.5 rounded-xl border border-blue-100 space-y-1">
-                    <span className="font-bold text-blue-800">۲. اضافه‌کاری عادی (شنبه تا چهارشنبه):</span>
-                    <p className="text-slate-600">ساعت ۱۵:۰۰ تا ۱۷:۰۰ بعدازظهر (۲ ساعت معادل ۱۲۰ دقیقه اضافه‌کاری خطوط پرس و مونتاژ)</p>
+                  <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-info-border)] space-y-1">
+                    <span className="font-bold text-[var(--fiori-brand)]">۲. اضافه‌کاری عادی (شنبه تا چهارشنبه):</span>
+                    <p className="text-[var(--fiori-text-secondary)]">ساعت ۱۵:۰۰ تا ۱۷:۰۰ بعدازظهر (۲ ساعت معادل ۱۲۰ دقیقه اضافه‌کاری خطوط پرس و مونتاژ)</p>
                   </div>
-                  <div className="bg-white/80 p-2.5 rounded-xl border border-blue-100 space-y-1">
-                    <span className="font-bold text-blue-800">۳. مدیریت منعطف روز پنجشنبه:</span>
-                    <p className="text-slate-600">تنظیم پویا در تقویم: ۱. تعطیل کامل | ۲. فقط اضافه‌کاری ۱۵ الی ۱۷ | ۳. شیفت کامل عادی</p>
+                  <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-info-border)] space-y-1">
+                    <span className="font-bold text-[var(--fiori-brand)]">۳. مدیریت منعطف روز پنجشنبه:</span>
+                    <p className="text-[var(--fiori-text-secondary)]">تنظیم پویا در تقویم: ۱. تعطیل کامل | ۲. فقط اضافه‌کاری ۱۵ الی ۱۷ | ۳. شیفت کامل عادی</p>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                 {shiftsList.map(sh => (
-                  <div key={sh.id || sh.code} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2.5 hover:border-slate-300 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 text-sm">{sh.name}</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${sh.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
-                        {sh.status === 'ACTIVE' ? 'فعال' : 'غیرفعال'}
-                      </span>
+                  <div key={sh.id || sh.code} className="p-4 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)] space-y-2.5 hover:border-[var(--fiori-brand)] transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-[var(--fiori-text-primary)] text-sm">{sh.name}</span>
+                      <FioriObjectStatus
+                        tone={sh.status === 'ACTIVE' ? 'positive' : 'neutral'}
+                        size="sm"
+                        label={sh.status === 'ACTIVE' ? 'فعال' : 'غیرفعال'}
+                      />
                     </div>
 
-                    <div className="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1 text-[11px]">
-                      <div className="flex justify-between text-slate-700">
+                    <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] space-y-1 text-[11px]">
+                      <div className="flex justify-between text-[var(--fiori-text-secondary)]">
                         <span>ساعات عادی:</span>
-                        <span className="font-mono font-bold text-slate-900">{sh.startTime} الی {sh.endTime}</span>
+                        <span className="font-mono font-bold text-[var(--fiori-text-primary)] tabular-nums">{sh.startTime} الی {sh.endTime}</span>
                       </div>
-                      <div className="flex justify-between text-slate-700">
+                      <div className="flex justify-between text-[var(--fiori-text-secondary)]">
                         <span>کار مفید عادی:</span>
-                        <span className="font-bold text-emerald-700">{toPersianDigits(sh.netWorkMinutes)} دقیقه (۷ ساعت کار + ۳۰ دقیقه ناهار)</span>
+                        <span className="font-bold text-[var(--fiori-positive)] tabular-nums">{toPersianDigits(sh.netWorkMinutes)} دقیقه (۷ ساعت کار + ۳۰ دقیقه ناهار)</span>
                       </div>
                     </div>
 
                     {sh.hasOvertime && (
-                      <div className="bg-amber-50/70 p-2.5 rounded-lg border border-amber-200/70 space-y-1 text-[11px]">
-                        <div className="flex justify-between text-amber-900 font-semibold">
+                      <div className="bg-[var(--fiori-critical-bg)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-critical-border)] space-y-1 text-[11px]">
+                        <div className="flex justify-between text-[var(--fiori-text-primary)] font-semibold">
                           <span>اضافه‌کاری روزانه:</span>
-                          <span className="font-mono font-bold">{sh.overtimeStartTime || '15:00'} الی {sh.overtimeEndTime || '17:00'}</span>
+                          <span className="font-mono font-bold tabular-nums">{sh.overtimeStartTime || '15:00'} الی {sh.overtimeEndTime || '17:00'}</span>
                         </div>
-                        <div className="flex justify-between text-amber-800">
+                        <div className="flex justify-between text-[var(--fiori-critical)]">
                           <span>روزها:</span>
-                          <span>{sh.overtimeDaysDescription || 'شنبه تا چهارشنبه'} ({toPersianDigits(sh.overtimeMinutes || 120)} دقیقه)</span>
+                          <span className="tabular-nums">{sh.overtimeDaysDescription || 'شنبه تا چهارشنبه'} ({toPersianDigits(sh.overtimeMinutes || 120)} دقیقه)</span>
                         </div>
                       </div>
                     )}
 
-                    <div className="text-[11px] flex items-center justify-between bg-slate-100 p-2 rounded-lg">
-                      <span className="text-slate-600">وضعیت پنجشنبه:</span>
-                      <span className="font-bold text-slate-900">
+                    <div className="text-[11px] flex items-center justify-between bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-subtle)] p-2 rounded-[var(--fiori-radius-sm)]">
+                      <span className="text-[var(--fiori-text-secondary)]">وضعیت پنجشنبه:</span>
+                      <span className="font-bold text-[var(--fiori-text-primary)]">
                         {sh.thursdayStatus === 'OFF'
                           ? 'تعطیل کامل'
                           : sh.thursdayStatus === 'OVERTIME_15_17'
@@ -2482,7 +2542,7 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-200/60">
+                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[var(--fiori-border-subtle)]">
                       <button
                         type="button"
                         onClick={() => {
@@ -2490,14 +2550,14 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                           setShiftForm({ ...sh });
                           setIsShiftModalOpen(true);
                         }}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-200/80 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-brand)] hover:bg-[var(--fiori-info-bg)] transition-colors cursor-pointer"
                       >
                         ویرایش زمان‌بندی
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteShift(sh.id || sh.code)}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] transition-colors cursor-pointer"
                       >
                         حذف
                       </button>
@@ -2510,10 +2570,10 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
 
           {activeSection === 'CAR_MODELS' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-[var(--fiori-border-subtle)]">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">مدل‌های خودرو و خانواده محصول (Car Models & Platforms)</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <h3 className="text-sm font-bold text-[var(--fiori-text-primary)]">مدل‌های خودرو و خانواده محصول (Car Models & Platforms)</h3>
+                  <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
                     تعریف خانواده محصولات و خودروهای طرف قرارداد (ایران‌خودرو، سایپا و...) جهت انتساب یکپارچه به قطعات، فیلترهای مسیر تولید و سفارشات
                   </p>
                 </div>
@@ -2530,7 +2590,7 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                     });
                     setIsCarModelModalOpen(true);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${themeMeta.buttonPrimaryClass}`}
+                  className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>تعریف مدل خودرو جدید</span>
@@ -2538,81 +2598,94 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
               </div>
 
               {/* Car Models Table */}
-              <div className="border border-[#d9d9d9] rounded-sm overflow-hidden bg-white">
-                <table className="sap-table-compact w-full text-right text-xs">
-                  <thead className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333] font-bold">
-                    <tr>
-                      <th>کد شناسه</th>
-                      <th>نام مدل خودرو</th>
-                      <th>خودروساز / OEM</th>
-                      <th>توضیحات و پلتفرم</th>
-                      <th className="text-center">قطعات متصل در کاتالوگ</th>
-                      <th className="text-center">وضعیت</th>
-                      <th className="text-center">عملیات</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#e8e8e8] text-[#333333]">
-                    {carModelsList.map(m => {
-                      const connectedPartsCount = parts.filter(
-                        p => p.carModel === m.name || p.carModel?.includes(m.name)
-                      ).length;
-                      return (
-                        <tr key={m.id || m.code} className="hover:bg-[#e5f3fa]/55 transition-colors">
-                          <td className="font-mono font-bold text-[#333333]">{m.code}</td>
-                          <td className="font-bold text-[#333333]">{m.name}</td>
-                          <td className="font-semibold text-[#666666]">{m.oem}</td>
-                          <td className="text-[#666666]">{m.description || '—'}</td>
-                          <td className="text-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-bold bg-[#f0f0f0] text-[#333333]">
-                              {toPersianDigits(connectedPartsCount)} قطعه
-                            </span>
-                          </td>
-                          <td className="text-center">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-bold ${
-                                m.active ? 'bg-[#eefaf2] text-[#107e3e] border border-[#b6e4c8]' : 'bg-[#f0f0f0] text-[#666666]'
-                              }`}
-                            >
-                              {m.active ? 'فعال' : 'غیرفعال'}
-                            </span>
-                          </td>
-                          <td className="text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingCarModel(m);
-                                  setCarModelForm({ ...m });
-                                  setIsCarModelModalOpen(true);
-                                }}
-                                className="text-[#007cc0] hover:text-[#006299] font-semibold cursor-pointer"
-                              >
-                                ویرایش
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCarModel(m.id || m.code)}
-                                className="text-[#bb0000] hover:underline font-semibold cursor-pointer"
-                              >
-                                حذف
-                              </button>
-                            </div>
-                          </td>
+              <div className="sap-card overflow-hidden">
+                <FioriToolbar
+                  variant="table"
+                  title="فهرست مدل‌های خودرو"
+                  count={carModelsList.length}
+                  countLabel="مدل"
+                />
+                {carModelsList.length === 0 ? (
+                  <EmptyState
+                    compact
+                    variant="NO_DATA"
+                    title="مدل خودرویی تعریف نشده است"
+                    description="جهت افزودن اولین مدل خودرو دکمه «تعریف مدل خودرو جدید» را بزنید."
+                  />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="sap-table-compact w-full text-right text-xs">
+                      <thead className="bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-default)] text-[var(--fiori-text-primary)] font-bold">
+                        <tr>
+                          <th>کد شناسه</th>
+                          <th>نام مدل خودرو</th>
+                          <th>خودروساز / OEM</th>
+                          <th>توضیحات و پلتفرم</th>
+                          <th className="text-center">قطعات متصل در کاتالوگ</th>
+                          <th className="text-center">وضعیت</th>
+                          <th className="text-center">عملیات</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--fiori-border-subtle)] text-[var(--fiori-text-primary)]">
+                        {carModelsList.map(m => {
+                          const connectedPartsCount = parts.filter(
+                            p => p.carModel === m.name || p.carModel?.includes(m.name)
+                          ).length;
+                          return (
+                            <tr key={m.id || m.code} className="hover:bg-[var(--fiori-bg-hover)] transition-colors">
+                              <td className="fiori-ltr-code font-bold text-[var(--fiori-text-primary)]">{m.code}</td>
+                              <td className="font-bold text-[var(--fiori-text-primary)]">{m.name}</td>
+                              <td className="font-semibold text-[var(--fiori-text-secondary)]">{m.oem}</td>
+                              <td className="text-[var(--fiori-text-secondary)]">{m.description || '—'}</td>
+                              <td className="text-center">
+                                <FioriObjectStatus tone="neutral" size="sm" label={`${toPersianDigits(connectedPartsCount)} قطعه`} />
+                              </td>
+                              <td className="text-center">
+                                <FioriObjectStatus
+                                  tone={m.active ? 'positive' : 'neutral'}
+                                  size="sm"
+                                  label={m.active ? 'فعال' : 'غیرفعال'}
+                                />
+                              </td>
+                              <td className="text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingCarModel(m);
+                                      setCarModelForm({ ...m });
+                                      setIsCarModelModalOpen(true);
+                                    }}
+                                    className="text-[var(--fiori-brand)] hover:text-[var(--fiori-brand-hover)] font-semibold cursor-pointer"
+                                  >
+                                    ویرایش
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCarModel(m.id || m.code)}
+                                    className="text-[var(--fiori-negative)] hover:underline font-semibold cursor-pointer"
+                                  >
+                                    حذف
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {activeSection === 'CUSTOMERS' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-[var(--fiori-border-subtle)]">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">مشتریان و شرکت‌های خودروساز طرف قرارداد</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">فهرست مشتریان، قراردادهای ورق امانی و تحویل قطعات</p>
+                  <h3 className="text-sm font-bold text-[var(--fiori-text-primary)]">مشتریان و شرکت‌های خودروساز طرف قرارداد</h3>
+                  <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">فهرست مشتریان، قراردادهای ورق امانی و تحویل قطعات</p>
                 </div>
                 <button
                   type="button"
@@ -2621,58 +2694,67 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                     setCustomerForm({ code: `CUST-${Date.now().toString().slice(-4)}`, name: '', contractType: 'تامین قطعات پرسی بدنه', phone: '', email: '', isDefault: false });
                     setIsCustomerModalOpen(true);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${themeMeta.buttonPrimaryClass}`}
+                  className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>تعریف مشتری جدید</span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                {customersList.map(c => (
-                  <div key={c.id || c.code} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2 hover:border-slate-300 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 text-sm">{c.name}</span>
-                      {c.isDefault && (
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">پیش‌فرض سیستم</span>
-                      )}
+              {customersList.length === 0 ? (
+                <EmptyState
+                  compact
+                  variant="NO_DATA"
+                  title="مشتری ثبت نشده است"
+                  description="برای تعریف اولین مشتری دکمه «تعریف مشتری جدید» را بزنید."
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  {customersList.map(c => (
+                    <div key={c.id || c.code} className="p-4 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)] space-y-2 hover:border-[var(--fiori-brand)] transition-colors">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-[var(--fiori-text-primary)] text-sm">{c.name}</span>
+                        {c.isDefault && (
+                          <FioriObjectStatus tone="positive" size="sm" label="پیش‌فرض سیستم" />
+                        )}
+                      </div>
+                      <div className="text-[var(--fiori-text-secondary)]">{c.contractType}</div>
+                      {c.phone && <div className="text-[var(--fiori-text-secondary)] text-[11px] flex items-center gap-1"><Phone className="w-3.5 h-3.5 text-[var(--fiori-text-muted)]" /><span>تلفن: {c.phone}</span></div>}
+                      {c.email && <div className="text-[var(--fiori-text-secondary)] text-[11px] flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-[var(--fiori-text-muted)]" /><span>ایمیل: {c.email}</span></div>}
+                      <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[var(--fiori-border-subtle)]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCustomer(c);
+                            setCustomerForm({ ...c });
+                            setIsCustomerModalOpen(true);
+                          }}
+                          className="px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-brand)] hover:bg-[var(--fiori-info-bg)] transition-colors cursor-pointer"
+                        >
+                          ویرایش
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCustomer(c.id || c.code)}
+                          className="px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] transition-colors cursor-pointer"
+                        >
+                          حذف
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-slate-600">{c.contractType}</div>
-                    {c.phone && <div className="text-slate-500 text-[11px] flex items-center gap-1"><Phone className="w-3.5 h-3.5 text-slate-400" /><span>تلفن: {c.phone}</span></div>}
-                    {c.email && <div className="text-slate-500 text-[11px] flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-slate-400" /><span>ایمیل: {c.email}</span></div>}
-                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-200/60">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingCustomer(c);
-                          setCustomerForm({ ...c });
-                          setIsCustomerModalOpen(true);
-                        }}
-                        className="px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-200/80 transition-colors cursor-pointer"
-                      >
-                        ویرایش
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCustomer(c.id || c.code)}
-                        className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
-                      >
-                        حذف
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {activeSection === 'ORDERS' && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-bold text-[var(--fiori-text-primary)]">
                   سفارشات مشتریان و برنامه‌های تحویل (Sales & Delivery Orders)
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[var(--fiori-text-secondary)] mt-1">
                   سفارشات مشتریان به صورت یکپارچه در موتور برنامه‌ریزی تولید و نیازسنجی مواد (MRP) مدیریت و به قراردادهای ورق متصل می‌شوند.
                 </p>
               </div>
@@ -2680,7 +2762,7 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
                 <button
                   type="button"
                   onClick={onNavigateToPlanning}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer shrink-0 ${themeMeta.buttonPrimaryClass}`}
+                  className="sap-btn-emphasized px-4 py-2 text-xs cursor-pointer shrink-0"
                 >
                   باز کردن سفارشات در ماژول برنامه‌ریزی تولید (MRP) ←
                 </button>
@@ -2691,1615 +2773,1555 @@ export const MasterDataHubView: React.FC<MasterDataHubViewProps> = ({
       )}
 
       {/* Modal for Adding / Editing Complete Raw Material & Sheet Spec */}
-      {isNewSheetModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/45 backdrop-blur-[1px] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white border border-[#d9d9d9] rounded-md max-w-2xl w-full p-5 space-y-4 shadow-xl my-auto">
-            <div className="flex items-center justify-between border-b border-[#e5e8ec] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[#1d2d3e]">
-                  {editingSheet ? 'ویرایش کامل مشخصات ماده اولیه و ورق' : 'تعریف کامل ماده اولیه و ورق جدید (Master Item Catalog)'}
-                </h3>
-                <p className="text-[11px] text-[#556b82] mt-0.5">
-                  اطلاعات این فرم همزمان در جدول مواد اولیه و کاتالوگ کل انبار قطعات ثبت می‌شود.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsNewSheetModalOpen(false);
-                  setEditingSheet(null);
-                  setShowInlineAddGrade(false);
-                }}
-                className="text-[#666666] hover:text-[#1d2d3e] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+      <FioriDialog
+        isOpen={isNewSheetModalOpen}
+        onClose={() => {
+          setIsNewSheetModalOpen(false);
+          setEditingSheet(null);
+          setShowInlineAddGrade(false);
+        }}
+        title={editingSheet ? 'ویرایش کامل مشخصات ماده اولیه و ورق' : 'تعریف کامل ماده اولیه و ورق جدید (Master Item Catalog)'}
+        subtitle="اطلاعات این فرم همزمان در جدول مواد اولیه و کاتالوگ کل انبار قطعات ثبت می‌شود."
+        size="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setIsNewSheetModalOpen(false);
+                setEditingSheet(null);
+                setShowInlineAddGrade(false);
+              }}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="mdh-sheet-form"
+              disabled={isSavingSheet}
+              className="sap-btn-emphasized px-5 py-1.5 text-xs font-bold cursor-pointer disabled:opacity-50"
+            >
+              {isSavingSheet ? 'در حال ذخیره...' : 'ذخیره مشخصات و همگام‌سازی با انبار قطعات'}
+            </button>
+          </>
+        }
+      >
+        <form id="mdh-sheet-form" onSubmit={handleSaveSheetSpec} className="space-y-3.5 text-xs">
+          {/* Row 1: Code, Material Grade (Editable & Manageable), Supply Form */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">کد ماده اولیه (انگلیسی) *</label>
+              <input
+                type="text"
+                required
+                dir="ltr"
+                value={sheetForm.code || ''}
+                onChange={e => setSheetForm({ ...sheetForm, code: e.target.value })}
+                placeholder="مثلاً SHT-DC04-1.2"
+                className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+              />
             </div>
 
-            <form onSubmit={handleSaveSheetSpec} className="space-y-3.5 text-xs">
-              {/* Row 1: Code, Material Grade (Editable & Manageable), Supply Form */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">کد ماده اولیه (انگلیسی) *</label>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-[var(--fiori-text-primary)]">گرید و جنس ورق *</label>
+                <button
+                  type="button"
+                  onClick={() => setShowInlineAddGrade(prev => !prev)}
+                  className="text-[10px] font-bold text-[var(--fiori-brand)] hover:underline cursor-pointer"
+                >
+                  {showInlineAddGrade ? 'بستن افزودن سریع' : '+ افزودن جنس جدید'}
+                </button>
+              </div>
+              <select
+                value={sheetForm.grade || materialGrades[0]?.code || 'ST12'}
+                onChange={e => {
+                  const nextCode = e.target.value;
+                  const found = materialGrades.find(g => g.code === nextCode);
+                  const nextDensity = found?.densityGCm3 || sheetForm.densityGCm3 || 7.85;
+                  const autoWeight = computeTheoreticalSheetWeight(
+                    sheetForm.thicknessMm,
+                    sheetForm.widthMm,
+                    sheetForm.lengthMm,
+                    nextDensity
+                  );
+                  setSheetForm({
+                    ...sheetForm,
+                    grade: nextCode,
+                    densityGCm3: nextDensity,
+                    standard: found?.standard || sheetForm.standard,
+                    ...(autoWeight > 0 ? { sheetWeightKg: autoWeight } : {}),
+                  });
+                }}
+                className="fiori-input w-full px-2.5 py-1.5 font-semibold cursor-pointer"
+              >
+                {materialGrades.map(g => (
+                  <option key={g.id} value={g.code}>
+                    {g.code} — {g.name}
+                  </option>
+                ))}
+                {sheetForm.grade &&
+                  !materialGrades.some(g => g.code.toUpperCase() === sheetForm.grade!.toUpperCase()) && (
+                    <option value={sheetForm.grade}>{sheetForm.grade} (سفارشی)</option>
+                  )}
+              </select>
+              <div className="mt-0.5 flex items-center justify-between text-[10px] text-[var(--fiori-text-secondary)]">
+                <span>منبع: بانک گریدهای کارخانه</span>
+                <button
+                  type="button"
+                  onClick={() => setIsGradeManagerOpen(true)}
+                  className="text-[var(--fiori-brand)] hover:underline cursor-pointer"
+                >
+                  ویرایش کل لیست ↗
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">شکل عرضه / نوع ماده</label>
+              <select
+                value={sheetForm.supplyForm || 'SHEET'}
+                onChange={e =>
+                  setSheetForm({
+                    ...sheetForm,
+                    supplyForm: e.target.value as RawSheetSpec['supplyForm'],
+                  })
+                }
+                className="fiori-input w-full px-2.5 py-1.5 cursor-pointer"
+              >
+                <option value="COIL">رول / کلاف ورق (Coil)</option>
+                <option value="SHEET">شیت ورق برش‌خورده (Sheet)</option>
+                <option value="STRIP">نوار رول‌بری شده (Strip)</option>
+                <option value="OTHER">لوله / پروفیل / سایر مواد اولیه</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Inline Quick Add New Material Grade Box */}
+          {showInlineAddGrade && (
+            <div className="p-3 bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] rounded-[var(--fiori-radius-sm)] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[var(--fiori-brand)]">
+                  افزودن سریع گرید / جنس ورق جدید به فهرست دائمی سامانه
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowInlineAddGrade(false)}
+                  className="text-[var(--fiori-text-muted)] hover:text-[var(--fiori-text-primary)] cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={inlineGradeCode}
+                  onChange={e => setInlineGradeCode(e.target.value)}
+                  placeholder="کد گرید (مثلاً ST52)"
+                  className="fiori-input fiori-ltr-code px-2 py-1 text-xs"
+                />
+                <input
+                  type="text"
+                  value={inlineGradeName}
+                  onChange={e => setInlineGradeName(e.target.value)}
+                  placeholder="شرح جنس (مثلاً ورق سیاه ST52)"
+                  className="fiori-input px-2 py-1 text-xs"
+                />
+                <select
+                  value={inlineGradeCategory}
+                  onChange={e => setInlineGradeCategory(e.target.value as MaterialGradeCategory)}
+                  className="fiori-input px-2 py-1 text-xs"
+                >
+                  {Object.entries(MATERIAL_GRADE_CATEGORIES).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-1.5">
                   <input
-                    type="text"
-                    required
-                    dir="ltr"
-                    value={sheetForm.code || ''}
-                    onChange={e => setSheetForm({ ...sheetForm, code: e.target.value })}
-                    placeholder="مثلاً SHT-DC04-1.2"
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
+                    type="number"
+                    step="0.01"
+                    value={inlineGradeDensity}
+                    onChange={e => setInlineGradeDensity(e.target.value)}
+                    placeholder="چگالی 7.85"
+                    title="چگالی بر حسب گرم بر سانتی‌متر مکعب"
+                    className="fiori-input fiori-ltr-code w-20 px-2 py-1 text-xs"
                   />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-[#333333]">گرید و جنس ورق *</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowInlineAddGrade(prev => !prev)}
-                      className="text-[10px] font-bold text-[#007cc0] hover:underline cursor-pointer"
-                    >
-                      {showInlineAddGrade ? 'بستن افزودن سریع' : '+ افزودن جنس جدید'}
-                    </button>
-                  </div>
-                  <select
-                    value={sheetForm.grade || materialGrades[0]?.code || 'ST12'}
-                    onChange={e => {
-                      const nextCode = e.target.value;
-                      const found = materialGrades.find(g => g.code === nextCode);
-                      const nextDensity = found?.densityGCm3 || sheetForm.densityGCm3 || 7.85;
-                      const autoWeight = computeTheoreticalSheetWeight(
-                        sheetForm.thicknessMm,
-                        sheetForm.widthMm,
-                        sheetForm.lengthMm,
-                        nextDensity
-                      );
-                      setSheetForm({
-                        ...sheetForm,
-                        grade: nextCode,
-                        densityGCm3: nextDensity,
-                        standard: found?.standard || sheetForm.standard,
-                        ...(autoWeight > 0 ? { sheetWeightKg: autoWeight } : {}),
-                      });
-                    }}
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 focus:outline-none focus:border-[#007cc0] bg-white font-semibold cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={handleQuickInlineAddGrade}
+                    className="flex-1 sap-btn-emphasized px-2.5 py-1 text-[11px] font-bold cursor-pointer whitespace-nowrap"
                   >
-                    {materialGrades.map(g => (
-                      <option key={g.id} value={g.code}>
-                        {g.code} — {g.name}
-                      </option>
-                    ))}
-                    {sheetForm.grade &&
-                      !materialGrades.some(g => g.code.toUpperCase() === sheetForm.grade!.toUpperCase()) && (
-                        <option value={sheetForm.grade}>{sheetForm.grade} (سفارشی)</option>
-                      )}
-                  </select>
-                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-[#556b82]">
-                    <span>منبع: بانک گریدهای کارخانه</span>
-                    <button
-                      type="button"
-                      onClick={() => setIsGradeManagerOpen(true)}
-                      className="text-[#007cc0] hover:underline cursor-pointer"
-                    >
-                      ویرایش کل لیست ↗
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">شکل عرضه / نوع ماده</label>
-                  <select
-                    value={sheetForm.supplyForm || 'SHEET'}
-                    onChange={e =>
-                      setSheetForm({
-                        ...sheetForm,
-                        supplyForm: e.target.value as RawSheetSpec['supplyForm'],
-                      })
-                    }
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 focus:outline-none focus:border-[#007cc0] bg-white cursor-pointer"
-                  >
-                    <option value="COIL">رول / کلاف ورق (Coil)</option>
-                    <option value="SHEET">شیت ورق برش‌خورده (Sheet)</option>
-                    <option value="STRIP">نوار رول‌بری شده (Strip)</option>
-                    <option value="OTHER">لوله / پروفیل / سایر مواد اولیه</option>
-                  </select>
+                    ثبت و انتخاب
+                  </button>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* Inline Quick Add New Material Grade Box */}
-              {showInlineAddGrade && (
-                <div className="p-3 bg-[#f4f9fd] border border-[#b3ddf2] rounded-sm space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#004e7a]">
-                      افزودن سریع گرید / جنس ورق جدید به فهرست دائمی سامانه
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowInlineAddGrade(false)}
-                      className="text-[#556b82] hover:text-[#1d2d3e] cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={inlineGradeCode}
-                      onChange={e => setInlineGradeCode(e.target.value)}
-                      placeholder="کد گرید (مثلاً ST52)"
-                      className="border border-[#bfbfbf] bg-white rounded-sm px-2 py-1 font-mono text-xs focus:outline-none focus:border-[#007cc0]"
-                    />
-                    <input
-                      type="text"
-                      value={inlineGradeName}
-                      onChange={e => setInlineGradeName(e.target.value)}
-                      placeholder="شرح جنس (مثلاً ورق سیاه ST52)"
-                      className="border border-[#bfbfbf] bg-white rounded-sm px-2 py-1 text-xs focus:outline-none focus:border-[#007cc0]"
-                    />
-                    <select
-                      value={inlineGradeCategory}
-                      onChange={e => setInlineGradeCategory(e.target.value as MaterialGradeCategory)}
-                      className="border border-[#bfbfbf] bg-white rounded-sm px-2 py-1 text-xs focus:outline-none focus:border-[#007cc0]"
-                    >
-                      {Object.entries(MATERIAL_GRADE_CATEGORIES).map(([k, label]) => (
-                        <option key={k} value={k}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={inlineGradeDensity}
-                        onChange={e => setInlineGradeDensity(e.target.value)}
-                        placeholder="چگالی 7.85"
-                        title="چگالی بر حسب گرم بر سانتی‌متر مکعب"
-                        className="w-20 border border-[#bfbfbf] bg-white rounded-sm px-2 py-1 font-mono text-xs focus:outline-none focus:border-[#007cc0]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleQuickInlineAddGrade}
-                        className="flex-1 sap-btn-emphasized px-2.5 py-1 text-[11px] font-bold cursor-pointer whitespace-nowrap"
-                      >
-                        ثبت و انتخاب
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+          {/* Row 2: Full Name */}
+          <div>
+            <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">نام کامل ماده اولیه *</label>
+            <input
+              type="text"
+              required
+              value={sheetForm.name || ''}
+              onChange={e => setSheetForm({ ...sheetForm, name: e.target.value })}
+              placeholder="مثلاً: ورق روغنی فوق‌کشش DC04 ضخامت ۱/۲ میلی‌متر عرض ۱۲۵۰"
+              className="fiori-input w-full px-2.5 py-1.5"
+            />
+          </div>
 
-              {/* Row 2: Full Name */}
+          {/* Row 3: Dimensions & Auto Weight Calculator */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">ضخامت (mm)</label>
+              <input
+                type="number"
+                step="0.05"
+                value={sheetForm.thicknessMm ?? 1.0}
+                onChange={e => {
+                  const t = parseFloat(e.target.value) || 0;
+                  const autoW = computeTheoreticalSheetWeight(t, sheetForm.widthMm, sheetForm.lengthMm, sheetForm.densityGCm3);
+                  setSheetForm({
+                    ...sheetForm,
+                    thicknessMm: t,
+                    ...(autoW > 0 ? { sheetWeightKg: autoW } : {}),
+                  });
+                }}
+                className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">عرض ورق/رول (mm)</label>
+              <input
+                type="number"
+                step="1"
+                value={sheetForm.widthMm ?? ''}
+                onChange={e => {
+                  const w = parseFloat(e.target.value) || 0;
+                  const l = Number(sheetForm.lengthMm) || 0;
+                  const autoWeight = computeTheoreticalSheetWeight(sheetForm.thicknessMm, w, l, sheetForm.densityGCm3);
+                  setSheetForm({
+                    ...sheetForm,
+                    widthMm: w || undefined,
+                    dimensionsMm:
+                      w > 0 && l > 0
+                        ? `${toPersianDigits(w.toLocaleString('en-US'))} × ${toPersianDigits(l.toLocaleString('en-US'))}`
+                        : sheetForm.dimensionsMm,
+                    ...(autoWeight > 0 ? { sheetWeightKg: autoWeight } : {}),
+                  });
+                }}
+                placeholder="مثلاً 1250"
+                className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">طول شیت (mm)</label>
+              <input
+                type="number"
+                step="1"
+                value={sheetForm.lengthMm ?? ''}
+                onChange={e => {
+                  const l = parseFloat(e.target.value) || 0;
+                  const w = Number(sheetForm.widthMm) || 0;
+                  const autoWeight = computeTheoreticalSheetWeight(sheetForm.thicknessMm, w, l, sheetForm.densityGCm3);
+                  setSheetForm({
+                    ...sheetForm,
+                    lengthMm: l || undefined,
+                    dimensionsMm:
+                      w > 0 && l > 0
+                        ? `${toPersianDigits(w.toLocaleString('en-US'))} × ${toPersianDigits(l.toLocaleString('en-US'))}`
+                        : sheetForm.dimensionsMm,
+                    ...(autoWeight > 0 ? { sheetWeightKg: autoWeight } : {}),
+                  });
+                }}
+                placeholder="مثلاً 2500"
+                className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">چگالی (g/cm³)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={sheetForm.densityGCm3 ?? 7.85}
+                onChange={e => {
+                  const d = parseFloat(e.target.value) || 7.85;
+                  const autoWeight = computeTheoreticalSheetWeight(sheetForm.thicknessMm, sheetForm.widthMm, sheetForm.lengthMm, d);
+                  setSheetForm({
+                    ...sheetForm,
+                    densityGCm3: d,
+                    ...(autoWeight > 0 ? { sheetWeightKg: autoWeight } : {}),
+                  });
+                }}
+                className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+              />
+            </div>
+          </div>
+
+          {/* Row 4: Unit Weight, Dimensions text, Unit of Measure, Reorder Point */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">وزن هر برگ / واحد (kg)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={sheetForm.sheetWeightKg ?? 24.5}
+                onChange={e =>
+                  setSheetForm({ ...sheetForm, sheetWeightKg: parseFloat(e.target.value) || 0 })
+                }
+                className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">متن ابعاد نمایشی</label>
+              <input
+                type="text"
+                value={sheetForm.dimensionsMm || ''}
+                onChange={e => setSheetForm({ ...sheetForm, dimensionsMm: e.target.value })}
+                placeholder="۱,۲۵۰ × ۲,۵۰۰"
+                className="fiori-input w-full px-2.5 py-1.5"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">واحد سنجش انبار</label>
+              <select
+                value={sheetForm.unit || 'کیلوگرم'}
+                onChange={e => setSheetForm({ ...sheetForm, unit: e.target.value })}
+                className="fiori-input w-full px-2.5 py-1.5 cursor-pointer"
+              >
+                <option value="کیلوگرم">کیلوگرم (KG)</option>
+                <option value="برگ">برگ / شیت (PCS)</option>
+                <option value="عدد">عدد (PCS)</option>
+                <option value="متر">متر (M)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">حداقل موجودی (نقطه سفارش)</label>
+              <input
+                type="number"
+                min="0"
+                value={sheetForm.minStock ?? 0}
+                onChange={e => setSheetForm({ ...sheetForm, minStock: parseFloat(e.target.value) || 0 })}
+                placeholder="مثلاً 2000"
+                className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+              />
+            </div>
+          </div>
+
+          {/* Row 5: Ownership, Supplier, Standard, Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">مالکیت / نوع تأمین</label>
+              <select
+                value={sheetForm.ownership || 'SAPCO_CONSIGNMENT'}
+                onChange={e =>
+                  setSheetForm({
+                    ...sheetForm,
+                    ownership: e.target.value as RawSheetSpec['ownership'],
+                  })
+                }
+                className="fiori-input w-full px-2.5 py-1.5 cursor-pointer"
+              >
+                <option value="SAPCO_CONSIGNMENT">امانی ساپکو / مشتری</option>
+                <option value="LOCAL_PURCHASE">خرید بازار داخلی</option>
+                <option value="IMPORTED">وارداتی / اختصاصی</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">تأمین‌کننده / کارخانه سازنده</label>
+              <input
+                type="text"
+                value={sheetForm.supplierName || ''}
+                onChange={e => setSheetForm({ ...sheetForm, supplierName: e.target.value })}
+                placeholder="مثلاً فولاد مبارکه"
+                className="fiori-input w-full px-2.5 py-1.5"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">استاندارد فنی</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={sheetForm.standard || ''}
+                onChange={e => setSheetForm({ ...sheetForm, standard: e.target.value })}
+                placeholder="EN 10130 / DIN 1623"
+                className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">وضعیت در کاتالوگ</label>
+              <select
+                value={sheetForm.active !== false ? 'ACTIVE' : 'INACTIVE'}
+                onChange={e => setSheetForm({ ...sheetForm, active: e.target.value === 'ACTIVE' })}
+                className="fiori-input w-full px-2.5 py-1.5 cursor-pointer"
+              >
+                <option value="ACTIVE">فعال</option>
+                <option value="INACTIVE">غیرفعال</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Row 6: Technical Notes */}
+          <div>
+            <label className="block font-bold text-[var(--fiori-text-primary)] mb-1">توضیحات فنی و کاربرد در خطوط تولید</label>
+            <input
+              type="text"
+              value={sheetForm.description || ''}
+              onChange={e => setSheetForm({ ...sheetForm, description: e.target.value })}
+              placeholder="مثلاً: مخصوص پرس ۸۰۰ تن، کشش عمیق بدون نیاز به روغن‌کاری مجدد..."
+              className="fiori-input w-full px-2.5 py-1.5"
+            />
+          </div>
+        </form>
+      </FioriDialog>
+
+      {/* Material Grades & Sheet Types Master Manager Modal */}
+      <FioriDialog
+        isOpen={isGradeManagerOpen}
+        onClose={() => setIsGradeManagerOpen(false)}
+        title="بانک جامع گریدها و جنس ورق‌های کارخانه (Material Grades Master)"
+        subtitle="منبع اصلی لیست کشویی «گرید و جنس ورق» در فرم تعریف ماده اولیه و انبار قطعات — هر جنس جدیدی که اینجا اضافه یا ویرایش کنید بلافاصله در کل سامانه در دسترس است."
+        size="xl"
+        footer={
+          <div className="w-full flex items-center justify-between text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                const reset = resetMaterialGrades();
+                setMaterialGrades(reset);
+                notifyMaster('success', 'فهرست گریدها به حالت استاندارد اولیه بازنشانی شد.');
+              }}
+              className="text-[11px] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] hover:underline cursor-pointer"
+            >
+              بازنشانی به لیست پیش‌فرض استاندارد
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsGradeManagerOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs font-semibold cursor-pointer"
+            >
+              بستن
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {/* Add / Edit Grade Form */}
+          <form
+            onSubmit={handleSaveGradeManagerForm}
+            className="p-3.5 bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] rounded-[var(--fiori-radius-sm)] space-y-3 text-xs"
+          >
+            <div className="font-bold text-[var(--fiori-brand)] text-[11px]">
+              {editingGradeId ? 'ویرایش گرید انتخاب‌شده' : 'افزودن گرید / جنس ورق جدید'}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
-                <label className="block font-bold text-[#333333] mb-1">نام کامل ماده اولیه *</label>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">کد گرید (انگلیسی) *</label>
                 <input
                   type="text"
                   required
-                  value={sheetForm.name || ''}
-                  onChange={e => setSheetForm({ ...sheetForm, name: e.target.value })}
-                  placeholder="مثلاً: ورق روغنی فوق‌کشش DC04 ضخامت ۱/۲ میلی‌متر عرض ۱۲۵۰"
-                  className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 focus:outline-none focus:border-[#007cc0]"
+                  dir="ltr"
+                  value={gradeFormCode}
+                  onChange={e => setGradeFormCode(e.target.value)}
+                  placeholder="مثلاً: ST52, DC06, SS316"
+                  className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
                 />
               </div>
-
-              {/* Row 3: Dimensions & Auto Weight Calculator */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">ضخامت (mm)</label>
-                  <input
-                    type="number"
-                    step="0.05"
-                    value={sheetForm.thicknessMm ?? 1.0}
-                    onChange={e => {
-                      const t = parseFloat(e.target.value) || 0;
-                      const autoW = computeTheoreticalSheetWeight(t, sheetForm.widthMm, sheetForm.lengthMm, sheetForm.densityGCm3);
-                      setSheetForm({
-                        ...sheetForm,
-                        thicknessMm: t,
-                        ...(autoW > 0 ? { sheetWeightKg: autoW } : {}),
-                      });
-                    }}
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">عرض ورق/رول (mm)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    value={sheetForm.widthMm ?? ''}
-                    onChange={e => {
-                      const w = parseFloat(e.target.value) || 0;
-                      const l = Number(sheetForm.lengthMm) || 0;
-                      const autoWeight = computeTheoreticalSheetWeight(sheetForm.thicknessMm, w, l, sheetForm.densityGCm3);
-                      setSheetForm({
-                        ...sheetForm,
-                        widthMm: w || undefined,
-                        dimensionsMm:
-                          w > 0 && l > 0
-                            ? `${toPersianDigits(w.toLocaleString('en-US'))} × ${toPersianDigits(l.toLocaleString('en-US'))}`
-                            : sheetForm.dimensionsMm,
-                        ...(autoWeight > 0 ? { sheetWeightKg: autoWeight } : {}),
-                      });
-                    }}
-                    placeholder="مثلاً 1250"
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">طول شیت (mm)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    value={sheetForm.lengthMm ?? ''}
-                    onChange={e => {
-                      const l = parseFloat(e.target.value) || 0;
-                      const w = Number(sheetForm.widthMm) || 0;
-                      const autoWeight = computeTheoreticalSheetWeight(sheetForm.thicknessMm, w, l, sheetForm.densityGCm3);
-                      setSheetForm({
-                        ...sheetForm,
-                        lengthMm: l || undefined,
-                        dimensionsMm:
-                          w > 0 && l > 0
-                            ? `${toPersianDigits(w.toLocaleString('en-US'))} × ${toPersianDigits(l.toLocaleString('en-US'))}`
-                            : sheetForm.dimensionsMm,
-                        ...(autoWeight > 0 ? { sheetWeightKg: autoWeight } : {}),
-                      });
-                    }}
-                    placeholder="مثلاً 2500"
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">چگالی (g/cm³)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={sheetForm.densityGCm3 ?? 7.85}
-                    onChange={e => {
-                      const d = parseFloat(e.target.value) || 7.85;
-                      const autoWeight = computeTheoreticalSheetWeight(sheetForm.thicknessMm, sheetForm.widthMm, sheetForm.lengthMm, d);
-                      setSheetForm({
-                        ...sheetForm,
-                        densityGCm3: d,
-                        ...(autoWeight > 0 ? { sheetWeightKg: autoWeight } : {}),
-                      });
-                    }}
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              {/* Row 4: Unit Weight, Dimensions text, Unit of Measure, Reorder Point */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">وزن هر برگ / واحد (kg)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={sheetForm.sheetWeightKg ?? 24.5}
-                    onChange={e =>
-                      setSheetForm({ ...sheetForm, sheetWeightKg: parseFloat(e.target.value) || 0 })
-                    }
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">متن ابعاد نمایشی</label>
-                  <input
-                    type="text"
-                    value={sheetForm.dimensionsMm || ''}
-                    onChange={e => setSheetForm({ ...sheetForm, dimensionsMm: e.target.value })}
-                    placeholder="۱,۲۵۰ × ۲,۵۰۰"
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">واحد سنجش انبار</label>
-                  <select
-                    value={sheetForm.unit || 'کیلوگرم'}
-                    onChange={e => setSheetForm({ ...sheetForm, unit: e.target.value })}
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 bg-white focus:outline-none focus:border-[#007cc0] cursor-pointer"
-                  >
-                    <option value="کیلوگرم">کیلوگرم (KG)</option>
-                    <option value="برگ">برگ / شیت (PCS)</option>
-                    <option value="عدد">عدد (PCS)</option>
-                    <option value="متر">متر (M)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">حداقل موجودی (نقطه سفارش)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={sheetForm.minStock ?? 0}
-                    onChange={e => setSheetForm({ ...sheetForm, minStock: parseFloat(e.target.value) || 0 })}
-                    placeholder="مثلاً 2000"
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              {/* Row 5: Ownership, Supplier, Standard, Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">مالکیت / نوع تأمین</label>
-                  <select
-                    value={sheetForm.ownership || 'SAPCO_CONSIGNMENT'}
-                    onChange={e =>
-                      setSheetForm({
-                        ...sheetForm,
-                        ownership: e.target.value as RawSheetSpec['ownership'],
-                      })
-                    }
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 bg-white focus:outline-none focus:border-[#007cc0] cursor-pointer"
-                  >
-                    <option value="SAPCO_CONSIGNMENT">امانی ساپکو / مشتری</option>
-                    <option value="LOCAL_PURCHASE">خرید بازار داخلی</option>
-                    <option value="IMPORTED">وارداتی / اختصاصی</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">تأمین‌کننده / کارخانه سازنده</label>
-                  <input
-                    type="text"
-                    value={sheetForm.supplierName || ''}
-                    onChange={e => setSheetForm({ ...sheetForm, supplierName: e.target.value })}
-                    placeholder="مثلاً فولاد مبارکه"
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">استاندارد فنی</label>
-                  <input
-                    type="text"
-                    dir="ltr"
-                    value={sheetForm.standard || ''}
-                    onChange={e => setSheetForm({ ...sheetForm, standard: e.target.value })}
-                    placeholder="EN 10130 / DIN 1623"
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">وضعیت در کاتالوگ</label>
-                  <select
-                    value={sheetForm.active !== false ? 'ACTIVE' : 'INACTIVE'}
-                    onChange={e => setSheetForm({ ...sheetForm, active: e.target.value === 'ACTIVE' })}
-                    className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 bg-white focus:outline-none focus:border-[#007cc0] cursor-pointer"
-                  >
-                    <option value="ACTIVE">فعال</option>
-                    <option value="INACTIVE">غیرفعال</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Row 6: Technical Notes */}
               <div>
-                <label className="block font-bold text-[#333333] mb-1">توضیحات فنی و کاربرد در خطوط تولید</label>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">نام و شرح فارسی جنس ورق *</label>
                 <input
                   type="text"
-                  value={sheetForm.description || ''}
-                  onChange={e => setSheetForm({ ...sheetForm, description: e.target.value })}
-                  placeholder="مثلاً: مخصوص پرس ۸۰۰ تن، کشش عمیق بدون نیاز به روغن‌کاری مجدد..."
-                  className="w-full border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 focus:outline-none focus:border-[#007cc0]"
+                  required
+                  value={gradeFormName}
+                  onChange={e => setGradeFormName(e.target.value)}
+                  placeholder="مثلاً: ورق فولادی استحکام بالا ST52"
+                  className="fiori-input w-full px-2.5 py-1.5"
                 />
               </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#e5e8ec]">
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">گروه جنس</label>
+                <select
+                  value={gradeFormCategory}
+                  onChange={e => setGradeFormCategory(e.target.value as MaterialGradeCategory)}
+                  className="fiori-input w-full px-2.5 py-1.5"
+                >
+                  {Object.entries(MATERIAL_GRADE_CATEGORIES).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">استاندارد مرجع</label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={gradeFormStandard}
+                  onChange={e => setGradeFormStandard(e.target.value)}
+                  placeholder="EN 10130 / JIS / ASTM"
+                  className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">چگالی (g/cm³)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={gradeFormDensity}
+                  onChange={e => setGradeFormDensity(e.target.value)}
+                  className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">توضیح کاربرد</label>
+                <input
+                  type="text"
+                  value={gradeFormNotes}
+                  onChange={e => setGradeFormNotes(e.target.value)}
+                  placeholder="کاربرد در کشش، شاسی و..."
+                  className="fiori-input w-full px-2.5 py-1.5"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              {editingGradeId && (
                 <button
                   type="button"
                   onClick={() => {
-                    setIsNewSheetModalOpen(false);
-                    setEditingSheet(null);
-                    setShowInlineAddGrade(false);
+                    setEditingGradeId(null);
+                    setGradeFormCode('');
+                    setGradeFormName('');
+                    setGradeFormStandard('');
+                    setGradeFormDensity('7.85');
+                    setGradeFormNotes('');
                   }}
-                  className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+                  className="sap-btn-standard px-3 py-1 text-xs cursor-pointer"
                 >
-                  انصراف
+                  انصراف از ویرایش
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSavingSheet}
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs font-bold cursor-pointer disabled:opacity-50"
-                >
-                  {isSavingSheet ? 'در حال ذخیره...' : 'ذخیره مشخصات و همگام‌سازی با انبار قطعات'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Material Grades & Sheet Types Master Manager Modal */}
-      {isGradeManagerOpen && (
-        <div className="fixed inset-0 z-[60] bg-[#333333]/50 backdrop-blur-[1px] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white border border-[#d9d9d9] rounded-md max-w-3xl w-full p-5 space-y-4 shadow-xl my-auto">
-            <div className="flex items-center justify-between border-b border-[#e5e8ec] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[#1d2d3e]">
-                  بانک جامع گریدها و جنس ورق‌های کارخانه (Material Grades Master)
-                </h3>
-                <p className="text-[11px] text-[#556b82] mt-0.5">
-                  منبع اصلی لیست کشویی «گرید و جنس ورق» در فرم تعریف ماده اولیه و انبار قطعات — هر جنس جدیدی که اینجا اضافه یا ویرایش کنید بلافاصله در کل سامانه در دسترس است.
-                </p>
-              </div>
+              )}
               <button
-                type="button"
-                onClick={() => setIsGradeManagerOpen(false)}
-                className="text-[#666666] hover:text-[#1d2d3e] cursor-pointer"
+                type="submit"
+                className="sap-btn-emphasized px-4 py-1 text-xs font-bold cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                {editingGradeId ? 'ذخیره تغییرات گرید' : '+ افزودن به بانک گریدها'}
               </button>
             </div>
+          </form>
 
-            {/* Add / Edit Grade Form */}
-            <form
-              onSubmit={handleSaveGradeManagerForm}
-              className="p-3.5 bg-[#f7fbff] border border-[#c5e0f7] rounded-sm space-y-3 text-xs"
-            >
-              <div className="font-bold text-[#004e7a] text-[11px]">
-                {editingGradeId ? 'ویرایش گرید انتخاب‌شده' : 'افزودن گرید / جنس ورق جدید'}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#333333] mb-1">کد گرید (انگلیسی) *</label>
-                  <input
-                    type="text"
-                    required
-                    dir="ltr"
-                    value={gradeFormCode}
-                    onChange={e => setGradeFormCode(e.target.value)}
-                    placeholder="مثلاً: ST52, DC06, SS316"
-                    className="w-full bg-white border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#333333] mb-1">نام و شرح فارسی جنس ورق *</label>
-                  <input
-                    type="text"
-                    required
-                    value={gradeFormName}
-                    onChange={e => setGradeFormName(e.target.value)}
-                    placeholder="مثلاً: ورق فولادی استحکام بالا ST52"
-                    className="w-full bg-white border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#333333] mb-1">گروه جنس</label>
-                  <select
-                    value={gradeFormCategory}
-                    onChange={e => setGradeFormCategory(e.target.value as MaterialGradeCategory)}
-                    className="w-full bg-white border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 focus:outline-none focus:border-[#007cc0]"
-                  >
-                    {Object.entries(MATERIAL_GRADE_CATEGORIES).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#333333] mb-1">استاندارد مرجع</label>
-                  <input
-                    type="text"
-                    dir="ltr"
-                    value={gradeFormStandard}
-                    onChange={e => setGradeFormStandard(e.target.value)}
-                    placeholder="EN 10130 / JIS / ASTM"
-                    className="w-full bg-white border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#333333] mb-1">چگالی (g/cm³)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={gradeFormDensity}
-                    onChange={e => setGradeFormDensity(e.target.value)}
-                    className="w-full bg-white border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#333333] mb-1">توضیح کاربرد</label>
-                  <input
-                    type="text"
-                    value={gradeFormNotes}
-                    onChange={e => setGradeFormNotes(e.target.value)}
-                    placeholder="کاربرد در کشش، شاسی و..."
-                    className="w-full bg-white border border-[#bfbfbf] rounded-sm px-2.5 py-1.5 focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                {editingGradeId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingGradeId(null);
-                      setGradeFormCode('');
-                      setGradeFormName('');
-                      setGradeFormStandard('');
-                      setGradeFormDensity('7.85');
-                      setGradeFormNotes('');
-                    }}
-                    className="sap-btn-standard px-3 py-1 text-xs cursor-pointer"
-                  >
-                    انصراف از ویرایش
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-4 py-1 text-xs font-bold cursor-pointer"
-                >
-                  {editingGradeId ? 'ذخیره تغییرات گرید' : '+ افزودن به بانک گریدها'}
-                </button>
-              </div>
-            </form>
-
-            {/* Grades List Table */}
-            <div className="max-h-72 overflow-y-auto border border-[#d9d9d9] rounded-sm">
-              <table className="sap-table-compact w-full text-right text-xs">
-                <thead className="bg-[#fafbfc] border-b border-[#d9d9d9] text-[#333333] sticky top-0">
-                  <tr>
-                    <th className="py-2 px-2.5">کد گرید</th>
-                    <th className="py-2 px-2.5">شرح جنس ورق</th>
-                    <th className="py-2 px-2.5">گروه</th>
-                    <th className="py-2 px-2.5">استاندارد</th>
-                    <th className="py-2 px-2.5">چگالی</th>
-                    <th className="py-2 px-2.5 text-left">عملیات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#eeeeee]">
-                  {materialGrades.map(g => (
-                    <tr key={g.id} className="hover:bg-[#f4f8fc]">
-                      <td className="py-1.5 px-2.5 font-mono font-bold text-[#007cc0]">{g.code}</td>
-                      <td className="py-1.5 px-2.5 font-medium text-[#1d2d3e]">
-                        <div>{g.name}</div>
-                        {g.notes && <div className="text-[10px] text-[#666666]">{g.notes}</div>}
-                      </td>
-                      <td className="py-1.5 px-2.5 text-[11px] text-[#555555]">
-                        {MATERIAL_GRADE_CATEGORIES[g.category] || g.category}
-                      </td>
-                      <td className="py-1.5 px-2.5 font-mono text-[11px] text-[#666666]">
-                        {g.standard || '—'}
-                      </td>
-                      <td className="py-1.5 px-2.5 font-mono tabular-nums">{g.densityGCm3}</td>
-                      <td className="py-1.5 px-2.5 text-left whitespace-nowrap">
-                        <div className="inline-flex items-center gap-2">
+          {/* Grades List Table */}
+          <div className="max-h-72 overflow-y-auto border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+            <table className="sap-table-compact w-full text-right text-xs">
+              <thead className="bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-default)] text-[var(--fiori-text-primary)] sticky top-0">
+                <tr>
+                  <th className="py-2 px-2.5">کد گرید</th>
+                  <th className="py-2 px-2.5">شرح جنس ورق</th>
+                  <th className="py-2 px-2.5">گروه</th>
+                  <th className="py-2 px-2.5">استاندارد</th>
+                  <th className="py-2 px-2.5">چگالی</th>
+                  <th className="py-2 px-2.5 text-left">عملیات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--fiori-border-subtle)]">
+                {materialGrades.map(g => (
+                  <tr key={g.id} className="hover:bg-[var(--fiori-bg-hover)]">
+                    <td className="py-1.5 px-2.5 fiori-ltr-code font-bold text-[var(--fiori-brand)]">{g.code}</td>
+                    <td className="py-1.5 px-2.5 font-medium text-[var(--fiori-text-primary)]">
+                      <div>{g.name}</div>
+                      {g.notes && <div className="text-[10px] text-[var(--fiori-text-muted)]">{g.notes}</div>}
+                    </td>
+                    <td className="py-1.5 px-2.5 text-[11px] text-[var(--fiori-text-secondary)]">
+                      {MATERIAL_GRADE_CATEGORIES[g.category] || g.category}
+                    </td>
+                    <td className="py-1.5 px-2.5 fiori-ltr-code text-[11px] text-[var(--fiori-text-secondary)]">
+                      {g.standard || '—'}
+                    </td>
+                    <td className="py-1.5 px-2.5 font-mono tabular-nums">{g.densityGCm3}</td>
+                    <td className="py-1.5 px-2.5 text-left whitespace-nowrap">
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingGradeId(g.id);
+                            setGradeFormCode(g.code);
+                            setGradeFormName(g.name);
+                            setGradeFormCategory(g.category);
+                            setGradeFormStandard(g.standard || '');
+                            setGradeFormDensity(String(g.densityGCm3 || 7.85));
+                            setGradeFormNotes(g.notes || '');
+                          }}
+                          className="text-[var(--fiori-brand)] hover:underline font-semibold cursor-pointer"
+                        >
+                          ویرایش
+                        </button>
+                        {materialGrades.length > 1 && (
                           <button
                             type="button"
                             onClick={() => {
-                              setEditingGradeId(g.id);
-                              setGradeFormCode(g.code);
-                              setGradeFormName(g.name);
-                              setGradeFormCategory(g.category);
-                              setGradeFormStandard(g.standard || '');
-                              setGradeFormDensity(String(g.densityGCm3 || 7.85));
-                              setGradeFormNotes(g.notes || '');
+                              const updated = deleteMaterialGrade(g.id);
+                              setMaterialGrades(updated);
                             }}
-                            className="text-[#007cc0] hover:underline font-semibold cursor-pointer"
+                            className="text-[var(--fiori-negative)] hover:underline cursor-pointer"
                           >
-                            ویرایش
+                            حذف
                           </button>
-                          {materialGrades.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = deleteMaterialGrade(g.id);
-                                setMaterialGrades(updated);
-                              }}
-                              className="text-[#bb0000] hover:underline cursor-pointer"
-                            >
-                              حذف
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-[#e5e8ec] text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  const reset = resetMaterialGrades();
-                  setMaterialGrades(reset);
-                  notifyMaster('success', 'فهرست گریدها به حالت استاندارد اولیه بازنشانی شد.');
-                }}
-                className="text-[11px] text-[#556b82] hover:text-[#1d2d3e] hover:underline cursor-pointer"
-              >
-                بازنشانی به لیست پیش‌فرض استاندارد
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsGradeManagerOpen(false)}
-                className="sap-btn-standard px-4 py-1.5 text-xs font-semibold cursor-pointer"
-              >
-                بستن
-              </button>
-            </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      )}
+      </FioriDialog>
 
       {/* 8. Warehouse Modal */}
-      {isWarehouseModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-md w-full max-w-lg p-5 shadow-xl text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
-                {editingWarehouse ? 'ویرایش مشخصات انبار' : 'تعریف انبار جدید'}
-              </h3>
-              <button onClick={() => setIsWarehouseModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+      <FioriDialog
+        isOpen={isWarehouseModalOpen}
+        onClose={() => setIsWarehouseModalOpen(false)}
+        title={editingWarehouse ? 'ویرایش مشخصات انبار' : 'تعریف انبار جدید'}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsWarehouseModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="mdh-warehouse-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs font-bold cursor-pointer"
+            >
+              {editingWarehouse ? 'ثبت تغییرات انبار' : 'ایجاد انبار'}
+            </button>
+          </>
+        }
+      >
+        <form id="mdh-warehouse-form" onSubmit={handleSaveWarehouse} className="space-y-3.5 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">کد انبار *</label>
+              <input
+                type="text"
+                dir="ltr"
+                required
+                value={warehouseForm.code || ''}
+                onChange={e => setWarehouseForm({ ...warehouseForm, code: e.target.value })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-2"
+              />
             </div>
-            <form onSubmit={handleSaveWarehouse} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">کد انبار *</label>
-                  <input
-                    type="text"
-                    required
-                    value={warehouseForm.code || ''}
-                    onChange={e => setWarehouseForm({ ...warehouseForm, code: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">نوع انبار *</label>
-                  <select
-                    value={warehouseForm.type || 'RAW_MATERIALS'}
-                    onChange={e => setWarehouseForm({ ...warehouseForm, type: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                  >
-                    <option value="RAW_MATERIALS">انبار مواد اولیه و رول</option>
-                    <option value="WIP">انبار پای خط (WIP)</option>
-                    <option value="FINISHED_GOODS">انبار محصول نهایی</option>
-                    <option value="SCRAP">انبار ضایعات آهن و پرت</option>
-                    <option value="TOOLING">انبار قالب و ابزار</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">نام انبار *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثلاً: انبار مرکزی رول و ورق مواد اولیه"
-                  value={warehouseForm.name || ''}
-                  onChange={e => setWarehouseForm({ ...warehouseForm, name: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">نام مسوول انبار</label>
-                  <input
-                    type="text"
-                    value={warehouseForm.managerName || ''}
-                    onChange={e => setWarehouseForm({ ...warehouseForm, managerName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">موقعیت‌ها (با کاما جدا کنید)</label>
-                  <input
-                    type="text"
-                    value={warehouseForm.locations?.join(', ') || ''}
-                    onChange={e =>
-                      setWarehouseForm({
-                        ...warehouseForm,
-                        locations: e.target.value.split(/[,،]/).map(s => s.trim()).filter(Boolean),
-                      })
-                    }
-                    placeholder="LOC-A1, LOC-A2, LOC-B1"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsWarehouseModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className={`px-5 py-2 rounded-xl font-bold text-white cursor-pointer ${themeMeta.buttonPrimaryClass}`}
-                >
-                  {editingWarehouse ? 'ثبت تغییرات انبار' : 'ایجاد انبار'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نوع انبار *</label>
+              <select
+                value={warehouseForm.type || 'RAW_MATERIALS'}
+                onChange={e => setWarehouseForm({ ...warehouseForm, type: e.target.value as any })}
+                className="fiori-input w-full px-3 py-2"
+              >
+                <option value="RAW_MATERIALS">انبار مواد اولیه و رول</option>
+                <option value="WIP">انبار پای خط (WIP)</option>
+                <option value="FINISHED_GOODS">انبار محصول نهایی</option>
+                <option value="SCRAP">انبار ضایعات آهن و پرت</option>
+                <option value="TOOLING">انبار قالب و ابزار</option>
+              </select>
+            </div>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نام انبار *</label>
+            <input
+              type="text"
+              required
+              placeholder="مثلاً: انبار مرکزی رول و ورق مواد اولیه"
+              value={warehouseForm.name || ''}
+              onChange={e => setWarehouseForm({ ...warehouseForm, name: e.target.value })}
+              className="fiori-input w-full px-3 py-2 font-medium"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نام مسوول انبار</label>
+              <input
+                type="text"
+                value={warehouseForm.managerName || ''}
+                onChange={e => setWarehouseForm({ ...warehouseForm, managerName: e.target.value })}
+                className="fiori-input w-full px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">موقعیت‌ها (با کاما جدا کنید)</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={warehouseForm.locations?.join(', ') || ''}
+                onChange={e =>
+                  setWarehouseForm({
+                    ...warehouseForm,
+                    locations: e.target.value.split(/[,،]/).map(s => s.trim()).filter(Boolean),
+                  })
+                }
+                placeholder="LOC-A1, LOC-A2, LOC-B1"
+                className="fiori-input fiori-ltr-code w-full px-3 py-2"
+              />
+            </div>
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* 9. Unit Modal */}
-      {isUnitModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-md w-full max-w-md p-5 shadow-xl text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
-                {editingUnit ? 'ویرایش واحد سنجش' : 'تعریف واحد سنجش جدید'}
-              </h3>
-              <button onClick={() => setIsUnitModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+      <FioriDialog
+        isOpen={isUnitModalOpen}
+        onClose={() => setIsUnitModalOpen(false)}
+        title={editingUnit ? 'ویرایش واحد سنجش' : 'تعریف واحد سنجش جدید'}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsUnitModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="mdh-unit-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs font-bold cursor-pointer"
+            >
+              {editingUnit ? 'ثبت تغییرات واحد' : 'ایجاد واحد'}
+            </button>
+          </>
+        }
+      >
+        <form id="mdh-unit-form" onSubmit={handleSaveUnit} className="space-y-3.5 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نماد واحد (لاتین) *</label>
+              <input
+                type="text"
+                dir="ltr"
+                required
+                placeholder="KG, PCS, SHEET, ROLL"
+                value={unitForm.symbol || ''}
+                onChange={e => setUnitForm({ ...unitForm, symbol: e.target.value.toUpperCase() })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-2"
+              />
             </div>
-            <form onSubmit={handleSaveUnit} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">نماد واحد (لاتین) *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="KG, PCS, SHEET, ROLL"
-                    value={unitForm.symbol || ''}
-                    onChange={e => setUnitForm({ ...unitForm, symbol: e.target.value.toUpperCase() })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">عنوان واحد (فارسی) *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="کیلوگرم، عدد، برگ، رول"
-                    value={unitForm.title || ''}
-                    onChange={e => setUnitForm({ ...unitForm, title: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">توضیحات و کاربرد</label>
-                <input
-                  type="text"
-                  placeholder="واحد پایه کلاف، شمارش قطعه و..."
-                  value={unitForm.description || ''}
-                  onChange={e => setUnitForm({ ...unitForm, description: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">ضریب تبدیل به کیلوگرم</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={unitForm.conversionFactorToKg ?? 1}
-                    onChange={e => setUnitForm({ ...unitForm, conversionFactorToKg: parseFloat(e.target.value) || 1 })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="isBaseUnitCheck"
-                    checked={unitForm.isBaseUnit || false}
-                    onChange={e => setUnitForm({ ...unitForm, isBaseUnit: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 rounded"
-                  />
-                  <label htmlFor="isBaseUnitCheck" className="text-slate-800 font-medium">واحد مبنای سیستم</label>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsUnitModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className={`px-5 py-2 rounded-xl font-bold text-white cursor-pointer ${themeMeta.buttonPrimaryClass}`}
-                >
-                  {editingUnit ? 'ثبت تغییرات واحد' : 'ایجاد واحد'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">عنوان واحد (فارسی) *</label>
+              <input
+                type="text"
+                required
+                placeholder="کیلوگرم، عدد، برگ، رول"
+                value={unitForm.title || ''}
+                onChange={e => setUnitForm({ ...unitForm, title: e.target.value })}
+                className="fiori-input w-full px-3 py-2"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">توضیحات و کاربرد</label>
+            <input
+              type="text"
+              placeholder="واحد پایه کلاف، شمارش قطعه و..."
+              value={unitForm.description || ''}
+              onChange={e => setUnitForm({ ...unitForm, description: e.target.value })}
+              className="fiori-input w-full px-3 py-2"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">ضریب تبدیل به کیلوگرم</label>
+              <input
+                type="number"
+                step="any"
+                value={unitForm.conversionFactorToKg ?? 1}
+                onChange={e => setUnitForm({ ...unitForm, conversionFactorToKg: parseFloat(e.target.value) || 1 })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-2"
+              />
+            </div>
+            <div className="flex items-center gap-2 pt-6">
+              <input
+                type="checkbox"
+                id="isBaseUnitCheck"
+                checked={unitForm.isBaseUnit || false}
+                onChange={e => setUnitForm({ ...unitForm, isBaseUnit: e.target.checked })}
+                className="w-4 h-4 accent-[var(--fiori-brand)] rounded"
+              />
+              <label htmlFor="isBaseUnitCheck" className="text-[var(--fiori-text-primary)] font-medium">واحد مبنای سیستم</label>
+            </div>
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* 10. Customer Modal */}
-      {isCustomerModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-md w-full max-w-md p-5 shadow-xl text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
-                {editingCustomer ? 'ویرایش مشتری' : 'تعریف مشتری جدید'}
-              </h3>
-              <button onClick={() => setIsCustomerModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+      <FioriDialog
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
+        title={editingCustomer ? 'ویرایش مشتری' : 'تعریف مشتری جدید'}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsCustomerModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="mdh-customer-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs font-bold cursor-pointer"
+            >
+              {editingCustomer ? 'ثبت تغییرات مشتری' : 'ایجاد مشتری'}
+            </button>
+          </>
+        }
+      >
+        <form id="mdh-customer-form" onSubmit={handleSaveCustomer} className="space-y-3.5 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">کد مشتری *</label>
+              <input
+                type="text"
+                dir="ltr"
+                required
+                value={customerForm.code || ''}
+                onChange={e => setCustomerForm({ ...customerForm, code: e.target.value })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-2"
+              />
             </div>
-            <form onSubmit={handleSaveCustomer} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">کد مشتری *</label>
-                  <input
-                    type="text"
-                    required
-                    value={customerForm.code || ''}
-                    onChange={e => setCustomerForm({ ...customerForm, code: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">نوع رابطه / قرارداد</label>
-                  <input
-                    type="text"
-                    value={customerForm.contractType || ''}
-                    onChange={e => setCustomerForm({ ...customerForm, contractType: e.target.value })}
-                    placeholder="امانی / خرید قطعه"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">نام مشتری / شرکت خودروساز *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثلاً شرکت ساپکو، سازه‌گستر، بهمن موتور"
-                  value={customerForm.name || ''}
-                  onChange={e => setCustomerForm({ ...customerForm, name: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">تلفن تماس</label>
-                  <input
-                    type="text"
-                    value={customerForm.phone || ''}
-                    onChange={e => setCustomerForm({ ...customerForm, phone: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">ایمیل یا وب‌سایت</label>
-                  <input
-                    type="text"
-                    value={customerForm.email || ''}
-                    onChange={e => setCustomerForm({ ...customerForm, email: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="isDefaultCustCheck"
-                  checked={customerForm.isDefault || false}
-                  onChange={e => setCustomerForm({ ...customerForm, isDefault: e.target.checked })}
-                  className="w-4 h-4 text-emerald-600 rounded"
-                />
-                <label htmlFor="isDefaultCustCheck" className="text-slate-800 font-medium">مشتری پیش‌فرض در فرم‌های ثبت رسید و قرارداد</label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsCustomerModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className={`px-5 py-2 rounded-xl font-bold text-white cursor-pointer ${themeMeta.buttonPrimaryClass}`}
-                >
-                  {editingCustomer ? 'ثبت تغییرات مشتری' : 'ایجاد مشتری'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نوع رابطه / قرارداد</label>
+              <input
+                type="text"
+                value={customerForm.contractType || ''}
+                onChange={e => setCustomerForm({ ...customerForm, contractType: e.target.value })}
+                placeholder="امانی / خرید قطعه"
+                className="fiori-input w-full px-3 py-2"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نام مشتری / شرکت خودروساز *</label>
+            <input
+              type="text"
+              required
+              placeholder="مثلاً شرکت ساپکو، سازه‌گستر، بهمن موتور"
+              value={customerForm.name || ''}
+              onChange={e => setCustomerForm({ ...customerForm, name: e.target.value })}
+              className="fiori-input w-full px-3 py-2 font-medium"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">تلفن تماس</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={customerForm.phone || ''}
+                onChange={e => setCustomerForm({ ...customerForm, phone: e.target.value })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">ایمیل یا وب‌سایت</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={customerForm.email || ''}
+                onChange={e => setCustomerForm({ ...customerForm, email: e.target.value })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-2"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="isDefaultCustCheck"
+              checked={customerForm.isDefault || false}
+              onChange={e => setCustomerForm({ ...customerForm, isDefault: e.target.checked })}
+              className="w-4 h-4 accent-[var(--fiori-brand)] rounded"
+            />
+            <label htmlFor="isDefaultCustCheck" className="text-[var(--fiori-text-primary)] font-medium">مشتری پیش‌فرض در فرم‌های ثبت رسید و قرارداد</label>
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* 11. Shift Modal */}
-      {isShiftModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-md w-full max-w-lg p-5 shadow-xl text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
-                {editingShift ? 'ویرایش شیفت کاری و زمان‌بندی' : 'تعریف شیفت کاری جدید'}
-              </h3>
-              <button onClick={() => setIsShiftModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+      <FioriDialog
+        isOpen={isShiftModalOpen}
+        onClose={() => setIsShiftModalOpen(false)}
+        title={editingShift ? 'ویرایش شیفت کاری و زمان‌بندی' : 'تعریف شیفت کاری جدید'}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsShiftModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="master-shift-form"
+              className="sap-btn-emphasized px-5 py-1.5 cursor-pointer"
+            >
+              {editingShift ? 'ثبت تغییرات شیفت' : 'ایجاد شیفت'}
+            </button>
+          </>
+        }
+      >
+        <form id="master-shift-form" onSubmit={handleSaveShift} className="space-y-3.5 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">کد شیفت *</label>
+              <input
+                type="text"
+                required
+                dir="ltr"
+                value={shiftForm.code || ''}
+                onChange={e => setShiftForm({ ...shiftForm, code: e.target.value })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-2"
+              />
             </div>
-            <form onSubmit={handleSaveShift} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">کد شیفت *</label>
-                  <input
-                    type="text"
-                    required
-                    value={shiftForm.code || ''}
-                    onChange={e => setShiftForm({ ...shiftForm, code: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">نام شیفت *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="شیفت صبح (A)"
-                    value={shiftForm.name || ''}
-                    onChange={e => setShiftForm({ ...shiftForm, name: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <span className="font-bold text-slate-800">ساعات کاری عادی:</span>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-600 mb-1">ساعت شروع</label>
-                    <input
-                      type="time"
-                      value={shiftForm.startTime || '07:00'}
-                      onChange={e => setShiftForm({ ...shiftForm, startTime: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 font-mono text-slate-900 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 mb-1">ساعت پایان</label>
-                    <input
-                      type="time"
-                      value={shiftForm.endTime || '14:30'}
-                      onChange={e => setShiftForm({ ...shiftForm, endTime: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 font-mono text-slate-900 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 mb-1">کار مفید (دقیقه)</label>
-                    <input
-                      type="number"
-                      value={shiftForm.netWorkMinutes ?? 450}
-                      onChange={e => setShiftForm({ ...shiftForm, netWorkMinutes: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 font-mono text-slate-900 focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  معادل ۷ ساعت کارکرد خالص به انضمام ۳۰ دقیقه استراحت/ناهار (ساعت ۷:۰۰ صبح تا ۱۴:۳۰).
-                </p>
-              </div>
-
-              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/70 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="hasOvertimeCheck"
-                      checked={shiftForm.hasOvertime || false}
-                      onChange={e => setShiftForm({ ...shiftForm, hasOvertime: e.target.checked })}
-                      className="w-4 h-4 text-amber-600 rounded"
-                    />
-                    <label htmlFor="hasOvertimeCheck" className="text-amber-950 font-bold">
-                      تعریف اضافه‌کاری روزانه ثابت (شنبه تا چهارشنبه)
-                    </label>
-                  </div>
-                </div>
-
-                {shiftForm.hasOvertime && (
-                  <div className="grid grid-cols-3 gap-2.5 pt-1">
-                    <div>
-                      <label className="block text-slate-600 text-[11px] mb-1">شروع اضافه‌کاری</label>
-                      <input
-                        type="time"
-                        value={shiftForm.overtimeStartTime || '15:00'}
-                        onChange={e => setShiftForm({ ...shiftForm, overtimeStartTime: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-2 py-1.5 font-mono text-slate-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 text-[11px] mb-1">پایان اضافه‌کاری</label>
-                      <input
-                        type="time"
-                        value={shiftForm.overtimeEndTime || '17:00'}
-                        onChange={e => setShiftForm({ ...shiftForm, overtimeEndTime: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-2 py-1.5 font-mono text-slate-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 text-[11px] mb-1">مدت (دقیقه)</label>
-                      <input
-                        type="number"
-                        value={shiftForm.overtimeMinutes ?? 120}
-                        onChange={e => setShiftForm({ ...shiftForm, overtimeMinutes: parseInt(e.target.value) || 0 })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-2 py-1.5 font-mono text-slate-900"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">وضعیت کاری روز پنجشنبه</label>
-                <select
-                  value={shiftForm.thursdayStatus || 'OVERTIME_15_17'}
-                  onChange={e => setShiftForm({ ...shiftForm, thursdayStatus: e.target.value as any })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                >
-                  <option value="OVERTIME_15_17">فقط اضافه‌کاری بعدازظهر (ساعت ۱۵:۰۰ تا ۱۷:۰۰)</option>
-                  <option value="OFF">کلاً تعطیل (روز استراحت)</option>
-                  <option value="FULL_SHIFT">شیفت کامل عادی (ساعت ۰۷:۰۰ تا ۱۴:۳۰)</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsShiftModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className={`px-5 py-2 rounded-xl font-bold text-white cursor-pointer ${themeMeta.buttonPrimaryClass}`}
-                >
-                  {editingShift ? 'ثبت تغییرات شیفت' : 'ایجاد شیفت'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نام شیفت *</label>
+              <input
+                type="text"
+                required
+                placeholder="شیفت صبح (A)"
+                value={shiftForm.name || ''}
+                onChange={e => setShiftForm({ ...shiftForm, name: e.target.value })}
+                className="fiori-input w-full px-3 py-2 font-medium"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="p-3 bg-[var(--fiori-bg-subtle)] rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-subtle)] space-y-2">
+            <span className="font-bold text-[var(--fiori-text-primary)]">ساعات کاری عادی:</span>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[var(--fiori-text-secondary)] mb-1">ساعت شروع</label>
+                <input
+                  type="time"
+                  dir="ltr"
+                  value={shiftForm.startTime || '07:00'}
+                  onChange={e => setShiftForm({ ...shiftForm, startTime: e.target.value })}
+                  className="fiori-input fiori-ltr-code w-full px-2 py-2 tabular-nums"
+                />
+              </div>
+              <div>
+                <label className="block text-[var(--fiori-text-secondary)] mb-1">ساعت پایان</label>
+                <input
+                  type="time"
+                  dir="ltr"
+                  value={shiftForm.endTime || '14:30'}
+                  onChange={e => setShiftForm({ ...shiftForm, endTime: e.target.value })}
+                  className="fiori-input fiori-ltr-code w-full px-2 py-2 tabular-nums"
+                />
+              </div>
+              <div>
+                <label className="block text-[var(--fiori-text-secondary)] mb-1">کار مفید (دقیقه)</label>
+                <input
+                  type="number"
+                  dir="ltr"
+                  value={shiftForm.netWorkMinutes ?? 450}
+                  onChange={e => setShiftForm({ ...shiftForm, netWorkMinutes: parseInt(e.target.value) || 0 })}
+                  className="fiori-input fiori-ltr-code w-full px-2 py-2 tabular-nums"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-[var(--fiori-text-muted)]">
+              معادل ۷ ساعت کارکرد خالص به انضمام ۳۰ دقیقه استراحت/ناهار (ساعت ۷:۰۰ صبح تا ۱۴:۳۰).
+            </p>
+          </div>
+
+          <div className="p-3 bg-[var(--fiori-critical-bg)] rounded-[var(--fiori-radius-md)] border border-[var(--fiori-critical-border)] space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="hasOvertimeCheck"
+                  checked={shiftForm.hasOvertime || false}
+                  onChange={e => setShiftForm({ ...shiftForm, hasOvertime: e.target.checked })}
+                  className="w-4 h-4 accent-[var(--fiori-critical)] rounded"
+                />
+                <label htmlFor="hasOvertimeCheck" className="text-[var(--fiori-text-primary)] font-bold">
+                  تعریف اضافه‌کاری روزانه ثابت (شنبه تا چهارشنبه)
+                </label>
+              </div>
+            </div>
+
+            {shiftForm.hasOvertime && (
+              <div className="grid grid-cols-3 gap-2.5 pt-1">
+                <div>
+                  <label className="block text-[var(--fiori-text-secondary)] text-[11px] mb-1">شروع اضافه‌کاری</label>
+                  <input
+                    type="time"
+                    dir="ltr"
+                    value={shiftForm.overtimeStartTime || '15:00'}
+                    onChange={e => setShiftForm({ ...shiftForm, overtimeStartTime: e.target.value })}
+                    className="fiori-input fiori-ltr-code w-full px-2 py-1.5 tabular-nums"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[var(--fiori-text-secondary)] text-[11px] mb-1">پایان اضافه‌کاری</label>
+                  <input
+                    type="time"
+                    dir="ltr"
+                    value={shiftForm.overtimeEndTime || '17:00'}
+                    onChange={e => setShiftForm({ ...shiftForm, overtimeEndTime: e.target.value })}
+                    className="fiori-input fiori-ltr-code w-full px-2 py-1.5 tabular-nums"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[var(--fiori-text-secondary)] text-[11px] mb-1">مدت (دقیقه)</label>
+                  <input
+                    type="number"
+                    dir="ltr"
+                    value={shiftForm.overtimeMinutes ?? 120}
+                    onChange={e => setShiftForm({ ...shiftForm, overtimeMinutes: parseInt(e.target.value) || 0 })}
+                    className="fiori-input fiori-ltr-code w-full px-2 py-1.5 tabular-nums"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">وضعیت کاری روز پنجشنبه</label>
+            <select
+              value={shiftForm.thursdayStatus || 'OVERTIME_15_17'}
+              onChange={e => setShiftForm({ ...shiftForm, thursdayStatus: e.target.value as any })}
+              className="fiori-input w-full px-3 py-2"
+            >
+              <option value="OVERTIME_15_17">فقط اضافه‌کاری بعدازظهر (ساعت ۱۵:۰۰ تا ۱۷:۰۰)</option>
+              <option value="OFF">کلاً تعطیل (روز استراحت)</option>
+              <option value="FULL_SHIFT">شیفت کامل عادی (ساعت ۰۷:۰۰ تا ۱۴:۳۰)</option>
+            </select>
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* 12. Car Model Modal */}
-      {isCarModelModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-md w-full max-w-md p-5 shadow-xl text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
-                {editingCarModel ? 'ویرایش مدل خودرو' : 'تعریف مدل خودرو جدید'}
-              </h3>
-              <button onClick={() => setIsCarModelModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+      <FioriDialog
+        isOpen={isCarModelModalOpen}
+        onClose={() => setIsCarModelModalOpen(false)}
+        title={editingCarModel ? 'ویرایش مدل خودرو' : 'تعریف مدل خودرو جدید'}
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsCarModelModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="master-car-model-form"
+              className="sap-btn-emphasized px-5 py-1.5 cursor-pointer"
+            >
+              {editingCarModel ? 'ثبت تغییرات مدل' : 'ایجاد مدل خودرو'}
+            </button>
+          </>
+        }
+      >
+        <form id="master-car-model-form" onSubmit={handleSaveCarModel} className="space-y-3.5 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">کد شناسه پلتفرم *</label>
+              <input
+                type="text"
+                required
+                dir="ltr"
+                placeholder="مثلاً IKCO-206"
+                value={carModelForm.code || ''}
+                onChange={e => setCarModelForm({ ...carModelForm, code: e.target.value })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-2"
+              />
             </div>
-            <form onSubmit={handleSaveCarModel} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">کد شناسه پلتفرم *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثلاً IKCO-206"
-                    value={carModelForm.code || ''}
-                    onChange={e => setCarModelForm({ ...carModelForm, code: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">نام مدل خودرو *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثلاً پژو ۲۰۶"
-                    value={carModelForm.name || ''}
-                    onChange={e => setCarModelForm({ ...carModelForm, name: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white font-medium"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">خودروساز / شرکت مادر (OEM) *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="ساپکو (ایران‌خودرو)، سازه‌گستر (سایپا)، بهمن موتور"
-                  value={carModelForm.oem || ''}
-                  onChange={e => setCarModelForm({ ...carModelForm, oem: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">توضیحات و تیپ‌ها</label>
-                <input
-                  type="text"
-                  placeholder="مثلاً هاچ‌بک و صندوق‌دار تیپ ۲ و ۵"
-                  value={carModelForm.description || ''}
-                  onChange={e => setCarModelForm({ ...carModelForm, description: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:bg-white"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="isCarModelActiveCheck"
-                  checked={carModelForm.active !== false}
-                  onChange={e => setCarModelForm({ ...carModelForm, active: e.target.checked })}
-                  className="w-4 h-4 text-emerald-600 rounded"
-                />
-                <label htmlFor="isCarModelActiveCheck" className="text-slate-800 font-medium">مدل فعال در چرخه تولید</label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsCarModelModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className={`px-5 py-2 rounded-xl font-bold text-white cursor-pointer ${themeMeta.buttonPrimaryClass}`}
-                >
-                  {editingCarModel ? 'ثبت تغییرات مدل' : 'ایجاد مدل خودرو'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نام مدل خودرو *</label>
+              <input
+                type="text"
+                required
+                placeholder="مثلاً پژو ۲۰۶"
+                value={carModelForm.name || ''}
+                onChange={e => setCarModelForm({ ...carModelForm, name: e.target.value })}
+                className="fiori-input w-full px-3 py-2 font-medium"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">خودروساز / شرکت مادر (OEM) *</label>
+            <input
+              type="text"
+              required
+              placeholder="ساپکو (ایران‌خودرو)، سازه‌گستر (سایپا)، بهمن موتور"
+              value={carModelForm.oem || ''}
+              onChange={e => setCarModelForm({ ...carModelForm, oem: e.target.value })}
+              className="fiori-input w-full px-3 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">توضیحات و تیپ‌ها</label>
+            <input
+              type="text"
+              placeholder="مثلاً هاچ‌بک و صندوق‌دار تیپ ۲ و ۵"
+              value={carModelForm.description || ''}
+              onChange={e => setCarModelForm({ ...carModelForm, description: e.target.value })}
+              className="fiori-input w-full px-3 py-2"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="isCarModelActiveCheck"
+              checked={carModelForm.active !== false}
+              onChange={e => setCarModelForm({ ...carModelForm, active: e.target.checked })}
+              className="w-4 h-4 accent-[var(--fiori-positive)] rounded"
+            />
+            <label htmlFor="isCarModelActiveCheck" className="text-[var(--fiori-text-primary)] font-medium">مدل فعال در چرخه تولید</label>
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* 13. Operation Modal */}
-      {isOperationModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-md w-full max-w-lg p-5 shadow-xl text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
-                {editingOperation ? 'ویرایش عملیات استاندارد تولید' : 'تعریف عملیات استاندارد تولید جدید'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsOperationModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <FioriDialog
+        isOpen={isOperationModalOpen}
+        onClose={() => setIsOperationModalOpen(false)}
+        title={editingOperation ? 'ویرایش عملیات استاندارد تولید' : 'تعریف عملیات استاندارد تولید جدید'}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsOperationModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="master-operation-form"
+              className="sap-btn-emphasized px-5 py-1.5 cursor-pointer"
+            >
+              {editingOperation ? 'ثبت تغییرات عملیات' : 'ایجاد عملیات جدید'}
+            </button>
+          </>
+        }
+      >
+        <form id="master-operation-form" onSubmit={handleSaveOperation} className="space-y-3.5 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">کد عملیات *</label>
+              <input
+                type="text"
+                required
+                dir="ltr"
+                placeholder="مثلاً OP-10 یا OP-WELD-NUT"
+                value={operationForm.code || ''}
+                onChange={e => setOperationForm({ ...operationForm, code: e.target.value })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-1.5"
+              />
             </div>
-            <form onSubmit={handleSaveOperation} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">کد عملیات *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثلاً OP-10 یا OP-WELD-NUT"
-                    value={operationForm.code || ''}
-                    onChange={e => setOperationForm({ ...operationForm, code: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-slate-700 font-semibold">دسته فرآیندی *</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsProcessCategoryModalOpen(true)}
-                      className="text-[10px] font-bold text-[#007cc0] hover:text-[#006299] flex items-center gap-0.5 cursor-pointer bg-[#e5f3fa] px-1.5 py-0.5 rounded-sm border border-[#b3d7ff]"
-                      title="تعریف و ویرایش دسته‌بندی‌های فرآیندی"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>مدیریت دسته‌ها</span>
-                    </button>
-                  </div>
-                  <select
-                    value={operationForm.category || 'STAMPING'}
-                    onChange={e =>
-                      setOperationForm({
-                        ...operationForm,
-                        category: e.target.value as any,
-                      })
-                    }
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                  >
-                    {processCategories.map(cat => (
-                      <option key={cat.code} value={cat.code}>
-                        {cat.name} ({cat.code})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">عنوان کامل عملیات *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثلاً بلنک و سوراخ‌کاری ورق، پرس‌جوش مهره، خم لبه‌ها..."
-                  value={operationForm.name || ''}
-                  onChange={e => setOperationForm({ ...operationForm, name: e.target.value })}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                />
-              </div>
-
-              {/* Workstation Type Field with Persian Guidance & Rationale */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[#333333] font-semibold">نوع ایستگاه کاری / دستگاه مورد استفاده *</label>
-                  <button
-                    type="button"
-                    onClick={() => setIsWorkstationHelpOpen(!isWorkstationHelpOpen)}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#e9730c] bg-[#fff7eb] hover:bg-[#ffedd5] px-2 py-0.5 rounded-sm border border-[#f5d29c] transition cursor-pointer"
-                    title="مشاهده راهنمای کارکرد این فیلد در MRP و ظرفیت‌سنجی"
-                  >
-                    <Sparkles className="w-3 h-3 text-[#e9730c]" />
-                    <span>کارکرد این فیلد چیه؟</span>
-                  </button>
-                </div>
-
-                {isWorkstationHelpOpen && (
-                  <div className="p-3 bg-[#fff7eb] border border-[#f5d29c] rounded-sm text-[11px] text-[#333333] space-y-1.5 leading-relaxed">
-                    <div className="font-bold flex items-center gap-1.5 text-[#e9730c]">
-                      <Sparkles className="w-3.5 h-3.5 text-[#e9730c]" />
-                      <span>کارکرد ایستگاه کاری در سیستم هوشمند برنامه‌ریزی تولید (MRP & Capacity Planning):</span>
-                    </div>
-                    <ul className="list-disc list-inside space-y-1 text-[#333333] pr-1">
-                      <li>
-                        <strong>تطبیق خودکار پرس با عملیات:</strong> سیستم مشخص می‌کند این مرحله روی کدام رده از دستگاه‌ها (پرس‌های هیدرولیک، پرس ضربه‌ای شولر، خط برش، پرس‌جوش یا خط رنگ) قابل اجراست.
-                      </li>
-                      <li>
-                        <strong>پایش تداخل ماشین‌آلات (Machine Overlaps):</strong> الگوریتم ظرفیت‌سنجی مانع برنامه‌ریزی همزمان دو دستور کار روی یک ایستگاه در شیفت یکسان می‌شود.
-                      </li>
-                      <li>
-                        <strong>محاسبه زمان راه‌اندازی (SMED):</strong> زمان تعویض قالب و آمادگی ایستگاه مستقیماً بر مبنای این ماشین محاسبه می‌گردد.
-                      </li>
-                    </ul>
-                  </div>
-                )}
-
-                <input
-                  type="text"
-                  required
-                  placeholder="مثلاً خط برش کویل، پرس ضربه‌ای ۲۵۰ تن، دستگاه پرس‌جوش M6، ایستگاه جوش CO2..."
-                  value={operationForm.stationType || ''}
-                  onChange={e => setOperationForm({ ...operationForm, stationType: e.target.value })}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-
-                {/* Quick Suggestion Pills */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                  <span className="text-[10px] text-[#666666]">پیشنهاد سریع:</span>
-                  {[
-                    'خط برش و نواربری رول',
-                    'پرس مکانیکی ضربه‌ای شولر ۴۰۰ تن',
-                    'پرس هیدرولیک کشش ۸۰۰ تن',
-                    'پرس ضربه‌ای ۲۵۰ تن کلاچ‌دار',
-                    'دستگاه پرس‌جوش مقاومتی M6/M8',
-                    'سلول رباتیک جوشکاری CO2',
-                    'خط فسفاته و رنگ کاتافورز ED',
-                    'ایستگاه مونتاژ و هِمینگ',
-                  ].map((st, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setOperationForm({ ...operationForm, stationType: st })}
-                      className="px-2 py-0.5 rounded-sm bg-[#f0f0f0] hover:bg-[#e5f3fa] text-[#333333] text-[10px] font-medium transition cursor-pointer"
-                    >
-                      {st}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[#333333] font-semibold mb-1">زمان چرخه استاندارد هر ضرب (ثانیه) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    required
-                    value={operationForm.cycleTimeSec ?? 4.5}
-                    onChange={e =>
-                      setOperationForm({
-                        ...operationForm,
-                        cycleTimeSec: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[#333333] font-semibold mb-1">زمان ستاپ / تعویض قالب (دقیقه) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={operationForm.setupTimeMin ?? 20}
-                    onChange={e =>
-                      setOperationForm({
-                        ...operationForm,
-                        setupTimeMin: parseInt(e.target.value, 10) || 0,
-                      })
-                    }
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">دستورالعمل و توضیحات فرآیندی</label>
-                <textarea
-                  rows={2}
-                  placeholder="شرح نکات کنترلی، تلرانس ابعادی، فیکسچر مورد استفاده و پارامترهای فنی..."
-                  value={operationForm.description || ''}
-                  onChange={e => setOperationForm({ ...operationForm, description: e.target.value })}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] resize-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="isOperationActiveCheck"
-                  checked={operationForm.active !== false}
-                  onChange={e => setOperationForm({ ...operationForm, active: e.target.checked })}
-                  className="w-4 h-4 accent-[#007cc0] rounded-sm"
-                />
-                <label htmlFor="isOperationActiveCheck" className="text-[#333333] font-medium">
-                  عملیات فعال در تقویم ظرفیت و مسیرهای تولید
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[var(--fiori-text-primary)] font-semibold">دسته فرآیندی *</label>
                 <button
                   type="button"
-                  onClick={() => setIsOperationModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 cursor-pointer"
+                  onClick={() => setIsProcessCategoryModalOpen(true)}
+                  className="text-[10px] font-bold text-[var(--fiori-brand)] hover:underline flex items-center gap-0.5 cursor-pointer bg-[var(--fiori-brand-bg)] px-1.5 py-0.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-brand-border)]"
+                  title="تعریف و ویرایش دسته‌بندی‌های فرآیندی"
                 >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-5 py-1.5 cursor-pointer"
-                >
-                  {editingOperation ? 'ثبت تغییرات عملیات' : 'ایجاد عملیات جدید'}
+                  <Plus className="w-3 h-3" />
+                  <span>مدیریت دسته‌ها</span>
                 </button>
               </div>
-            </form>
+              <select
+                value={operationForm.category || 'STAMPING'}
+                onChange={e =>
+                  setOperationForm({
+                    ...operationForm,
+                    category: e.target.value as any,
+                  })
+                }
+                className="fiori-input w-full px-3 py-1.5 font-medium"
+              >
+                {processCategories.map(cat => (
+                  <option key={cat.code} value={cat.code}>
+                    {cat.name} ({cat.code})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* 14. Factory Hall Modal (کشوی ثبت و ویرایش سالن تولید) */}
-      {isHallModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-sm w-full max-w-lg p-5 shadow-xl text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8] mb-4">
-              <h3 className="text-sm font-bold text-[#333333] flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-[#007cc0]" />
-                <span>{editingHall ? 'ویرایش شناسنامه سالن تولید' : 'تعریف سالن تولید و استقرار جدید'}</span>
-              </h3>
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">عنوان کامل عملیات *</label>
+            <input
+              type="text"
+              required
+              placeholder="مثلاً بلنک و سوراخ‌کاری ورق، پرس‌جوش مهره، خم لبه‌ها..."
+              value={operationForm.name || ''}
+              onChange={e => setOperationForm({ ...operationForm, name: e.target.value })}
+              className="fiori-input w-full px-3 py-1.5 font-medium"
+            />
+          </div>
+
+          {/* Workstation Type Field with Persian Guidance & Rationale */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[var(--fiori-text-primary)] font-semibold">نوع ایستگاه کاری / دستگاه مورد استفاده *</label>
               <button
                 type="button"
-                onClick={() => setIsHallModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
+                onClick={() => setIsWorkstationHelpOpen(!isWorkstationHelpOpen)}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--fiori-critical)] bg-[var(--fiori-critical-bg)] hover:opacity-90 px-2 py-0.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-critical-border)] transition cursor-pointer"
+                title="مشاهده راهنمای کارکرد این فیلد در MRP و ظرفیت‌سنجی"
               >
-                <X className="w-5 h-5" />
+                <Sparkles className="w-3 h-3 text-[var(--fiori-critical)]" />
+                <span>کارکرد این فیلد چیه؟</span>
               </button>
             </div>
-            <form onSubmit={handleSaveHall} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[#333333] font-semibold mb-1">کد شناسایی سالن *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثلاً HALL-01 یا HALL-HEAVY"
-                    value={hallForm.code || ''}
-                    onChange={e => setHallForm({ ...hallForm, code: e.target.value })}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[#333333] font-semibold mb-1">نوع کاربری سالن *</label>
-                  <select
-                    value={hallForm.type || 'STAMPING'}
-                    onChange={e => setHallForm({ ...hallForm, type: e.target.value as any })}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                  >
-                    <option value="STAMPING">پرسکاری و فرم‌دهی (Stamping)</option>
-                    <option value="WELDING">جوشکاری و مونتاژ بدنه (Welding)</option>
-                    <option value="PAINT">رنگ و کاتافورز (Paint / ED)</option>
-                    <option value="ASSEMBLY">مونتاژ نهایی و هِمینگ (Assembly)</option>
-                    <option value="WAREHOUSE">انبار و پشتیبانی لجستیک (Warehouse)</option>
-                  </select>
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">نام و عنوان کامل سالن تولید *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثلاً سالن پرس‌های سنگین (۸۰۰ و ۴۰۰ تن)، سالن جوشکاری رباتیک..."
-                  value={hallForm.name || ''}
-                  onChange={e => setHallForm({ ...hallForm, name: e.target.value })}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                />
-              </div>
+            {isWorkstationHelpOpen && (
+              <FioriMessageStrip
+                tone="warning"
+                compact
+                title="کارکرد ایستگاه کاری در سیستم هوشمند برنامه‌ریزی تولید (MRP & Capacity Planning):"
+              >
+                <ul className="list-disc list-inside space-y-1 pr-1 mt-1 text-[11px]">
+                  <li>
+                    <strong>تطبیق خودکار پرس با عملیات:</strong> سیستم مشخص می‌کند این مرحله روی کدام رده از دستگاه‌ها (پرس‌های هیدرولیک، پرس ضربه‌ای شولر، خط برش، پرس‌جوش یا خط رنگ) قابل اجراست.
+                  </li>
+                  <li>
+                    <strong>پایش تداخل ماشین‌آلات (Machine Overlaps):</strong> الگوریتم ظرفیت‌سنجی مانع برنامه‌ریزی همزمان دو دستور کار روی یک ایستگاه در شیفت یکسان می‌شود.
+                  </li>
+                  <li>
+                    <strong>محاسبه زمان راه‌اندازی (SMED):</strong> زمان تعویض قالب و آمادگی ایستگاه مستقیماً بر مبنای این ماشین محاسبه می‌گردد.
+                  </li>
+                </ul>
+              </FioriMessageStrip>
+            )}
 
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">سرپرست / مسئول سالن</label>
-                <input
-                  type="text"
-                  placeholder="نام و نام خانوادگی سرپرست سالن..."
-                  value={hallForm.supervisorName || ''}
-                  onChange={e => setHallForm({ ...hallForm, supervisorName: e.target.value })}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
+            <input
+              type="text"
+              required
+              placeholder="مثلاً خط برش کویل، پرس ضربه‌ای ۲۵۰ تن، دستگاه پرس‌جوش M6، ایستگاه جوش CO2..."
+              value={operationForm.stationType || ''}
+              onChange={e => setOperationForm({ ...operationForm, stationType: e.target.value })}
+              className="fiori-input w-full px-3 py-1.5"
+            />
 
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">ظرفیت، تجهیزات و مشخصات فنی مستقر</label>
-                <input
-                  type="text"
-                  placeholder="مثلاً خطوط پرس شولر، جرثقیل سقفی ۲۰ تن، ایستگاه شستشو..."
-                  value={hallForm.capacityDesc || ''}
-                  onChange={e => setHallForm({ ...hallForm, capacityDesc: e.target.value })}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#333333] font-semibold mb-1">توضیحات و نکات ایمنی سالن</label>
-                <textarea
-                  rows={2}
-                  placeholder="ملاحظات لجستیکی، ورودی و خروجی لیفتراک، انبارک پای خط..."
-                  value={hallForm.description || ''}
-                  onChange={e => setHallForm({ ...hallForm, description: e.target.value })}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] resize-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="isHallActiveCheck"
-                  checked={hallForm.active !== false}
-                  onChange={e => setHallForm({ ...hallForm, active: e.target.checked })}
-                  className="w-4 h-4 accent-[#007cc0] rounded-sm"
-                />
-                <label htmlFor="isHallActiveCheck" className="text-[#333333] font-medium">
-                  سالن فعال در برنامه‌ریزی تولید و تخصیص پرس‌ها
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
+            {/* Quick Suggestion Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              <span className="text-[10px] text-[var(--fiori-text-muted)]">پیشنهاد سریع:</span>
+              {[
+                'خط برش و نواربری رول',
+                'پرس مکانیکی ضربه‌ای شولر ۴۰۰ تن',
+                'پرس هیدرولیک کشش ۸۰۰ تن',
+                'پرس ضربه‌ای ۲۵۰ تن کلاچ‌دار',
+                'دستگاه پرس‌جوش مقاومتی M6/M8',
+                'سلول رباتیک جوشکاری CO2',
+                'خط فسفاته و رنگ کاتافورز ED',
+                'ایستگاه مونتاژ و هِمینگ',
+              ].map((st, idx) => (
                 <button
+                  key={idx}
                   type="button"
-                  onClick={() => setIsHallModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 cursor-pointer"
+                  onClick={() => setOperationForm({ ...operationForm, stationType: st })}
+                  className="px-2 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] hover:bg-[var(--fiori-bg-selected)] text-[var(--fiori-text-primary)] border border-[var(--fiori-border-subtle)] text-[10px] font-medium transition cursor-pointer"
                 >
-                  انصراف
+                  {st}
                 </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-5 py-1.5 cursor-pointer"
-                >
-                  {editingHall ? 'ثبت تغییرات سالن' : 'ایجاد سالن جدید'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 15. Process Category Modal (مدیریت و تعریف دسته‌های فرآیندی) */}
-      {isProcessCategoryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-sm w-full max-w-md p-5 shadow-xl text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8] mb-4">
-              <h3 className="text-sm font-bold text-[#333333] flex items-center gap-2">
-                <Settings2 className="w-4 h-4 text-[#007cc0]" />
-                <span>مدیریت دسته‌های فرآیندی کارخانه (Process Categories)</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsProcessCategoryModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Existing Categories List */}
-            <div className="space-y-1.5 max-h-52 overflow-y-auto mb-4 border border-[#d9d9d9] rounded-sm p-2 bg-[#f7f9fa]">
-              {processCategories.map(cat => (
-                <div
-                  key={cat.code}
-                  className="flex items-center justify-between p-2 rounded-sm bg-white border border-[#d9d9d9] text-xs"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] font-bold text-[#007cc0] bg-[#e5f3fa] px-2 py-0.5 rounded-sm border border-[#b3d7ff]">
-                      {cat.code}
-                    </span>
-                    <span className="font-medium text-[#333333]">{cat.name}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteProcessCategory(cat.code)}
-                    className="text-[#bb0000] p-1 rounded-sm hover:bg-[#fff2f2] transition cursor-pointer"
-                    title="حذف دسته فرآیندی"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
               ))}
             </div>
-
-            {/* Add New Category Form */}
-            <form onSubmit={handleAddProcessCategory} className="space-y-3 pt-2 border-t border-slate-100 text-xs">
-              <h4 className="font-bold text-slate-800 text-[11px]">+ تعریف دسته فرآیندی جدید:</h4>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-600 font-medium mb-1">کد لاتین دسته *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="HYDRO_FORM"
-                    value={newCategoryCode}
-                    onChange={e => setNewCategoryCode(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono text-slate-900 uppercase focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-medium mb-1">عنوان فارسی دسته *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="هیدروفرمینگ لوله"
-                    value={newCategoryName}
-                    onChange={e => setNewCategoryName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-900 focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsProcessCategoryModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
-                >
-                  بستن
-                </button>
-                <button
-                  type="submit"
-                  className={`px-4 py-1.5 rounded-lg font-bold text-white cursor-pointer ${themeMeta.buttonPrimaryClass}`}
-                >
-                  افزودن دسته فرآیندی
-                </button>
-              </div>
-            </form>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">زمان چرخه استاندارد هر ضرب (ثانیه) *</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                required
+                dir="ltr"
+                value={operationForm.cycleTimeSec ?? 4.5}
+                onChange={e =>
+                  setOperationForm({
+                    ...operationForm,
+                    cycleTimeSec: parseFloat(e.target.value) || 0,
+                  })
+                }
+                className="fiori-input fiori-ltr-code w-full px-3 py-1.5 tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">زمان ستاپ / تعویض قالب (دقیقه) *</label>
+              <input
+                type="number"
+                min="0"
+                required
+                dir="ltr"
+                value={operationForm.setupTimeMin ?? 20}
+                onChange={e =>
+                  setOperationForm({
+                    ...operationForm,
+                    setupTimeMin: parseInt(e.target.value, 10) || 0,
+                  })
+                }
+                className="fiori-input fiori-ltr-code w-full px-3 py-1.5 tabular-nums"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">دستورالعمل و توضیحات فرآیندی</label>
+            <textarea
+              rows={2}
+              placeholder="شرح نکات کنترلی، تلرانس ابعادی، فیکسچر مورد استفاده و پارامترهای فنی..."
+              value={operationForm.description || ''}
+              onChange={e => setOperationForm({ ...operationForm, description: e.target.value })}
+              className="fiori-input w-full px-3 py-1.5 resize-none"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="isOperationActiveCheck"
+              checked={operationForm.active !== false}
+              onChange={e => setOperationForm({ ...operationForm, active: e.target.checked })}
+              className="w-4 h-4 accent-[var(--fiori-brand)] rounded-sm"
+            />
+            <label htmlFor="isOperationActiveCheck" className="text-[var(--fiori-text-primary)] font-medium">
+              عملیات فعال در تقویم ظرفیت و مسیرهای تولید
+            </label>
+          </div>
+        </form>
+      </FioriDialog>
+
+      {/* 14. Factory Hall Modal (کشوی ثبت و ویرایش سالن تولید) */}
+      <FioriDialog
+        isOpen={isHallModalOpen}
+        onClose={() => setIsHallModalOpen(false)}
+        title={editingHall ? 'ویرایش شناسنامه سالن تولید' : 'تعریف سالن تولید و استقرار جدید'}
+        icon={<Building2 className="w-4 h-4" />}
+        tone="brand"
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsHallModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="master-hall-form"
+              className="sap-btn-emphasized px-5 py-1.5 cursor-pointer"
+            >
+              {editingHall ? 'ثبت تغییرات سالن' : 'ایجاد سالن جدید'}
+            </button>
+          </>
+        }
+      >
+        <form id="master-hall-form" onSubmit={handleSaveHall} className="space-y-3.5 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">کد شناسایی سالن *</label>
+              <input
+                type="text"
+                required
+                dir="ltr"
+                placeholder="مثلاً HALL-01 یا HALL-HEAVY"
+                value={hallForm.code || ''}
+                onChange={e => setHallForm({ ...hallForm, code: e.target.value })}
+                className="fiori-input fiori-ltr-code w-full px-3 py-1.5"
+              />
+            </div>
+            <div>
+              <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نوع کاربری سالن *</label>
+              <select
+                value={hallForm.type || 'STAMPING'}
+                onChange={e => setHallForm({ ...hallForm, type: e.target.value as any })}
+                className="fiori-input w-full px-3 py-1.5 font-medium"
+              >
+                <option value="STAMPING">پرسکاری و فرم‌دهی (Stamping)</option>
+                <option value="WELDING">جوشکاری و مونتاژ بدنه (Welding)</option>
+                <option value="PAINT">رنگ و کاتافورز (Paint / ED)</option>
+                <option value="ASSEMBLY">مونتاژ نهایی و هِمینگ (Assembly)</option>
+                <option value="WAREHOUSE">انبار و پشتیبانی لجستیک (Warehouse)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">نام و عنوان کامل سالن تولید *</label>
+            <input
+              type="text"
+              required
+              placeholder="مثلاً سالن پرس‌های سنگین (۸۰۰ و ۴۰۰ تن)، سالن جوشکاری رباتیک..."
+              value={hallForm.name || ''}
+              onChange={e => setHallForm({ ...hallForm, name: e.target.value })}
+              className="fiori-input w-full px-3 py-1.5 font-medium"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">سرپرست / مسئول سالن</label>
+            <input
+              type="text"
+              placeholder="نام و نام خانوادگی سرپرست سالن..."
+              value={hallForm.supervisorName || ''}
+              onChange={e => setHallForm({ ...hallForm, supervisorName: e.target.value })}
+              className="fiori-input w-full px-3 py-1.5"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">ظرفیت، تجهیزات و مشخصات فنی مستقر</label>
+            <input
+              type="text"
+              placeholder="مثلاً خطوط پرس شولر، جرثقیل سقفی ۲۰ تن، ایستگاه شستشو..."
+              value={hallForm.capacityDesc || ''}
+              onChange={e => setHallForm({ ...hallForm, capacityDesc: e.target.value })}
+              className="fiori-input w-full px-3 py-1.5"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">توضیحات و نکات ایمنی سالن</label>
+            <textarea
+              rows={2}
+              placeholder="ملاحظات لجستیکی، ورودی و خروجی لیفتراک، انبارک پای خط..."
+              value={hallForm.description || ''}
+              onChange={e => setHallForm({ ...hallForm, description: e.target.value })}
+              className="fiori-input w-full px-3 py-1.5 resize-none"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="isHallActiveCheck"
+              checked={hallForm.active !== false}
+              onChange={e => setHallForm({ ...hallForm, active: e.target.checked })}
+              className="w-4 h-4 accent-[var(--fiori-brand)] rounded-sm"
+            />
+            <label htmlFor="isHallActiveCheck" className="text-[var(--fiori-text-primary)] font-medium">
+              سالن فعال در برنامه‌ریزی تولید و تخصیص پرس‌ها
+            </label>
+          </div>
+        </form>
+      </FioriDialog>
+
+      {/* 15. Process Category Modal (مدیریت و تعریف دسته‌های فرآیندی) */}
+      <FioriDialog
+        isOpen={isProcessCategoryModalOpen}
+        onClose={() => setIsProcessCategoryModalOpen(false)}
+        title="مدیریت دسته‌های فرآیندی کارخانه (Process Categories)"
+        icon={<Settings2 className="w-4 h-4" />}
+        tone="brand"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsProcessCategoryModalOpen(false)}
+              className="sap-btn-standard px-3 py-1.5 cursor-pointer"
+            >
+              بستن
+            </button>
+            <button
+              type="submit"
+              form="master-process-category-form"
+              className="sap-btn-emphasized px-4 py-1.5 cursor-pointer"
+            >
+              افزودن دسته فرآیندی
+            </button>
+          </>
+        }
+      >
+        {/* Existing Categories List */}
+        <div className="space-y-1.5 max-h-52 overflow-y-auto mb-3 border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] p-2 bg-[var(--fiori-bg-subtle)]">
+          {processCategories.map(cat => (
+            <div
+              key={cat.code}
+              className="flex items-center justify-between p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-subtle)] text-xs"
+            >
+              <div className="flex items-center gap-2">
+                <FioriObjectStatus tone="brand" label={cat.code} ltrCode size="sm" />
+                <span className="font-medium text-[var(--fiori-text-primary)]">{cat.name}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDeleteProcessCategory(cat.code)}
+                className="text-[var(--fiori-negative)] p-1 rounded-[var(--fiori-radius-sm)] hover:bg-[var(--fiori-negative-bg)] transition cursor-pointer"
+                title="حذف دسته فرآیندی"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
-      )}
+
+        {/* Add New Category Form */}
+        <form id="master-process-category-form" onSubmit={handleAddProcessCategory} className="space-y-3 pt-2 border-t border-[var(--fiori-border-subtle)] text-xs">
+          <h4 className="font-bold text-[var(--fiori-text-primary)] text-[11px]">+ تعریف دسته فرآیندی جدید:</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[var(--fiori-text-secondary)] font-medium mb-1">کد لاتین دسته *</label>
+              <input
+                type="text"
+                required
+                dir="ltr"
+                placeholder="HYDRO_FORM"
+                value={newCategoryCode}
+                onChange={e => setNewCategoryCode(e.target.value)}
+                className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5 uppercase"
+              />
+            </div>
+            <div>
+              <label className="block text-[var(--fiori-text-secondary)] font-medium mb-1">عنوان فارسی دسته *</label>
+              <input
+                type="text"
+                required
+                placeholder="هیدروفرمینگ لوله"
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                className="fiori-input w-full px-2.5 py-1.5"
+              />
+            </div>
+          </div>
+        </form>
+      </FioriDialog>
     </div>
   );
 };

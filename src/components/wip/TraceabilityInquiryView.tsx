@@ -15,6 +15,14 @@ import { toPersianDigits, formatNumber } from '../../utils/formatters';
 import { formatToJalali } from '../../utils/jalali';
 import { TraceabilityTagModal } from './TraceabilityTagModal';
 import { useErpRouter } from '../../context/RouterContext';
+import {
+  FioriDataTable,
+  FioriDynamicPage,
+  FioriObjectStatus,
+  FioriTableColumn,
+  FioriToolbar,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 interface TraceabilityInquiryViewProps {
   parts: Part[];
@@ -154,57 +162,236 @@ export const TraceabilityInquiryView: React.FC<TraceabilityInquiryViewProps> = (
     e.preventDefault();
   };
 
+  const operationColumns: FioriTableColumn<any>[] = useMemo(
+    () => [
+      {
+        key: 'stepCode',
+        header: 'کد مرحله',
+        isMono: true,
+        isLtrCode: true,
+        nowrap: true,
+        cellClassName: 'font-semibold text-[var(--fiori-text-primary)]',
+        render: st => st.stepCode,
+      },
+      {
+        key: 'stepName',
+        header: 'عنوان عملیات',
+        render: st => <span className="font-medium text-[var(--fiori-text-primary)]">{st.stepName}</span>,
+      },
+      {
+        key: 'machineName',
+        header: 'ایستگاه / دستگاه',
+        render: st => <span className="text-[var(--fiori-text-secondary)]">{st.machineName || '—'}</span>,
+      },
+      {
+        key: 'waitingInputQty',
+        header: 'در صف ورودی',
+        align: 'center',
+        isMono: true,
+        render: st => formatNumber(st.waitingInputQty || 0),
+      },
+      {
+        key: 'activeQty',
+        header: 'در جریان / آماده',
+        align: 'center',
+        isMono: true,
+        cellClassName: 'text-[var(--fiori-brand)] font-semibold',
+        render: st => formatNumber((st.inProgressQty || 0) + (st.readyForTransferQty || 0)),
+      },
+      {
+        key: 'goodOutputQty',
+        header: 'تولید سالم',
+        align: 'center',
+        isMono: true,
+        cellClassName: 'text-[var(--fiori-positive)] font-semibold',
+        render: st => formatNumber(st.goodOutputQty || 0),
+      },
+      {
+        key: 'scrapQty',
+        header: 'ضایعات',
+        align: 'center',
+        isMono: true,
+        cellClassName: 'text-[var(--fiori-negative)]',
+        render: st => formatNumber(st.scrapQty || 0),
+      },
+      {
+        key: 'status',
+        header: 'وضعیت مرحله',
+        align: 'center',
+        render: st =>
+          st.status === 'COMPLETED' ? (
+            <FioriObjectStatus tone="positive" variant="text" label="تکمیل شده" />
+          ) : st.status === 'IN_PROGRESS' || st.status === 'READY' ? (
+            <FioriObjectStatus tone="brand" variant="text" label="ایستگاه فعال" />
+          ) : (
+            <FioriObjectStatus tone="neutral" variant="text" label="در انتظار" />
+          ),
+      },
+    ],
+    [],
+  );
+
+  const documentColumns: FioriTableColumn<TraceabilityDocumentChainRow>[] = useMemo(
+    () => [
+      {
+        key: 'documentNumber',
+        header: 'شماره سند',
+        isMono: true,
+        nowrap: true,
+        render: row => (
+          <button
+            type="button"
+            onClick={() => router.traceDocument(row.documentNumber, 'INVENTORY_LEDGER')}
+            className="sap-doc-link fiori-ltr-code font-mono cursor-pointer"
+            title="مشاهده اصل سند در کاردکس انبار"
+          >
+            {row.documentNumber}
+          </button>
+        ),
+      },
+      {
+        key: 'docDate',
+        header: 'تاریخ',
+        isMono: true,
+        nowrap: true,
+        cellClassName: 'text-[var(--fiori-text-secondary)]',
+        render: row => row.docDate || formatToJalali(new Date()),
+      },
+      {
+        key: 'docType',
+        header: 'نوع تراکنش',
+        render: row => row.docType,
+      },
+      {
+        key: 'part',
+        header: 'کد و نام کالا',
+        render: row => (
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="fiori-ltr-code font-mono font-semibold text-[var(--fiori-text-primary)]">
+              {row.partCode}
+            </span>
+            <span className="text-[var(--fiori-text-muted)]">·</span>
+            <span>{row.partName}</span>
+          </div>
+        ),
+      },
+      {
+        key: 'qty',
+        header: 'مقدار / وزن',
+        align: 'center',
+        isMono: true,
+        nowrap: true,
+        render: row => (
+          <span className="font-semibold text-[var(--fiori-positive)]">
+            {formatNumber(row.qty)}{' '}
+            <span className="text-[10px] text-[var(--fiori-text-secondary)]">
+              ({formatNumber(row.weightKg)} kg)
+            </span>
+          </span>
+        ),
+      },
+      {
+        key: 'coilId',
+        header: 'کلاف / لوت',
+        isMono: true,
+        nowrap: true,
+        render: row =>
+          row.coilId ? (
+            <button
+              type="button"
+              onClick={() => router.traceDocument(row.coilId, 'COILS')}
+              className="sap-doc-link fiori-ltr-code font-mono cursor-pointer"
+              title="مشاهده وضعیت رول/کلاف در انبار ورق"
+            >
+              {row.coilId}
+            </button>
+          ) : (
+            '—'
+          ),
+      },
+      {
+        key: 'heatNumber',
+        header: 'شماره ذوب',
+        isMono: true,
+        isLtrCode: true,
+        nowrap: true,
+        render: row => row.heatNumber || '—',
+      },
+      {
+        key: 'referenceNumber',
+        header: 'مرجع / MO',
+        isMono: true,
+        nowrap: true,
+        render: row =>
+          row.referenceNumber ? (
+            <button
+              type="button"
+              onClick={() => setTrackingQuery(row.referenceNumber)}
+              className="sap-doc-link fiori-ltr-code font-mono cursor-pointer"
+              title="فیلتر بر اساس مرجع / دستور کار"
+            >
+              {row.referenceNumber}
+            </button>
+          ) : (
+            '—'
+          ),
+      },
+    ],
+    [router],
+  );
+
   return (
-    <div className="space-y-4" dir="rtl">
-      {/* Search Header Banner */}
-      <div className="bg-white p-4 rounded-md border border-[#d9d9d9] shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2 rounded bg-[#e5f3fa] border border-[#b3ddf5] text-[#007cc0] shrink-0">
-              <QrCode className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-[#333333]">
-                سامانه شناسایی و رهگیری سرتاسری مواد، ذوب و دستور کار (Live Traceability)
-              </h2>
-              <p className="text-xs text-[#666666] mt-0.5">
-                ردیابی زنده شجره‌نامه قطعات از ورود رول و شماره ذوب (Heat No) تا مراحل تولید WIP، اسناد کاردکس و تحویل
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={loadLiveTraceability}
-              disabled={loading}
-              className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>بروزرسانی</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsTagModalOpen(true)}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>صدور کارت ردیابی پالت</span>
-            </button>
-          </div>
+    <FioriDynamicPage
+      title="سامانه شناسایی و رهگیری سرتاسری مواد، ذوب و دستور کار (Live Traceability)"
+      subtitle="ردیابی زنده شجره‌نامه قطعات از ورود رول و شماره ذوب (Heat No) تا مراحل تولید WIP، اسناد کاردکس و تحویل"
+      status={
+        <div className="flex items-center gap-1.5">
+          <QrCode className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+          <FioriObjectStatus
+            tone={activeMo ? 'info' : 'neutral'}
+            label={activeMo ? activeMo.moNumber : 'بدون دستور کار فعال'}
+            ltrCode={Boolean(activeMo)}
+          />
         </div>
-
-        {/* Live Search + Quick Chips */}
-        <form onSubmit={handleSearchSubmit} className="space-y-2 pt-2 border-t border-[#e8e8e8]">
+      }
+      collapsibleFilters={false}
+      activeFiltersCount={normalizedQuery ? 1 : 0}
+      onResetFilters={() => {
+        setTrackingQuery('');
+        router.clearDocQuery();
+      }}
+      headerActions={
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={loadLiveTraceability}
+            disabled={loading}
+            className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>بروزرسانی</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsTagModalOpen(true)}
+            className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>صدور کارت ردیابی پالت</span>
+          </button>
+        </div>
+      }
+      filterBar={
+        <form onSubmit={handleSearchSubmit} className="space-y-2.5">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#666666]" />
+              <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fiori-text-secondary)] pointer-events-none" />
               <input
                 type="text"
                 value={trackingQuery}
                 onChange={e => setTrackingQuery(e.target.value)}
                 placeholder="جستجوی زنده با شماره سند، کلاف (COIL-ECU-001)، شماره ذوب (Heat No)، کد قطعه یا شماره دستور کار (MO)..."
-                className="w-full pr-9 pl-4 py-1.5 text-xs bg-[#f7f7f7] border border-[#bfbfbf] rounded focus:outline-none focus:bg-white focus:border-[#007cc0] font-mono text-[#333333]"
+                className="w-full pr-9 pl-4 py-1.5 text-xs bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] focus:outline-none focus:border-[var(--fiori-border-focus)] font-mono text-[var(--fiori-text-primary)]"
               />
             </div>
             {trackingQuery && (
@@ -214,7 +401,7 @@ export const TraceabilityInquiryView: React.FC<TraceabilityInquiryViewProps> = (
                   setTrackingQuery('');
                   router.clearDocQuery();
                 }}
-                className="px-3 py-1.5 bg-[#f5f5f5] hover:bg-[#e8e8e8] text-[#333333] border border-[#d9d9d9] rounded text-xs font-medium cursor-pointer"
+                className="sap-btn-standard px-3 py-1.5 text-xs cursor-pointer"
               >
                 پاک کردن
               </button>
@@ -223,98 +410,109 @@ export const TraceabilityInquiryView: React.FC<TraceabilityInquiryViewProps> = (
 
           {wipOrders.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
-              <span className="text-[#666666] font-medium">انتخاب سریع دستور کار:</span>
-              {wipOrders.map(mo => (
-                <button
-                  key={mo.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedMoId(mo.id);
-                    setTrackingQuery('');
-                  }}
-                  className={`px-2.5 py-1 rounded border font-mono transition cursor-pointer ${
-                    activeMo?.id === mo.id && !trackingQuery
-                      ? 'bg-[#007cc0] text-white border-[#007cc0] font-semibold'
-                      : 'bg-[#f7f7f7] hover:bg-[#e5f3fa] text-[#333333] border-[#d9d9d9]'
-                  }`}
-                >
-                  {mo.moNumber} ({mo.partCode})
-                </button>
-              ))}
+              <span className="text-[var(--fiori-text-secondary)] font-medium">انتخاب سریع دستور کار:</span>
+              {wipOrders.map(mo => {
+                const isSelected = activeMo?.id === mo.id && !trackingQuery;
+                return (
+                  <button
+                    key={mo.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMoId(mo.id);
+                      setTrackingQuery('');
+                    }}
+                    className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] border font-mono fiori-ltr-code transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)] font-semibold'
+                        : 'bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-bg-selected)] text-[var(--fiori-text-primary)] border-[var(--fiori-border-default)]'
+                    }`}
+                  >
+                    {mo.moNumber} ({mo.partCode})
+                  </button>
+                );
+              })}
             </div>
           )}
         </form>
-      </div>
-
+      }
+    >
       {/* Live Source Material & MO Genealogy Summary */}
-      <div className="bg-white border border-[#d9d9d9] rounded-md p-4 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-[#e8e8e8] gap-2">
-          <div className="flex items-center gap-2.5">
-            <span className="font-mono text-xs font-semibold text-[#007cc0] bg-[#e5f3fa] border border-[#b3ddf5] px-2.5 py-1 rounded">
-              {activeMo ? activeMo.moNumber : 'بدون دستور کار فعال'}
-            </span>
-            <span className="text-xs font-semibold text-[#333333]">
-              {activeMo ? activeMo.partName : 'لطفاً یک کد کلاف، ذوب یا سند را جستجو کنید'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {activeMo?.moNumber && (
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-4 shadow-[var(--fiori-shadow-card)] space-y-4">
+        <FioriToolbar
+          variant="section"
+          title={activeMo ? activeMo.partName : 'لطفاً یک کد کلاف، ذوب یا سند را جستجو کنید'}
+          startContent={
+            <FioriObjectStatus
+              tone="brand"
+              label={activeMo ? activeMo.moNumber : 'بدون دستور کار فعال'}
+              ltrCode={Boolean(activeMo)}
+              size="md"
+            />
+          }
+          endContent={
+            <div className="flex items-center gap-2">
+              {activeMo?.moNumber && (
+                <button
+                  type="button"
+                  onClick={() => router.traceDocument(activeMo.moNumber, 'INVENTORY_LEDGER')}
+                  className="sap-btn-standard flex items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>اسناد کاردکس این دستور کار</span>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => router.traceDocument(activeMo.moNumber, 'INVENTORY_LEDGER')}
+                onClick={() => setIsTagModalOpen(true)}
                 className="sap-btn-standard flex items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer"
               >
-                <FileText className="w-3.5 h-3.5" />
-                <span>اسناد کاردکس این دستور کار</span>
+                <Printer className="w-3.5 h-3.5" />
+                <span>چاپ لیبل ردیابی</span>
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setIsTagModalOpen(true)}
-              className="sap-btn-standard flex items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>چاپ لیبل ردیابی</span>
-            </button>
-          </div>
-        </div>
+            </div>
+          }
+        />
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-            <span className="text-[10px] text-slate-500 block">کد قطعه و محصول:</span>
-            <span className="font-bold text-slate-900 font-mono">{activeMo?.partCode || '—'}</span>
-            <span className="text-[11px] text-slate-500 block mt-0.5">
+          <div className="p-3 bg-[var(--fiori-bg-subtle)] rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] block">کد قطعه و محصول:</span>
+            <span className="font-bold text-[var(--fiori-text-primary)] font-mono fiori-ltr-code inline-block mt-0.5">
+              {activeMo?.partCode || '—'}
+            </span>
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] block mt-0.5 tabular-nums">
               هدف: {activeMo ? formatNumber(activeMo.targetQuantity) : '—'} عدد
             </span>
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-            <span className="text-[10px] text-slate-500 block">منبع رول و ذوب (Coil / Heat):</span>
-            <span className="font-bold text-slate-900 font-mono">
+          <div className="p-3 bg-[var(--fiori-bg-subtle)] rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] block">منبع رول و ذوب (Coil / Heat):</span>
+            <span className="font-bold text-[var(--fiori-text-primary)] font-mono fiori-ltr-code inline-block mt-0.5">
               {primaryCoil?.coilId || '—'}
             </span>
-            <span className="text-[11px] text-slate-500 block mt-0.5 font-mono">
-              {primaryCoil ? `گرید ${primaryCoil.materialGrade} · ذوب ${primaryCoil.heatNumber || '—'}` : 'در انتظار ثبت کلاف'}
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] block mt-0.5 font-mono">
+              {primaryCoil
+                ? `گرید ${primaryCoil.materialGrade} · ذوب ${primaryCoil.heatNumber || '—'}`
+                : 'در انتظار ثبت کلاف'}
             </span>
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-            <span className="text-[10px] text-slate-500 block">اسناد کاردکس مرتبط:</span>
-            <span className="font-bold text-slate-900 font-mono tabular-nums">
+          <div className="p-3 bg-[var(--fiori-bg-subtle)] rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] block">اسناد کاردکس مرتبط:</span>
+            <span className="font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums inline-block mt-0.5">
               {toPersianDigits(matchingDocuments.length)} ردیف سند قطعی
             </span>
-            <span className="text-[11px] text-slate-500 block mt-0.5">
+            <span className="text-[11px] text-[var(--fiori-text-secondary)] block mt-0.5 tabular-nums">
               تگ‌های صادرشده: {toPersianDigits(matchingTags.length)} مورد
             </span>
           </div>
 
-          <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900">
-            <span className="text-[10px] text-emerald-700 block">وضعیت تولید دستور کار:</span>
-            <span className="font-extrabold text-base font-mono tabular-nums">
+          <div className="p-3 bg-[var(--fiori-positive-bg)] rounded-[var(--fiori-radius-md)] border border-[var(--fiori-positive-border)] text-[var(--fiori-positive)]">
+            <span className="text-[11px] block">وضعیت تولید دستور کار:</span>
+            <span className="font-bold text-base font-mono tabular-nums inline-block mt-0.5">
               {activeMo ? `${formatNumber(activeMo.completedQuantity || 0)} عدد تکمیل` : '—'}
             </span>
-            <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-semibold flex items-center gap-1 mt-0.5 tabular-nums">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
               ضایعات ثبت‌شده: {activeMo ? formatNumber(activeMo.totalScrapQuantity || 0) : '۰'}
             </span>
           </div>
@@ -322,161 +520,89 @@ export const TraceabilityInquiryView: React.FC<TraceabilityInquiryViewProps> = (
 
         {/* Live Routing Operations Progress for Active MO */}
         {activeMo && Array.isArray(activeMo.operations) && (
-          <div>
-            <h3 className="text-xs font-semibold text-[#333333] mb-2 flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-[#007cc0]" />
-              <span>وضعیت زنده عبور قطعه در مراحل عملیات ({activeMo.moNumber}):</span>
-            </h3>
-            <div className="overflow-x-auto rounded border border-[#d9d9d9]">
-              <table className="w-full text-right text-xs sap-table-compact">
-                <thead className="bg-white border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                  <tr>
-                    <th className="py-1.5 px-2.5">کد مرحله</th>
-                    <th className="py-1.5 px-2.5">عنوان عملیات</th>
-                    <th className="py-1.5 px-2.5">ایستگاه / دستگاه</th>
-                    <th className="py-1.5 px-2.5 text-center">در صف ورودی</th>
-                    <th className="py-1.5 px-2.5 text-center">در جریان / آماده</th>
-                    <th className="py-1.5 px-2.5 text-center">تولید سالم</th>
-                    <th className="py-1.5 px-2.5 text-center">ضایعات</th>
-                    <th className="py-1.5 px-2.5 text-center">وضعیت مرحله</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e8e8e8] text-[#333333] font-mono tabular-nums">
-                  {activeMo.operations.map((st: any) => (
-                    <tr
-                      key={st.id}
-                      className={
-                        st.status === 'IN_PROGRESS' || st.status === 'READY'
-                          ? 'bg-[#e5f3fa]/50 font-semibold'
-                          : st.status === 'COMPLETED'
-                          ? 'hover:bg-[#e5f3fa]/70'
-                          : 'opacity-75 bg-[#fafafa]'
-                      }
-                    >
-                      <td className="py-1.5 px-2.5 font-semibold text-[#333333]">{st.stepCode}</td>
-                      <td className="py-1.5 px-2.5 font-sans font-medium text-[#333333]">{st.stepName}</td>
-                      <td className="py-1.5 px-2.5 text-[#666666] font-sans">{st.machineName || '—'}</td>
-                      <td className="py-1.5 px-2.5 text-center">{formatNumber(st.waitingInputQty || 0)}</td>
-                      <td className="py-1.5 px-2.5 text-center text-[#007cc0]">
-                        {formatNumber((st.inProgressQty || 0) + (st.readyForTransferQty || 0))}
-                      </td>
-                      <td className="py-1.5 px-2.5 text-center font-semibold text-[#107e3e]">
-                        {formatNumber(st.goodOutputQty || 0)}
-                      </td>
-                      <td className="py-1.5 px-2.5 text-center text-[#bb0000]">
-                        {formatNumber(st.scrapQty || 0)}
-                      </td>
-                      <td className="py-1.5 px-2.5 text-center font-sans">
-                        {st.status === 'COMPLETED' ? (
-                          <span className="text-[11px] font-semibold text-[#107e3e]">تکمیل شده</span>
-                        ) : st.status === 'IN_PROGRESS' || st.status === 'READY' ? (
-                          <span className="text-[11px] font-semibold text-[#007cc0]">ایستگاه فعال</span>
-                        ) : (
-                          <span className="text-[11px] text-[#666666]">در انتظار</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <FioriDataTable
+            columns={operationColumns}
+            data={activeMo.operations}
+            rowKey={st => st.id || st.stepCode}
+            loading={loading}
+            compact
+            rowClassName={st =>
+              st.status === 'IN_PROGRESS' || st.status === 'READY'
+                ? 'bg-[var(--fiori-bg-selected)]/45 font-semibold'
+                : st.status === 'COMPLETED'
+                ? ''
+                : 'opacity-80 bg-[var(--fiori-bg-subtle)]'
+            }
+            toolbar={
+              <FioriToolbar
+                variant="table"
+                title={`وضعیت زنده عبور قطعه در مراحل عملیات (${activeMo.moNumber})`}
+                count={activeMo.operations.length}
+                countLabel="مرحله"
+                startContent={<Layers className="w-4 h-4 text-[var(--fiori-brand)]" />}
+              />
+            }
+          />
         )}
 
         {/* Live Document & Lot Traceability Ledger */}
-        <div>
-          <h3 className="text-xs font-semibold text-[#333333] mb-2 flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-[#007cc0]" />
-            <span>زنجیره زنده اسناد انبار و ردیابی لوت/ذوب (از ورود تا مصرف و محصول):</span>
-          </h3>
-          {matchingDocuments.length === 0 ? (
-            <div className="p-6 text-center text-xs text-[#666666] bg-[#f7f7f7] rounded border border-[#d9d9d9]">
-              سندی با این کلیدواژه یافت نشد.
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded border border-[#d9d9d9]">
-              <table className="w-full text-right text-xs sap-table-compact">
-                <thead className="bg-white border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                  <tr>
-                    <th className="py-1.5 px-2.5">شماره سند</th>
-                    <th className="py-1.5 px-2.5">تاریخ</th>
-                    <th className="py-1.5 px-2.5">نوع تراکنش</th>
-                    <th className="py-1.5 px-2.5">کد و نام کالا</th>
-                    <th className="py-1.5 px-2.5 text-center">مقدار / وزن</th>
-                    <th className="py-1.5 px-2.5">کلاف / لوت</th>
-                    <th className="py-1.5 px-2.5">شماره ذوب</th>
-                    <th className="py-1.5 px-2.5">مرجع / MO</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e8e8e8] text-[#333333] tabular-nums">
-                  {matchingDocuments.slice(0, 30).map(row => (
-                    <tr key={row.id} className="hover:bg-[#e5f3fa]/70">
-                      <td className="py-1.5 px-2.5">
-                        <button
-                          type="button"
-                          onClick={() => router.traceDocument(row.documentNumber, 'INVENTORY_LEDGER')}
-                          className="sap-doc-link"
-                          title="مشاهده اصل سند در کاردکس انبار"
-                        >
-                          {row.documentNumber}
-                        </button>
-                      </td>
-                      <td className="py-1.5 px-2.5 font-mono text-[#666666]">{row.docDate || formatToJalali(new Date())}</td>
-                      <td className="py-1.5 px-2.5">{row.docType}</td>
-                      <td className="py-1.5 px-2.5">
-                        <span className="font-mono font-semibold text-[#333333]">{row.partCode}</span>
-                        <span className="text-[#999999] mx-1">·</span>
-                        <span>{row.partName}</span>
-                      </td>
-                      <td className="py-1.5 px-2.5 text-center font-mono font-semibold text-[#107e3e]">
-                        {formatNumber(row.qty)} <span className="text-[10px] text-[#666666]">({formatNumber(row.weightKg)} kg)</span>
-                      </td>
-                      <td className="py-1.5 px-2.5 font-mono">
-                        {row.coilId ? (
-                          <button
-                            type="button"
-                            onClick={() => router.traceDocument(row.coilId, 'COILS')}
-                            className="sap-doc-link"
-                            title="مشاهده وضعیت رول/کلاف در انبار ورق"
-                          >
-                            {row.coilId}
-                          </button>
-                        ) : '—'}
-                      </td>
-                      <td className="py-1.5 px-2.5 font-mono text-[#333333]">{row.heatNumber || '—'}</td>
-                      <td className="py-1.5 px-2.5 font-mono">
-                        {row.referenceNumber ? (
-                          <button
-                            type="button"
-                            onClick={() => setTrackingQuery(row.referenceNumber)}
-                            className="sap-doc-link"
-                            title="فیلتر بر اساس مرجع / دستور کار"
-                          >
-                            {row.referenceNumber}
-                          </button>
-                        ) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <FioriDataTable
+          columns={documentColumns}
+          data={matchingDocuments.slice(0, 30)}
+          rowKey={row => row.id}
+          loading={loading}
+          compact
+          toolbar={
+            <FioriToolbar
+              variant="table"
+              title="زنجیره زنده اسناد انبار و ردیابی لوت/ذوب (از ورود تا مصرف و محصول)"
+              count={matchingDocuments.length}
+              countLabel="سند"
+              startContent={<FileText className="w-4 h-4 text-[var(--fiori-brand)]" />}
+            />
+          }
+          emptyState={
+            <EmptyState
+              variant={normalizedQuery ? 'SEARCH_NO_MATCH' : 'NO_DATA'}
+              compact
+              title="سندی با این کلیدواژه یافت نشد"
+              description="شماره سند، کد کلاف، شماره ذوب یا دستور کار مورد نظر در زنجیره اسناد ثبت‌شده یافت نشد."
+              actionLabel={normalizedQuery ? 'پاک‌کردن جستجو' : undefined}
+              onAction={
+                normalizedQuery
+                  ? () => {
+                      setTrackingQuery('');
+                      router.clearDocQuery();
+                    }
+                  : undefined
+              }
+            />
+          }
+        />
 
         {/* Issued Traceability Tags */}
         {matchingTags.length > 0 && (
-          <div>
-            <h3 className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
-              <ArrowRight className="w-3.5 h-3.5 text-slate-600" />
-              <span>کارت‌های شناسایی و پالت صادرشده:</span>
-            </h3>
+          <div className="space-y-2">
+            <FioriToolbar
+              variant="section"
+              title="کارت‌های شناسایی و پالت صادرشده"
+              count={matchingTags.length}
+              countLabel="تگ"
+              startContent={<ArrowRight className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />}
+            />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
               {matchingTags.slice(0, 6).map(tag => (
-                <div key={tag.id || tag.tagNumber} className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-                  <div className="font-mono font-bold text-slate-900">{tag.tagNumber}</div>
-                  <div className="text-slate-700 font-medium">{tag.partName || tag.partCode}</div>
-                  <div className="text-[11px] text-slate-500 font-mono">
+                <div
+                  key={tag.id || tag.tagNumber}
+                  className="p-3 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] space-y-1"
+                >
+                  <div className="font-mono fiori-ltr-code font-bold text-[var(--fiori-text-primary)]">
+                    {tag.tagNumber}
+                  </div>
+                  <div className="text-[var(--fiori-text-primary)] font-medium">
+                    {tag.partName || tag.partCode}
+                  </div>
+                  <div className="text-[11px] text-[var(--fiori-text-secondary)] font-mono tabular-nums">
                     MO: {tag.moNumber || '—'} · تعداد: {formatNumber(tag.quantity || 0)}
                   </div>
                 </div>
@@ -497,6 +623,7 @@ export const TraceabilityInquiryView: React.FC<TraceabilityInquiryViewProps> = (
         dies={dies}
         operators={operators}
       />
-    </div>
+    </FioriDynamicPage>
   );
 };
+

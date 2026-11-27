@@ -2,14 +2,7 @@ import React, { useState } from 'react';
 import {
   ArrowRightLeft,
   Search,
-  Filter,
-  CheckCircle2,
   XCircle,
-  Clock,
-  Truck,
-  Building2,
-  AlertCircle,
-  FileText,
 } from 'lucide-react';
 import { WipTransfer } from '../../types/productionWip';
 import {
@@ -20,6 +13,16 @@ import {
 import { TableSkeleton } from '../ui/Skeleton';
 import { useErpRouter } from '../../context/RouterContext';
 import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
+import {
+  FioriDataTable,
+  FioriDialog,
+  FioriDynamicPage,
+  FioriMessageStrip,
+  FioriObjectStatus,
+  FioriTableColumn,
+  FioriToolbar,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 interface InterOperationTransfersViewProps {
   transfers: WipTransfer[];
@@ -32,7 +35,6 @@ interface InterOperationTransfersViewProps {
 export const InterOperationTransfersView: React.FC<InterOperationTransfersViewProps> = ({
   transfers,
   loading,
-  onRefresh,
   onApproveTransfer,
   onRejectTransfer,
 }) => {
@@ -109,60 +111,198 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
     }
   };
 
-  const statusBadges: Record<string, { label: string; color: string }> = {
-    PENDING_APPROVAL: { label: 'در حال انتقال (در انتظار تأیید)', color: 'bg-[#fff4e5] text-[#e9730c] border-[#f5cba7]' },
-    APPROVED: { label: 'تحویل‌گرفته‌شده (قطعی)', color: 'bg-[#ebf5ec] text-[#107e3e] border-[#b7dfbf]' },
-    REJECTED: { label: 'ردشده و عودت به مبدأ', color: 'bg-[#ffecec] text-[#bb0000] border-[#f5b7b1]' },
-  };
+  const pendingCount = transfers.filter(t => t.status === 'PENDING_APPROVAL').length;
+  const activeFiltersCount = (statusFilter !== 'ALL' ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+
+  const columns: FioriTableColumn<WipTransfer>[] = [
+    {
+      key: 'transferNumber',
+      header: 'شماره حواله',
+      isMono: true,
+      isLtrCode: true,
+      render: trf => (
+        <button
+          type="button"
+          onClick={() => traceDocument(trf.transferNumber, 'WIP_TRACEABILITY')}
+          className="sap-doc-link fiori-ltr-code font-mono font-bold"
+        >
+          {trf.transferNumber}
+        </button>
+      ),
+    },
+    {
+      key: 'moNumber',
+      header: 'دستور ساخت (MO)',
+      isMono: true,
+      isLtrCode: true,
+      render: trf => (
+        <button
+          type="button"
+          onClick={() => traceDocument(trf.moNumber, 'WIP_TRACEABILITY')}
+          className="sap-doc-link fiori-ltr-code font-mono"
+        >
+          {trf.moNumber}
+        </button>
+      ),
+    },
+    {
+      key: 'partName',
+      header: 'قطعه',
+      render: trf => (
+        <div>
+          <div className="font-medium text-[var(--fiori-text-primary)]">{trf.partName}</div>
+          <button
+            type="button"
+            onClick={() => traceDocument(trf.partCode, 'INVENTORY_LEDGER')}
+            className="sap-doc-link fiori-ltr-code font-mono text-[11px]"
+          >
+            {trf.partCode}
+          </button>
+        </div>
+      ),
+    },
+    {
+      key: 'fromStepName',
+      header: 'ایستگاه مبدأ',
+      render: trf => (
+        <div>
+          <div className="text-[var(--fiori-text-primary)]">{trf.fromStepName}</div>
+          <div className="fiori-ltr-code font-mono text-[10px] text-[var(--fiori-text-secondary)]">{trf.fromLocation}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'toStepName',
+      header: 'ایستگاه یا انبار مقصد',
+      render: trf => (
+        <div>
+          <div className="text-[var(--fiori-text-primary)]">{trf.toStepName}</div>
+          <div className="fiori-ltr-code font-mono text-[10px] text-[var(--fiori-text-secondary)]">{trf.toLocation}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'quantity',
+      header: 'تعداد (PCS)',
+      align: 'left',
+      isMono: true,
+      render: trf => (
+        <span className="font-mono font-bold text-[var(--fiori-text-primary)] text-sm tabular-nums">
+          {formatNumber(trf.quantity)}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'وضعیت',
+      render: trf => (
+        <FioriObjectStatus
+          tone={
+            trf.status === 'APPROVED'
+              ? 'positive'
+              : trf.status === 'REJECTED'
+              ? 'negative'
+              : 'critical'
+          }
+          label={
+            trf.status === 'APPROVED'
+              ? 'تحویل‌گرفته‌شده (قطعی)'
+              : trf.status === 'REJECTED'
+              ? 'ردشده و عودت به مبدأ'
+              : 'در حال انتقال (در انتظار تأیید)'
+          }
+          size="sm"
+        />
+      ),
+    },
+    {
+      key: 'dispatchedAt',
+      header: 'زمان ارسال',
+      isMono: true,
+      render: trf => (
+        <span className="text-[var(--fiori-text-secondary)] font-mono text-[11px] tabular-nums">
+          {formatDateTime(trf.dispatchedAt)}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'عملیات تحویل',
+      align: 'center',
+      render: trf =>
+        trf.status === 'PENDING_APPROVAL' ? (
+          <div className="flex items-center justify-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleApprove(trf)}
+              disabled={actionLoading}
+              className="px-2.5 py-1 bg-[var(--fiori-positive)] hover:opacity-90 text-white rounded-[var(--fiori-radius-sm)] text-[11px] font-bold transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
+              title="تأیید رسید و افزودن به صف ورودی مقصد"
+            >
+              تأیید تحویل
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRejectingTransferId(trf.id);
+                setRejectReason('');
+              }}
+              disabled={actionLoading}
+              className="px-2 py-1 bg-[var(--fiori-negative-bg)] hover:opacity-90 text-[var(--fiori-negative)] border border-[var(--fiori-negative-border)] rounded-[var(--fiori-radius-sm)] text-[11px] font-medium transition-all cursor-pointer disabled:opacity-50"
+              title="رد محموله و بازگشت به مبدأ"
+            >
+              رد
+            </button>
+          </div>
+        ) : trf.status === 'APPROVED' ? (
+          <div className="text-[11px] text-[var(--fiori-positive)] font-medium">
+            تحویل توسط {trf.receivedBy || 'سرپرست ایستگاه'}
+          </div>
+        ) : (
+          <div className="text-[11px] text-[var(--fiori-negative)] font-medium" title={trf.rejectionReason}>
+            علت رد: {trf.rejectionReason || 'عدم انطباق'}
+          </div>
+        ),
+    },
+  ];
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="sap-card p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold text-[#333333] flex items-center gap-2">
-            <ArrowRightLeft className="w-5 h-5 text-[#007cc0]" />
-            حواله‌های انتقال و ردیابی بین‌مراحل (WIP In-Transit & Receipts)
-          </h2>
-          <p className="text-xs text-[#666666] mt-1">
-            ردیابی دقیق محموله‌های در حال جابجایی بین سالن‌ها و ایستگاه‌های پرس، جوشکاری، رنگ و مونتاژ
-          </p>
+    <FioriDynamicPage
+      title="حواله‌های انتقال و ردیابی بین‌مراحل"
+      subtitle="ردیابی دقیق محموله‌های در حال جابجایی بین سالن‌ها و ایستگاه‌های پرس، جوشکاری، رنگ و مونتاژ"
+      status={
+        pendingCount > 0 ? (
+          <FioriObjectStatus
+            tone="critical"
+            label={`${toPersianDigits(pendingCount)} حواله در انتظار تأیید`}
+            size="sm"
+          />
+        ) : (
+          <FioriObjectStatus tone="positive" label="بدون حواله معلق" size="sm" />
+        )
+      }
+      headerActions={
+        <div className="text-xs text-[var(--fiori-text-secondary)] tabular-nums">
+          کل حواله‌ها: <strong className="text-[var(--fiori-text-primary)] font-mono">{toPersianDigits(transfers.length)}</strong>
         </div>
-
-        <div className="text-xs text-[#666666]">
-          کل حواله‌ها: <strong className="text-[#333333] font-mono tabular-nums">{toPersianDigits(transfers.length)}</strong> |{' '}
-          در انتظار تأیید:{' '}
-          <strong className="text-[#e9730c] font-mono tabular-nums">
-            {toPersianDigits(transfers.filter(t => t.status === 'PENDING_APPROVAL').length)}
-          </strong>
-        </div>
-      </div>
-
-      {errorMsg && (
-        <div className="p-3 bg-[#ffecec] border border-[#f5b7b1] rounded-sm text-xs text-[#bb0000] flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {/* Filter Bar */}
-      <div className="sap-card p-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3 flex-1">
+      }
+      filterBar={
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[240px] flex-1">
-            <Search className="w-4 h-4 text-[#666666] absolute right-3 top-2" />
+            <Search className="w-4 h-4 text-[var(--fiori-text-muted)] absolute right-3 top-2" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="جستجوی شماره حواله، دستور کار، نام قطعه یا مرحله..."
-              className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm pr-9 pl-3 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
+              className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] pr-9 pl-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
+            className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
           >
             <option value="ALL">همه وضعیت‌ها</option>
             <option value="PENDING_APPROVAL">در انتظار تحویل در مقصد (Pending)</option>
@@ -170,178 +310,100 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
             <option value="REJECTED">ردشده (Rejected)</option>
           </select>
         </div>
-      </div>
+      }
+      activeFiltersCount={activeFiltersCount}
+      onResetFilters={() => {
+        setSearchTerm('');
+        setStatusFilter('ALL');
+      }}
+    >
+      <div className="space-y-4">
+        {errorMsg && (
+          <FioriMessageStrip tone="error" title="خطای عملیات انتقال" onClose={() => setErrorMsg(null)}>
+            {errorMsg}
+          </FioriMessageStrip>
+        )}
 
-      {/* Transfers Table */}
-      <div className="sap-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="sap-table-compact w-full text-right text-xs">
-            <thead>
-              <tr className="bg-[#f5f5f5] border-b border-[#d9d9d9] text-[#666666] font-semibold select-none">
-                <th>شماره حواله</th>
-                <th>دستور ساخت (MO)</th>
-                <th>قطعه</th>
-                <th>ایستگاه مبدأ</th>
-                <th>ایستگاه یا انبار مقصد</th>
-                <th className="text-left">تعداد (PCS)</th>
-                <th>وضعیت</th>
-                <th>زمان ارسال</th>
-                <th className="text-center">عملیات تحویل</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e8e8e8]">
-              {filteredTransfers.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-[#666666]">
-                    هیچ حواله‌ای یافت نشد.
-                  </td>
-                </tr>
-              ) : (
-                filteredTransfers.map(trf => {
-                  const statusInfo = statusBadges[trf.status] || { label: trf.status, color: 'bg-[#f5f5f5] text-[#333333] border-[#d9d9d9]' };
-                  const isPending = trf.status === 'PENDING_APPROVAL';
-
-                  return (
-                    <tr key={trf.id} className="hover:bg-[#f5f5f5] transition-colors">
-                      <td className="font-mono font-bold">
-                        <button
-                          type="button"
-                          onClick={() => traceDocument(trf.transferNumber, 'WIP_TRACEABILITY')}
-                          className="sap-doc-link font-mono"
-                        >
-                          {trf.transferNumber}
-                        </button>
-                      </td>
-                      <td className="font-mono">
-                        <button
-                          type="button"
-                          onClick={() => traceDocument(trf.moNumber, 'WIP_TRACEABILITY')}
-                          className="sap-doc-link font-mono"
-                        >
-                          {trf.moNumber}
-                        </button>
-                      </td>
-                      <td>
-                        <div className="font-medium text-[#333333]">{trf.partName}</div>
-                        <button
-                          type="button"
-                          onClick={() => traceDocument(trf.partCode, 'INVENTORY_LEDGER')}
-                          className="sap-doc-link font-mono text-[11px]"
-                        >
-                          {trf.partCode}
-                        </button>
-                      </td>
-                      <td>
-                        <div className="text-[#333333]">{trf.fromStepName}</div>
-                        <div className="font-mono text-[10px] text-[#666666]">{trf.fromLocation}</div>
-                      </td>
-                      <td>
-                        <div className="text-[#333333]">{trf.toStepName}</div>
-                        <div className="font-mono text-[10px] text-[#666666]">{trf.toLocation}</div>
-                      </td>
-                      <td className="font-mono font-bold text-left text-[#333333] text-sm tabular-nums">
-                        {formatNumber(trf.quantity)}
-                      </td>
-                      <td>
-                        <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold border ${statusInfo.color}`}>
-                          {statusInfo.label}
-                        </span>
-                      </td>
-                      <td className="text-[#666666] font-mono text-[11px] tabular-nums">
-                        {formatDateTime(trf.dispatchedAt)}
-                      </td>
-                      <td className="text-center">
-                        {isPending ? (
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleApprove(trf)}
-                              disabled={actionLoading}
-                              className="px-2.5 py-1 bg-[#107e3e] hover:bg-[#0c6330] text-white rounded-sm text-[11px] font-bold transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
-                              title="تأیید رسید و افزودن به صف ورودی مقصد"
-                            >
-                              تأیید تحویل
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRejectingTransferId(trf.id);
-                                setRejectReason('');
-                              }}
-                              disabled={actionLoading}
-                              className="px-2 py-1 bg-[#ffecec] hover:bg-[#fbd5d5] text-[#bb0000] border border-[#f5b7b1] rounded-sm text-[11px] font-medium transition-all cursor-pointer disabled:opacity-50"
-                              title="رد محموله و بازگشت به مبدأ"
-                            >
-                              رد
-                            </button>
-                          </div>
-                        ) : trf.status === 'APPROVED' ? (
-                          <div className="text-[11px] text-[#107e3e] font-medium">
-                            تحویل توسط {trf.receivedBy || 'سرپرست ایستگاه'}
-                          </div>
-                        ) : (
-                          <div className="text-[11px] text-[#bb0000] font-medium" title={trf.rejectionReason}>
-                            علت رد: {trf.rejectionReason || 'عدم انطباق'}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <FioriDataTable
+          columns={columns}
+          data={filteredTransfers}
+          rowKey={trf => trf.id}
+          toolbar={
+            <FioriToolbar
+              variant="table"
+              title="فهرست حواله‌های انتقال بین مراحل"
+              startContent={<ArrowRightLeft className="w-4 h-4 text-[var(--fiori-brand)]" />}
+              count={filteredTransfers.length}
+              countLabel="حواله"
+            />
+          }
+          emptyState={
+            <EmptyState
+              title="حواله‌ای یافت نشد"
+              description="فیلترهای جستجو را تغییر دهید یا حواله انتقال جدیدی صادر کنید."
+              actionLabel={activeFiltersCount > 0 ? 'بازنشانی فیلترها' : undefined}
+              onAction={
+                activeFiltersCount > 0
+                  ? () => {
+                      setSearchTerm('');
+                      setStatusFilter('ALL');
+                    }
+                  : undefined
+              }
+            />
+          }
+          compact
+        />
       </div>
 
       {/* Reject Confirmation Dialog */}
-      {rejectingTransferId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#333333]/40">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm max-w-md w-full p-5 space-y-3.5 shadow-md">
-            <div className="flex items-center gap-2.5 border-b border-[#e8e8e8] pb-2.5">
-              <div className="p-2 bg-[#ffecec] text-[#bb0000] border border-[#f5b7b1] rounded-sm">
-                <XCircle className="w-4 h-4" />
-              </div>
-              <h3 className="text-sm font-bold text-[#333333]">رد محموله و عودت به مرحله مبدأ</h3>
-            </div>
+      <FioriDialog
+        isOpen={Boolean(rejectingTransferId)}
+        onClose={() => setRejectingTransferId(null)}
+        title="رد محموله و عودت به مرحله مبدأ"
+        tone="danger"
+        size="sm"
+        icon={<XCircle className="w-4 h-4" />}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setRejectingTransferId(null)}
+              className="sap-btn-standard px-3.5 py-1.5 text-xs"
+            >
+              انصراف
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmReject}
+              disabled={actionLoading || !rejectReason.trim()}
+              className="px-3.5 py-1.5 bg-[var(--fiori-negative)] hover:opacity-90 text-white rounded-[var(--fiori-radius-sm)] text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+            >
+              تأیید رد و عودت
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-[var(--fiori-text-secondary)] leading-relaxed">
+            با رد این حواله، قطعات مجدداً در وضعیت «آماده انتقال» مرحله مبدأ قرار گرفته و به موجودی ایستگاه قبل بازگردانده می‌شوند.
+          </p>
 
-            <p className="text-xs text-[#666666] leading-relaxed">
-              با رد این حواله، قطعات مجدداً در وضعیت «آماده انتقال» مرحله مبدأ قرار گرفته و به موجودی ایستگاه قبل بازگردانده می‌شوند.
-            </p>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#333333]">
-                علت رد محموله <span className="text-[#bb0000]">*</span>
-              </label>
-              <textarea
-                value={rejectReason}
-                onChange={e => setRejectReason(e.target.value)}
-                placeholder="مثال: مغایرت در تعداد شمارش، پلیسه روی لبه، عدم تطابق پالت..."
-                rows={3}
-                className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#e8e8e8]">
-              <button
-                type="button"
-                onClick={() => setRejectingTransferId(null)}
-                className="sap-btn-standard px-3.5 py-1.5 text-xs"
-              >
-                انصراف
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmReject}
-                disabled={actionLoading || !rejectReason.trim()}
-                className="px-3.5 py-1.5 bg-[#bb0000] hover:bg-[#990000] text-white rounded-sm text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-              >
-                تأیید رد و عودت
-              </button>
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[var(--fiori-text-primary)] block">
+              علت رد محموله <span className="text-[var(--fiori-negative)]">*</span>
+            </label>
+            <textarea
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              placeholder="مثال: مغایرت در تعداد شمارش، پلیسه روی لبه، عدم تطابق پالت..."
+              rows={3}
+              className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] p-2 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+            />
           </div>
         </div>
-      )}
-    </div>
+      </FioriDialog>
+    </FioriDynamicPage>
   );
 };
+

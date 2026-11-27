@@ -46,6 +46,8 @@ import { SearchableSelect } from './common/SearchableSelect';
 import { useEnterpriseUx } from '../context/EnterpriseUxContext';
 import { useErpRouter } from '../context/RouterContext';
 import { InlinePageGuideButton } from './common/PageGuideSystem';
+import { FioriDialog, FioriMessageStrip, FioriObjectStatus, FioriToolbar } from './fiori/ui';
+import { EmptyState } from './common/EmptyState';
 
 interface MachinesViewProps {
   machines: Machine[];
@@ -614,14 +616,14 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
       <div className="sap-card p-4 space-y-3.5">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="w-9 h-9 rounded-sm bg-[#e5f3fa] border border-[#b3d7ff] text-[#007cc0] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] text-[var(--fiori-brand)] flex items-center justify-center shrink-0">
               <Cpu className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#333333]">
+              <h2 className="text-base font-bold text-[var(--fiori-text-primary)]">
                 مرکز تجهیزات، قالب‌های پرس، سالن‌ها و اپراتورهای کارخانه
               </h2>
-              <p className="text-xs text-[#666666] mt-0.5">
+              <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
                 پرس‌های چندمنظوره (کشش، پانچ، خم)، مدیریت قالب‌های سنبه ماتریس، سالن‌های تولیدی، شاخص OEE و پرسنل خطوط
               </p>
             </div>
@@ -664,15 +666,15 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
         </div>
 
         {/* Unified Dropdown List Selector + Quick Chips */}
-        <div className="pt-3 border-t border-[#e8e8e8] flex flex-wrap items-center justify-between gap-2.5 text-xs">
+        <div className="pt-3 border-t border-[var(--fiori-border-subtle)] flex flex-wrap items-center justify-between gap-2.5 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 bg-[#f0f0f0] border border-[#d9d9d9] rounded-sm px-2.5 py-1">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#007cc0]" />
-              <span className="text-[#666666] font-medium">انتخاب بخش ماشین‌آلات و ظرفیت:</span>
+            <div className="inline-flex items-center gap-2 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+              <span className="text-[var(--fiori-text-secondary)] font-medium">انتخاب بخش ماشین‌آلات و ظرفیت:</span>
               <select
                 value={activeSubTab}
                 onChange={e => handleSelectSubTab(e.target.value as SubTab)}
-                className="bg-transparent font-bold text-[#333333] focus:outline-none cursor-pointer"
+                className="bg-transparent font-bold text-[var(--fiori-text-primary)] focus:outline-none cursor-pointer"
               >
                 {subTabsList.map(tab => (
                   <option key={tab.id} value={tab.id}>
@@ -689,10 +691,10 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => handleSelectSubTab(tab.id)}
-                  className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition-colors whitespace-nowrap cursor-pointer border ${
+                  className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium transition-colors whitespace-nowrap cursor-pointer border ${
                     activeSubTab === tab.id
-                      ? 'bg-[#e5f3fa] text-[#007cc0] border-[#007cc0] font-bold'
-                      : 'bg-white hover:bg-[#f0f0f0] text-[#666666] border-[#d9d9d9]'
+                      ? 'bg-[var(--fiori-bg-selected)] text-[var(--fiori-brand)] border-[var(--fiori-brand)] font-bold'
+                      : 'bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-bg-hover)] text-[var(--fiori-text-secondary)] border-[var(--fiori-border-default)]'
                   }`}
                 >
                   {tab.shortLabel}
@@ -701,7 +703,7 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
             </div>
           </div>
 
-          <div className="text-[11px] text-[#666666]">
+          <div className="text-[11px] text-[var(--fiori-text-secondary)] tabular-nums">
             کل پرس‌ها: {toPersianDigits(machines.length)} • قالب‌ها: {toPersianDigits(dies.length)} • پرسنل: {toPersianDigits(operators.length)}
           </div>
         </div>
@@ -725,464 +727,530 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
       {/* TAB 1: MACHINES & MULTI-CAPABILITY PRESSES */}
       {activeSubTab === 'machines' && (
         <div className="space-y-4">
-          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 flex items-center gap-2 leading-relaxed">
-            <Zap className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              <strong>پرس‌های چندمنظوره:</strong> یک پرس مکانیکی یا هیدرولیک می‌تواند بسته به قالبی که روی آن بسته می‌شود، عملیات‌های گوناگونی همچون بلنکینگ، کشش، پانچ، خمکاری یا دوربری را اجرا کند.
-            </span>
-          </div>
+          <FioriMessageStrip tone="info" title="پرس‌های چندمنظوره:">
+            یک پرس مکانیکی یا هیدرولیک می‌تواند بسته به قالبی که روی آن بسته می‌شود، عملیات‌های گوناگونی همچون بلنکینگ، کشش، پانچ، خمکاری یا دوربری را اجرا کند.
+          </FioriMessageStrip>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {machines.map(m => {
-              const isActive = m.status === 'ACTIVE';
-              const isMaintenance = m.status === 'MAINTENANCE';
-              const caps = m.capabilities && m.capabilities.length > 0 ? m.capabilities : [m.processType];
-              const compatibleDies = dies.filter(d => d.compatibleMachineCodes?.includes(m.code));
+          {machines.length === 0 ? (
+            <div className="sap-card">
+              <EmptyState
+                compact
+                variant="NO_DATA"
+                title="پرس یا دستگاهی ثبت نشده است"
+                description="برای شروع می‌توانید اولین پرس یا دستگاه کارخانه را تعریف کنید."
+                actionLabel="ثبت پرس / دستگاه جدید"
+                onAction={handleOpenNewMachine}
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {machines.map(m => {
+                const isActive = m.status === 'ACTIVE';
+                const isMaintenance = m.status === 'MAINTENANCE';
+                const caps = m.capabilities && m.capabilities.length > 0 ? m.capabilities : [m.processType];
+                const compatibleDies = dies.filter(d => d.compatibleMachineCodes?.includes(m.code));
 
-              return (
-                <div
-                  key={m.id}
-                  className={`p-4 rounded border transition-all bg-white ${
-                    isActive
-                      ? 'border-[#d9d9d9] hover:border-[#007cc0]'
-                      : isMaintenance
-                      ? 'border-[#f5d0a9] bg-[#fff5eb]/50'
-                      : 'border-[#d9d9d9] bg-[#f7f7f7]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-[#007cc0] bg-[#e5f3fa] px-2.5 py-0.5 rounded border border-[#b3ddf2]">
-                      {m.code}
-                    </span>
+                return (
+                  <div
+                    key={m.id}
+                    className={`p-4 rounded-[var(--fiori-radius-md)] border transition-colors ${
+                      isActive
+                        ? 'bg-[var(--fiori-bg-surface)] border-[var(--fiori-border-default)] hover:border-[var(--fiori-brand)]'
+                        : isMaintenance
+                        ? 'bg-[var(--fiori-critical-bg)] border-[var(--fiori-critical-border)]'
+                        : 'bg-[var(--fiori-bg-subtle)] border-[var(--fiori-border-default)]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="fiori-ltr-code text-xs font-bold text-[var(--fiori-brand)] bg-[var(--fiori-info-bg)] px-2.5 py-0.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-info-border)]">
+                        {m.code}
+                      </span>
 
-                    {/* Status Toggle Button */}
-                    <button
-                      onClick={() => handleToggleStatus(m)}
-                      className={`text-[10px] px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : isMaintenance
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : 'bg-slate-100 text-slate-600 border-slate-200'
-                      }`}
-                      title="کلیک برای تغییر وضعیت فعالیت"
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isActive ? 'bg-emerald-500 animate-ping' : isMaintenance ? 'bg-amber-500' : 'bg-slate-400'
+                      {/* Status Toggle Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(m)}
+                        className={`text-[11px] px-2.5 py-1 rounded-[var(--fiori-radius-sm)] font-bold flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                          isActive
+                            ? 'bg-[var(--fiori-positive-bg)] text-[var(--fiori-positive)] border-[var(--fiori-positive-border)]'
+                            : isMaintenance
+                            ? 'bg-[var(--fiori-critical-bg)] text-[var(--fiori-critical)] border-[var(--fiori-critical-border)]'
+                            : 'bg-[var(--fiori-neutral-bg)] text-[var(--fiori-neutral)] border-[var(--fiori-neutral-border)]'
                         }`}
-                      />
-                      <span>
-                        {isActive ? 'فعال در خط' : isMaintenance ? 'تعمیرات (PM)' : 'متوقف'}
-                      </span>
-                    </button>
-                  </div>
-
-                  <h3 className="text-sm font-bold text-slate-900 mt-3 line-clamp-1">{m.name}</h3>
-
-                  {/* Multi-Capabilities Badges */}
-                  <div className="mt-3">
-                    <span className="text-[10px] text-slate-500 block mb-1">قابلیت‌های فرآیندی پرس:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {caps.map((c, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-mono font-semibold">
-                          {c}
+                        title="کلیک برای تغییر وضعیت فعالیت"
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-sm ${
+                            isActive
+                              ? 'bg-[var(--fiori-positive)]'
+                              : isMaintenance
+                              ? 'bg-[var(--fiori-critical)]'
+                              : 'bg-[var(--fiori-neutral)]'
+                          }`}
+                        />
+                        <span>
+                          {isActive ? 'فعال در خط' : isMaintenance ? 'تعمیرات (PM)' : 'متوقف'}
                         </span>
-                      ))}
+                      </button>
                     </div>
-                  </div>
 
-                  <div className="mt-4 space-y-2 text-xs text-slate-700">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-[#e8e8e8]">
-                      <span className="text-[#666666]">تناژ اسمی:</span>
-                      <span className="font-mono font-bold text-[#007cc0]">
-                        {m.tonnage ? `${toPersianDigits(m.tonnage)} تن` : 'فاقد تناژ'}
-                      </span>
-                    </div>
-                    {m.bolsterSize && (
-                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                        <span className="text-slate-500">ابعاد میز پرس:</span>
-                        <span className="font-mono text-slate-800 font-medium">{m.bolsterSize}</span>
+                    <h3 className="text-sm font-bold text-[var(--fiori-text-primary)] mt-3 line-clamp-1">{m.name}</h3>
+
+                    {/* Multi-Capabilities Badges */}
+                    <div className="mt-3">
+                      <span className="text-[10px] text-[var(--fiori-text-muted)] block mb-1">قابلیت‌های فرآیندی پرس:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {caps.map((c, i) => (
+                          <FioriObjectStatus key={i} tone="neutral" size="sm" ltrCode label={c} />
+                        ))}
                       </div>
-                    )}
-                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                      <span className="text-slate-500">سالن استقرار:</span>
-                      <span className="text-slate-700 flex items-center gap-1 font-medium">
-                        <Building className="w-3 h-3 text-slate-400" />
-                        {m.location}
-                      </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">قالب‌های سازگار:</span>
-                      <span className="text-emerald-700 font-bold">
-                        {toPersianDigits(compatibleDies.length)} قالب
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <button
-                      onClick={() => handleEditMachine(m)}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-bold transition-colors cursor-pointer"
-                    >
-                      ویرایش مشخصات
-                    </button>
-                    <span className="text-[11px] text-slate-500">
-                      {m.operatorName ? `مسئول: ${m.operatorName}` : 'مشترک سالن'}
-                    </span>
+                    <div className="mt-4 space-y-2 text-xs text-[var(--fiori-text-primary)]">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-[var(--fiori-border-subtle)]">
+                        <span className="text-[var(--fiori-text-secondary)]">تناژ اسمی:</span>
+                        <span className="font-mono font-bold text-[var(--fiori-brand)] tabular-nums">
+                          {m.tonnage ? `${toPersianDigits(m.tonnage)} تن` : 'فاقد تناژ'}
+                        </span>
+                      </div>
+                      {m.bolsterSize && (
+                        <div className="flex items-center justify-between pb-1.5 border-b border-[var(--fiori-border-subtle)]">
+                          <span className="text-[var(--fiori-text-secondary)]">ابعاد میز پرس:</span>
+                          <span className="fiori-ltr-code text-[var(--fiori-text-primary)] font-medium">{m.bolsterSize}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between pb-1.5 border-b border-[var(--fiori-border-subtle)]">
+                        <span className="text-[var(--fiori-text-secondary)]">سالن استقرار:</span>
+                        <span className="text-[var(--fiori-text-primary)] flex items-center gap-1 font-medium">
+                          <Building className="w-3 h-3 text-[var(--fiori-text-muted)]" />
+                          {m.location}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[var(--fiori-text-secondary)]">قالب‌های سازگار:</span>
+                        <span className="text-[var(--fiori-positive)] font-bold tabular-nums">
+                          {toPersianDigits(compatibleDies.length)} قالب
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-[var(--fiori-border-subtle)] flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => handleEditMachine(m)}
+                        className="text-xs text-[var(--fiori-brand)] hover:text-[var(--fiori-brand-hover)] font-bold transition-colors cursor-pointer"
+                      >
+                        ویرایش مشخصات
+                      </button>
+                      <span className="text-[11px] text-[var(--fiori-text-muted)]">
+                        {m.operatorName ? `مسئول: ${m.operatorName}` : 'مشترک سالن'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {/* TAB 2: DIES & MOLDS MANAGEMENT */}
       {activeSubTab === 'dies' && (
         <div className="space-y-4">
-          <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200/80 text-xs text-blue-900 flex items-center gap-2 leading-relaxed">
-            <Wrench className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>
-              <strong>شناسنامه قالب‌های پرس (Dies & Molds):</strong> هر قطعه بدنه خودرو با قالب‌های تخصصی سنبه ماتریس، کشش عمیق، پانچ یا خم‌کاری شکل می‌گیرد. ردیابی عمر ضرب و نگهداری پیشگیرانه از توقف خط جلوگیری می‌کند.
-            </span>
-          </div>
+          <FioriMessageStrip tone="info" title="شناسنامه قالب‌های پرس (Dies & Molds):">
+            هر قطعه بدنه خودرو با قالب‌های تخصصی سنبه ماتریس، کشش عمیق، پانچ یا خم‌کاری شکل می‌گیرد. ردیابی عمر ضرب و نگهداری پیشگیرانه از توقف خط جلوگیری می‌کند.
+          </FioriMessageStrip>
 
           <div className="sap-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="sap-table-compact w-full text-right text-xs">
-                <thead>
-                  <tr className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                    <th>کد قالب</th>
-                    <th>عنوان قالب پرس</th>
-                    <th>قطعه تولیدی مرتبط</th>
-                    <th>عملیات فرآیندی</th>
-                    <th>تناژ مورد نیاز</th>
-                    <th>پرس‌های سازگار</th>
-                    <th>کارکرد ضرب / عمر اسمی</th>
-                    <th>محل در انبار</th>
-                    <th>وضعیت</th>
-                    <th>عملیات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e8e8e8] text-[#333333]">
-                  {dies.map(d => {
-                    const healthPct = Math.round((d.currentStrokes / (d.strokeLifeTarget || 1)) * 100);
-                    return (
-                      <tr key={d.id} className="hover:bg-[#e5f3fa]/55 transition-colors">
-                        <td className="font-mono font-bold text-[#007cc0]">{d.code}</td>
-                        <td className="text-[#333333] font-bold max-w-xs">{d.name}</td>
-                        <td className="text-[#333333]">
-                          <div className="font-medium">{d.partName}</div>
-                          {d.partCode ? (
+            <FioriToolbar
+              variant="table"
+              title="لیست قالب‌های پرس و فیکسچرها"
+              count={dies.length}
+              countLabel="قالب"
+            />
+            {dies.length === 0 ? (
+              <EmptyState
+                compact
+                variant="NO_DATA"
+                title="هیچ قالب پرسی ثبت نشده است"
+                description="برای شروع، شناسنامه اولین قالب پرس کارخانه را تعریف کنید."
+                actionLabel="تعریف قالب پرس جدید"
+                onAction={handleOpenNewDie}
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="sap-table-compact w-full text-right text-xs">
+                  <thead>
+                    <tr className="bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-default)] text-[var(--fiori-text-primary)] font-semibold">
+                      <th>کد قالب</th>
+                      <th>عنوان قالب پرس</th>
+                      <th>قطعه تولیدی مرتبط</th>
+                      <th>عملیات فرآیندی</th>
+                      <th>تناژ مورد نیاز</th>
+                      <th>پرس‌های سازگار</th>
+                      <th>کارکرد ضرب / عمر اسمی</th>
+                      <th>محل در انبار</th>
+                      <th>وضعیت</th>
+                      <th>عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--fiori-border-subtle)] text-[var(--fiori-text-primary)]">
+                    {dies.map(d => {
+                      const healthPct = Math.round((d.currentStrokes / (d.strokeLifeTarget || 1)) * 100);
+                      return (
+                        <tr key={d.id} className="hover:bg-[var(--fiori-bg-hover)] transition-colors">
+                          <td className="fiori-ltr-code font-bold text-[var(--fiori-brand)]">{d.code}</td>
+                          <td className="text-[var(--fiori-text-primary)] font-bold max-w-xs">{d.name}</td>
+                          <td className="text-[var(--fiori-text-primary)]">
+                            <div className="font-medium">{d.partName}</div>
+                            {d.partCode ? (
+                              <button
+                                type="button"
+                                onClick={() => traceDocument(d.partCode!, 'INVENTORY_LEDGER')}
+                                className="sap-doc-link text-[10px] fiori-ltr-code"
+                                title="رهگیری قطعه در انبار و کاردکس"
+                              >
+                                {d.partCode}
+                              </button>
+                            ) : null}
+                          </td>
+                          <td>
+                            <FioriObjectStatus tone="neutral" size="sm" ltrCode label={d.processType} />
+                          </td>
+                          <td className="font-mono font-bold text-[var(--fiori-text-primary)] tabular-nums">{d.requiredTonnage} تن</td>
+                          <td className="fiori-ltr-code text-[11px] text-[var(--fiori-text-secondary)]">
+                            {d.compatibleMachineCodes?.join(', ') || '-'}
+                          </td>
+                          <td>
+                            <div className="font-mono text-xs text-[var(--fiori-text-primary)] font-semibold tabular-nums">
+                              {formatNumber(d.currentStrokes)} / {formatNumber(d.strokeLifeTarget)}
+                            </div>
+                            <div className="w-24 bg-[var(--fiori-bg-subtle)] h-1.5 rounded-sm mt-1 overflow-hidden border border-[var(--fiori-border-default)]">
+                              <div
+                                className={`h-full rounded-sm ${
+                                  healthPct > 80 ? 'bg-[var(--fiori-negative)]' : 'bg-[var(--fiori-positive)]'
+                                }`}
+                                style={{ width: `${Math.min(100, healthPct)}%` }}
+                              />
+                            </div>
+                          </td>
+                          <td className="text-[var(--fiori-text-secondary)] text-[11px]">{d.location}</td>
+                          <td>
+                            <FioriObjectStatus
+                              tone={d.status === 'READY' ? 'positive' : 'critical'}
+                              size="sm"
+                              label={d.status === 'READY' ? 'آماده تولید' : 'سرویس / تیزکاری'}
+                            />
+                          </td>
+                          <td>
                             <button
                               type="button"
-                              onClick={() => traceDocument(d.partCode!, 'INVENTORY_LEDGER')}
-                              className="sap-doc-link text-[10px] font-mono"
-                              title="رهگیری قطعه در انبار و کاردکس"
+                              onClick={() => handleEditDie(d)}
+                              className="text-xs text-[var(--fiori-brand)] hover:text-[var(--fiori-brand-hover)] font-bold transition-colors cursor-pointer"
                             >
-                              {d.partCode}
+                              ویرایش
                             </button>
-                          ) : null}
-                        </td>
-                        <td>
-                          <span className="px-2 py-0.5 rounded-sm bg-[#f0f0f0] text-[#333333] font-mono text-[10px] border border-[#d9d9d9] font-semibold">
-                            {d.processType}
-                          </span>
-                        </td>
-                        <td className="font-mono font-bold text-[#333333]">{d.requiredTonnage} تن</td>
-                        <td className="font-mono text-[11px] text-[#666666]">
-                          {d.compatibleMachineCodes?.join(', ') || '-'}
-                        </td>
-                        <td>
-                          <div className="font-mono text-xs text-[#333333] font-semibold">
-                            {formatNumber(d.currentStrokes)} / {formatNumber(d.strokeLifeTarget)}
-                          </div>
-                          <div className="w-24 bg-[#f0f0f0] h-1.5 rounded-sm mt-1 overflow-hidden border border-[#d9d9d9]">
-                            <div
-                              className={`h-full rounded-sm ${
-                                healthPct > 80 ? 'bg-[#bb0000]' : 'bg-[#107e3e]'
-                              }`}
-                              style={{ width: `${Math.min(100, healthPct)}%` }}
-                            />
-                          </div>
-                        </td>
-                        <td className="text-[#666666] text-[11px]">{d.location}</td>
-                        <td>
-                          <span
-                            className={`px-2 py-0.5 rounded-sm text-[10px] font-bold border ${
-                              d.status === 'READY'
-                                ? 'bg-[#eefaf2] text-[#107e3e] border-[#b6e4c8]'
-                                : 'bg-[#fff7eb] text-[#e9730c] border-[#f5d29c]'
-                            }`}
-                          >
-                            {d.status === 'READY' ? 'آماده تولید' : 'سرویس / تیزکاری'}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => handleEditDie(d)}
-                            className="text-xs text-[#007cc0] hover:text-[#006299] font-bold transition-colors cursor-pointer"
-                          >
-                            ویرایش
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* TAB 3: FACTORY HALLS */}
       {activeSubTab === 'halls' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {halls.map(hall => {
-            const machinesInHall = machines.filter(m => m.location?.includes(hall.name) || m.hallId === hall.id);
-            return (
-              <div key={hall.id} className="sap-card p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-[#007cc0] bg-[#e5f3fa] px-2.5 py-0.5 rounded-sm border border-[#b3d7ff]">
-                    {hall.code}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-sm bg-[#f0f0f0] text-[#333333] border border-[#d9d9d9] font-semibold">
-                    {hall.type}
-                  </span>
-                </div>
-
-                <h3 className="text-sm font-bold text-[#333333]">{hall.name}</h3>
-
-                <div className="space-y-1.5 text-xs text-[#333333]">
-                  <div className="flex justify-between pb-1 border-b border-[#e8e8e8]">
-                    <span className="text-[#666666]">سرپرست سالن:</span>
-                    <span className="text-[#333333] font-bold">{hall.supervisorName || '-'}</span>
+        halls.length === 0 ? (
+          <div className="sap-card">
+            <EmptyState
+              compact
+              variant="NO_DATA"
+              title="سالنی ثبت نشده است"
+              description="سالن‌های استقرار خطوط تولید در این بخش نمایش داده می‌شوند."
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {halls.map(hall => {
+              const machinesInHall = machines.filter(m => m.location?.includes(hall.name) || m.hallId === hall.id);
+              return (
+                <div key={hall.id} className="sap-card p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="fiori-ltr-code text-xs font-bold text-[var(--fiori-brand)] bg-[var(--fiori-info-bg)] px-2.5 py-0.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-info-border)]">
+                      {hall.code}
+                    </span>
+                    <FioriObjectStatus tone="neutral" size="sm" label={hall.type} />
                   </div>
-                  <div className="flex justify-between pb-1 border-b border-[#e8e8e8]">
-                    <span className="text-[#666666]">تجهیزات و پرس‌ها:</span>
-                    <span className="text-[#107e3e] font-bold">{toPersianDigits(machinesInHall.length)} دستگاه</span>
+
+                  <h3 className="text-sm font-bold text-[var(--fiori-text-primary)]">{hall.name}</h3>
+
+                  <div className="space-y-1.5 text-xs text-[var(--fiori-text-primary)]">
+                    <div className="flex justify-between pb-1 border-b border-[var(--fiori-border-subtle)]">
+                      <span className="text-[var(--fiori-text-secondary)]">سرپرست سالن:</span>
+                      <span className="text-[var(--fiori-text-primary)] font-bold">{hall.supervisorName || '-'}</span>
+                    </div>
+                    <div className="flex justify-between pb-1 border-b border-[var(--fiori-border-subtle)]">
+                      <span className="text-[var(--fiori-text-secondary)]">تجهیزات و پرس‌ها:</span>
+                      <span className="text-[var(--fiori-positive)] font-bold tabular-nums">{toPersianDigits(machinesInHall.length)} دستگاه</span>
+                    </div>
+                    {hall.capacityDesc && (
+                      <p className="text-[11px] text-[var(--fiori-text-secondary)] pt-1 leading-relaxed">
+                        {hall.capacityDesc}
+                      </p>
+                    )}
                   </div>
-                  {hall.capacityDesc && (
-                    <p className="text-[11px] text-[#666666] pt-1 leading-relaxed">
-                      {hall.capacityDesc}
-                    </p>
-                  )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )
       )}
 
       {/* TAB 4: OPERATORS & LINE TECHNICIANS */}
-      {activeSubTab === 'operators' && (
-        <div className="space-y-3">
-          {/* Search bar and counter */}
-          <div className="sap-card flex flex-col sm:flex-row items-center justify-between gap-3 p-3">
-            <div className="relative w-full sm:w-80">
-              <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-[#666666]" />
-              <input
-                type="text"
-                placeholder="جستجو در اپراتورها (نام، کد پرسنلی، مهارت)..."
-                value={operatorSearch}
-                onChange={e => setOperatorSearch(e.target.value)}
-                className="w-full pr-8 pl-3 py-1.5 text-xs bg-white border border-[#d9d9d9] rounded-sm focus:outline-none focus:border-[#007cc0] text-[#333333]"
-              />
-            </div>
-            <div className="flex items-center gap-2 text-xs text-[#666666]">
-              <span>تعداد پرسنل فعال: {toPersianDigits(operators.filter(o => o.active).length)} نفر</span>
-              <button
-                type="button"
-                onClick={handleOpenNewOp}
-                className="sap-btn-emphasized flex items-center gap-1 px-3 py-1.5 text-xs cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ اپراتور جدید</span>
-              </button>
-            </div>
-          </div>
+      {activeSubTab === 'operators' && (() => {
+        const filteredOps = operators.filter(op => {
+          if (!operatorSearch.trim()) return true;
+          const q = operatorSearch.toLowerCase();
+          return (
+            op.fullName.toLowerCase().includes(q) ||
+            op.personnelCode.toLowerCase().includes(q) ||
+            op.skillProcessTypes?.some(s => s.toLowerCase().includes(q))
+          );
+        });
 
-          <div className="sap-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="sap-table-compact w-full text-right text-xs">
-                <thead>
-                  <tr className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                    <th>کد پرسنلی</th>
-                    <th>نام و نام خانوادگی</th>
-                    <th>مهارت‌های تخصصی</th>
-                    <th>شیفت پیش‌فرض</th>
-                    <th>تماس</th>
-                    <th className="text-center">وضعیت</th>
-                    <th className="text-center">عملیات و گزارش</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e8e8e8] text-[#333333]">
-                  {operators
-                    .filter(op => {
-                      if (!operatorSearch.trim()) return true;
-                      const q = operatorSearch.toLowerCase();
-                      return (
-                        op.fullName.toLowerCase().includes(q) ||
-                        op.personnelCode.toLowerCase().includes(q) ||
-                        op.skillProcessTypes?.some(s => s.toLowerCase().includes(q))
-                      );
-                    })
-                    .map(op => (
-                      <tr key={op.id} className="hover:bg-[#e5f3fa]/55 transition-colors">
-                        <td className="font-mono font-bold text-[#007cc0]">{op.personnelCode}</td>
-                        <td className="text-[#333333] font-bold">{op.fullName}</td>
-                        <td>
-                          <div className="flex flex-wrap gap-1">
-                            {op.skillProcessTypes?.map((s, i) => (
-                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-sm bg-[#f0f0f0] text-[#333333] border border-[#d9d9d9] font-mono font-semibold">
-                                {s}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="text-[#333333]">
-                          {op.defaultShift === 'MORNING' ? 'شیفت صبح' : op.defaultShift === 'EVENING' ? 'شیفت عصر' : 'شیفت شب'}
-                        </td>
-                        <td className="font-mono text-[#666666] text-[11px]">{op.phone || '-'}</td>
-                        <td className="text-center">
-                          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-sm bg-[#eefaf2] text-[#107e3e] border border-[#b6e4c8] font-semibold">
-                            <CheckCircle2 className="w-3 h-3 text-[#107e3e]" />
-                            شاغل
-                          </span>
-                        </td>
-                        <td className="text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenTimesheetReport(op)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-[#e5f3fa] hover:bg-[#d1ecfa] text-[#007cc0] border border-[#b3d7ff] font-semibold text-[11px] transition cursor-pointer"
-                              title="مشاهده کارنامه و ساعات کارکرد"
-                            >
-                              <FileText className="w-3 h-3" />
-                              <span>گزارش کارکرد</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleEditOp(op)}
-                              className="p-1 rounded-sm hover:bg-[#e5f3fa] text-[#007cc0] transition cursor-pointer"
-                              title="ویرایش مشخصات اپراتور"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteOp(op)}
-                              className="p-1 rounded-sm hover:bg-[#fff2f2] text-[#bb0000] transition cursor-pointer"
-                              title="حذف اپراتور"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
+        return (
+          <div className="space-y-3">
+            {/* Search bar and counter */}
+            <div className="sap-card flex flex-col sm:flex-row items-center justify-between gap-3 p-3">
+              <div className="relative w-full sm:w-80">
+                <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fiori-text-muted)]" />
+                <input
+                  type="text"
+                  placeholder="جستجو در اپراتورها (نام، کد پرسنلی، مهارت)..."
+                  value={operatorSearch}
+                  onChange={e => setOperatorSearch(e.target.value)}
+                  className="fiori-input w-full pr-8 pl-3 py-1.5 text-xs"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[var(--fiori-text-secondary)] tabular-nums">
+                <span>تعداد پرسنل فعال: {toPersianDigits(operators.filter(o => o.active).length)} نفر</span>
+                <button
+                  type="button"
+                  onClick={handleOpenNewOp}
+                  className="sap-btn-emphasized flex items-center gap-1 px-3 py-1.5 text-xs cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ اپراتور جدید</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="sap-card overflow-hidden">
+              <FioriToolbar
+                variant="table"
+                title="پرسنل و اپراتورهای خطوط تولید"
+                count={filteredOps.length}
+                countLabel="نفر"
+              />
+              {filteredOps.length === 0 ? (
+                <EmptyState
+                  compact
+                  variant={operatorSearch.trim() ? 'SEARCH_NO_MATCH' : 'NO_DATA'}
+                  title={operatorSearch.trim() ? 'اپراتوری با این مشخصات یافت نشد' : 'اپراتوری ثبت نشده است'}
+                  description={
+                    operatorSearch.trim()
+                      ? 'عبارت جستجو را تغییر دهید یا فیلتر را پاک کنید.'
+                      : 'برای ثبت اولین اپراتور خط تولید روی دکمه افزودن اپراتور جدید کلیک کنید.'
+                  }
+                  actionLabel={operatorSearch.trim() ? 'پاک کردن جستجو' : 'افزودن اپراتور جدید'}
+                  onAction={() => {
+                    if (operatorSearch.trim()) {
+                      setOperatorSearch('');
+                    } else {
+                      handleOpenNewOp();
+                    }
+                  }}
+                />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="sap-table-compact w-full text-right text-xs">
+                    <thead>
+                      <tr className="bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-default)] text-[var(--fiori-text-primary)] font-semibold">
+                        <th>کد پرسنلی</th>
+                        <th>نام و نام خانوادگی</th>
+                        <th>مهارت‌های تخصصی</th>
+                        <th>شیفت پیش‌فرض</th>
+                        <th>تماس</th>
+                        <th className="text-center">وضعیت</th>
+                        <th className="text-center">عملیات و گزارش</th>
                       </tr>
-                    ))}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--fiori-border-subtle)] text-[var(--fiori-text-primary)]">
+                      {filteredOps.map(op => (
+                        <tr key={op.id} className="hover:bg-[var(--fiori-bg-hover)] transition-colors">
+                          <td className="fiori-ltr-code font-bold text-[var(--fiori-brand)]">{op.personnelCode}</td>
+                          <td className="text-[var(--fiori-text-primary)] font-bold">{op.fullName}</td>
+                          <td>
+                            <div className="flex flex-wrap gap-1">
+                              {op.skillProcessTypes?.map((s, i) => (
+                                <FioriObjectStatus key={i} tone="neutral" size="sm" ltrCode label={s} />
+                              ))}
+                            </div>
+                          </td>
+                          <td className="text-[var(--fiori-text-primary)]">
+                            {op.defaultShift === 'MORNING' ? 'شیفت صبح' : op.defaultShift === 'EVENING' ? 'شیفت عصر' : 'شیفت شب'}
+                          </td>
+                          <td className="fiori-ltr-code text-[var(--fiori-text-secondary)] text-[11px]">{op.phone || '-'}</td>
+                          <td className="text-center">
+                            <FioriObjectStatus
+                              tone="positive"
+                              size="sm"
+                              icon={<CheckCircle2 className="w-3 h-3" />}
+                              label="شاغل"
+                            />
+                          </td>
+                          <td className="text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenTimesheetReport(op)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] hover:bg-[var(--fiori-bg-selected)] text-[var(--fiori-brand)] border border-[var(--fiori-info-border)] font-semibold text-[11px] transition cursor-pointer"
+                                title="مشاهده کارنامه و ساعات کارکرد"
+                              >
+                                <FileText className="w-3 h-3" />
+                                <span>گزارش کارکرد</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditOp(op)}
+                                className="p-1 rounded-[var(--fiori-radius-sm)] hover:bg-[var(--fiori-info-bg)] text-[var(--fiori-brand)] transition cursor-pointer"
+                                title="ویرایش مشخصات اپراتور"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteOp(op)}
+                                className="p-1 rounded-[var(--fiori-radius-sm)] hover:bg-[var(--fiori-negative-bg)] text-[var(--fiori-negative)] transition cursor-pointer"
+                                title="حذف اپراتور"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* SLIDE-OVER DRAWER: ADD / EDIT MACHINE */}
       {isMachineModalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex justify-end"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex justify-end"
           onClick={() => setIsMachineModalOpen(false)}
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="bg-white border-r border-slate-200 w-full max-w-lg h-full p-6 shadow-2xl overflow-y-auto"
+            className="bg-[var(--fiori-bg-surface)] border-r border-[var(--fiori-border-default)] w-full max-w-lg h-full p-6 shadow-2xl overflow-y-auto"
           >
-            <div className="sticky top-0 z-10 bg-white flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-[#333333] flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-[#007cc0]" />
+            <div className="sticky top-0 z-10 bg-[var(--fiori-bg-surface)] flex items-center justify-between pb-3 border-b border-[var(--fiori-border-subtle)]">
+              <h3 className="text-sm font-bold text-[var(--fiori-text-primary)] flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-[var(--fiori-brand)]" />
                 <span>{editingMachine ? 'کشوی ویرایش مشخصات ماشین / پرس' : 'کشوی ثبت پرس یا دستگاه جدید'}</span>
               </h3>
-              <button onClick={() => setIsMachineModalOpen(false)} className="text-[#666666] hover:text-[#333333] cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setIsMachineModalOpen(false)}
+                className="text-[var(--fiori-text-muted)] hover:text-[var(--fiori-text-primary)] cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {formError && (
-              <div className="mt-3 p-3 rounded bg-[#fdf3f3] border border-[#e5b3b3] text-[#bb0000] text-xs">
+              <FioriMessageStrip compact tone="error" className="mt-3">
                 {formError}
-              </div>
+              </FioriMessageStrip>
             )}
 
             <form onSubmit={handleMachineSubmit} className="mt-4 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">کد شناسایی ماشین *</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">کد شناسایی ماشین *</label>
                   <input
                     type="text"
+                    dir="ltr"
                     value={machineFormData.code || ''}
                     onChange={e => setMachineFormData({ ...machineFormData, code: e.target.value })}
                     placeholder="PRS-400-02"
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
+                    className="fiori-input fiori-ltr-code w-full px-3 py-2"
                     required
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">تناژ اسمی پرس (تن) *</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">تناژ اسمی پرس (تن) *</label>
                   <input
                     type="number"
                     value={machineFormData.tonnage || 0}
                     onChange={e => setMachineFormData({ ...machineFormData, tonnage: parseFloat(e.target.value) || 0 })}
                     placeholder="400"
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
+                    className="fiori-input fiori-ltr-code w-full px-3 py-2"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#333333] font-medium">عنوان کامل ماشین در کارخانه *</label>
+                <label className="text-[var(--fiori-text-primary)] font-medium">عنوان کامل ماشین در کارخانه *</label>
                 <input
                   type="text"
                   value={machineFormData.name || ''}
                   onChange={e => setMachineFormData({ ...machineFormData, name: e.target.value })}
                   placeholder="پرس مکانیکی ضربه‌ای شولر ۴۰۰ تن C-Frame"
-                  className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-[#333333] focus:outline-none focus:border-[#007cc0]"
+                  className="fiori-input w-full px-3 py-2"
                   required
                 />
               </div>
 
               {/* Multi-Capability Checkboxes */}
-              <div className="space-y-1.5 p-3 rounded bg-[#f7f7f7] border border-[#d9d9d9]">
+              <div className="space-y-1.5 p-3 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)]">
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[#333333] font-bold">
+                  <label className="text-[var(--fiori-text-primary)] font-bold">
                     قابلیت‌های فرآیندی این دستگاه (چند انتخابی بر اساس قالب‌های قابل نصب):
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsNewProcessModalOpen(true)}
-                    className="text-[11px] font-bold text-[#007cc0] hover:text-[#006299] flex items-center gap-1 cursor-pointer bg-[#e5f3fa] px-2 py-0.5 rounded border border-[#b3ddf2]"
+                    className="text-[11px] font-bold text-[var(--fiori-brand)] hover:text-[var(--fiori-brand-hover)] flex items-center gap-1 cursor-pointer bg-[var(--fiori-info-bg)] px-2 py-0.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-info-border)]"
                   >
                     <Plus className="w-3 h-3" />
                     <span>+ قابلیت جدید / ویرایش لیست</span>
                   </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-white p-2.5 rounded border border-[#e8e8e8]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-subtle)]">
                   {availableProcesses.map(p => {
                     const isChecked = (machineFormData.capabilities || []).includes(p.code as any);
                     return (
-                      <label key={p.code} className="flex items-center justify-between gap-1 cursor-pointer text-[11px] text-[#333333] hover:text-[#007cc0] bg-[#f7f7f7] px-2 py-1.5 rounded border border-[#d9d9d9]">
+                      <label key={p.code} className="flex items-center justify-between gap-1 cursor-pointer text-[11px] text-[var(--fiori-text-primary)] hover:text-[var(--fiori-brand)] bg-[var(--fiori-bg-subtle)] px-2 py-1.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
                         <div className="flex items-center gap-1.5 truncate">
                           <input
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => toggleCapability(p.code)}
-                            className="rounded bg-white border-[#bfbfbf] text-[#007cc0] focus:ring-0 cursor-pointer"
+                            className="rounded accent-[var(--fiori-brand)] cursor-pointer"
                           />
                           <span className="truncate">{p.name}</span>
                         </div>
-                        <span className="font-mono text-[9px] text-[#666666]">{p.code}</span>
+                        <span className="fiori-ltr-code text-[9px] text-[var(--fiori-text-muted)]">{p.code}</span>
                       </label>
                     );
                   })}
@@ -1191,22 +1259,23 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">ابعاد میز پرس (Bolster)</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">ابعاد میز پرس (Bolster)</label>
                   <input
                     type="text"
+                    dir="ltr"
                     value={machineFormData.bolsterSize || ''}
                     onChange={e => setMachineFormData({ ...machineFormData, bolsterSize: e.target.value })}
                     placeholder="2200x1400 mm"
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
+                    className="fiori-input fiori-ltr-code w-full px-3 py-2"
                   />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-[#333333] font-medium">سالن استقرار</label>
+                    <label className="text-[var(--fiori-text-primary)] font-medium">سالن استقرار</label>
                     <button
                       type="button"
                       onClick={() => setIsQuickHallModalOpen(true)}
-                      className="text-[11px] text-[#007cc0] hover:text-[#006299] font-bold flex items-center gap-1 cursor-pointer"
+                      className="text-[11px] text-[var(--fiori-brand)] hover:text-[var(--fiori-brand-hover)] font-bold flex items-center gap-1 cursor-pointer"
                     >
                       <Plus className="w-3 h-3" />
                       <span>+ سالن جدید / مدیریت</span>
@@ -1222,7 +1291,7 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
                         location: selectedH ? selectedH.name : machineFormData.location,
                       });
                     }}
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
+                    className="fiori-input w-full px-3 py-2 font-medium"
                   >
                     {hallsList.map(h => (
                       <option key={h.id} value={h.id}>
@@ -1233,7 +1302,7 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#e8e8e8]">
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[var(--fiori-border-subtle)]">
                 <button
                   type="button"
                   onClick={() => setIsMachineModalOpen(false)}
@@ -1257,49 +1326,54 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
       {/* SLIDE-OVER DRAWER: ADD / EDIT DIE / MOLD */}
       {isDieModalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex justify-end"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex justify-end"
           onClick={() => setIsDieModalOpen(false)}
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="bg-white border-r border-slate-200 w-full max-w-lg h-full p-6 shadow-2xl overflow-y-auto"
+            className="bg-[var(--fiori-bg-surface)] border-r border-[var(--fiori-border-default)] w-full max-w-lg h-full p-6 shadow-2xl overflow-y-auto"
           >
-            <div className="sticky top-0 z-10 bg-white flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Wrench className="w-4 h-4 text-blue-600" />
+            <div className="sticky top-0 z-10 bg-[var(--fiori-bg-surface)] flex items-center justify-between pb-3 border-b border-[var(--fiori-border-subtle)]">
+              <h3 className="text-sm font-bold text-[var(--fiori-text-primary)] flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-[var(--fiori-brand)]" />
                 <span>{editingDie ? 'کشوی ویرایش شناسنامه فنی قالب' : 'کشوی ثبت و تعریف قالب جدید تولیدی'}</span>
               </h3>
-              <button onClick={() => setIsDieModalOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setIsDieModalOpen(false)}
+                className="text-[var(--fiori-text-muted)] hover:text-[var(--fiori-text-primary)] cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {formError && (
-              <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+              <FioriMessageStrip compact tone="error" className="mt-3">
                 {formError}
-              </div>
+              </FioriMessageStrip>
             )}
 
             <form onSubmit={handleDieSubmit} className="mt-4 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-medium">کد فنی قالب *</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">کد فنی قالب *</label>
                   <input
                     type="text"
+                    dir="ltr"
                     value={dieFormData.code || ''}
                     onChange={e => setDieFormData({ ...dieFormData, code: e.target.value })}
                     placeholder="DIE-206-BRK05"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-blue-500 font-bold"
+                    className="fiori-input fiori-ltr-code w-full px-3 py-2 font-bold"
                     required
                   />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-slate-700 font-medium">عملیات فرآیندی *</label>
+                    <label className="text-[var(--fiori-text-primary)] font-medium">عملیات فرآیندی *</label>
                     <button
                       type="button"
                       onClick={() => setIsNewProcessModalOpen(true)}
-                      className="text-[10px] text-blue-600 hover:text-blue-700 font-bold cursor-pointer"
+                      className="text-[10px] text-[var(--fiori-brand)] hover:text-[var(--fiori-brand-hover)] font-bold cursor-pointer"
                     >
                       + فرآیند جدید
                     </button>
@@ -1307,7 +1381,7 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
                   <select
                     value={dieFormData.processType}
                     onChange={e => setDieFormData({ ...dieFormData, processType: e.target.value as ProcessType })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                    className="fiori-input w-full px-3 py-2 font-medium"
                   >
                     {availableProcesses.map(p => (
                       <option key={p.code} value={p.code}>
@@ -1319,20 +1393,20 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-700 font-medium">عنوان شناسنامه فنی قالب *</label>
+                <label className="text-[var(--fiori-text-primary)] font-medium">عنوان شناسنامه فنی قالب *</label>
                 <input
                   type="text"
                   value={dieFormData.name || ''}
                   onChange={e => setDieFormData({ ...dieFormData, name: e.target.value })}
                   placeholder="مثال: قالب کشش عمیق و برش پیرسینگ دیاق سپر جلو"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                  className="fiori-input w-full px-3 py-2 font-medium"
                   required
                 />
               </div>
 
               {/* SEARCHABLE SELECT FOR PART */}
               <div className="space-y-1">
-                <label className="text-slate-700 font-medium">قطعه تولیدی مرتبط *</label>
+                <label className="text-[var(--fiori-text-primary)] font-medium">قطعه تولیدی مرتبط *</label>
                 <SearchableSelect
                   options={parts.map(p => ({
                     value: p.id,
@@ -1349,13 +1423,13 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
               </div>
 
               {/* MACHINE-DIE COMPATIBILITY MATRIX (سازگاری قالب با پرس‌ها) */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div className="p-3 bg-[var(--fiori-bg-subtle)] rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)] space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-slate-800 font-bold block">
+                    <label className="text-[var(--fiori-text-primary)] font-bold block">
                       سازگاری قالب با پرس‌ها (Machine-Die Compatibility) *
                     </label>
-                    <span className="text-[10px] text-slate-500 block">
+                    <span className="text-[10px] text-[var(--fiori-text-muted)] block">
                       پرس‌هایی که قابلیت نصب این قالب را دارند انتخاب نمایید (تاثیر مستقیم در الگوریتم MRP و برنامه‌ریزی تولید).
                     </span>
                   </div>
@@ -1384,7 +1458,7 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
                         });
                       }
                     }}
-                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
+                    className="text-[10px] text-[var(--fiori-brand)] hover:text-[var(--fiori-brand-hover)] font-bold underline cursor-pointer"
                   >
                     انتخاب خودکار پرس‌های متناسب
                   </button>
@@ -1409,31 +1483,31 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
                             compatibleMachineIds: machines.filter(mc => updated.includes(mc.code)).map(mc => mc.id),
                           });
                         }}
-                        className={`flex items-start gap-2.5 p-2 rounded-lg border transition cursor-pointer select-none ${
+                        className={`flex items-start gap-2.5 p-2 rounded-[var(--fiori-radius-sm)] border transition-colors cursor-pointer select-none ${
                           isSelected
-                            ? 'bg-blue-50/90 border-blue-400 text-blue-950 font-medium'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                            ? 'bg-[var(--fiori-bg-selected)] border-[var(--fiori-brand)] text-[var(--fiori-text-primary)] font-medium'
+                            : 'bg-[var(--fiori-bg-surface)] border-[var(--fiori-border-default)] text-[var(--fiori-text-secondary)] hover:bg-[var(--fiori-bg-hover)]'
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => {}}
-                          className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer pointer-events-none"
+                          className="mt-0.5 rounded accent-[var(--fiori-brand)] cursor-pointer pointer-events-none"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
-                            <span className="font-mono text-[11px] font-bold text-slate-900">{m.code}</span>
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-bold">
+                            <span className="fiori-ltr-code text-[11px] font-bold text-[var(--fiori-text-primary)]">{m.code}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] text-[var(--fiori-text-primary)] font-bold tabular-nums">
                               {toPersianDigits(m.tonnage || 0)} تن
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-600 truncate">{m.name}</p>
+                          <p className="text-[10px] text-[var(--fiori-text-secondary)] truncate">{m.name}</p>
                           <div className="flex items-center gap-1.5 mt-0.5 text-[9px]">
-                            <span className="text-slate-400">میز: {m.bolsterSize || '-'}</span>
-                            <span className="text-slate-300">•</span>
-                            <span className={isTonnageEnough ? 'text-emerald-600 font-bold' : 'text-amber-600'}>
-                              {isTonnageEnough ? 'تناژ کافی ✓' : 'تناژ ناکافی ⚠️'}
+                            <span className="text-[var(--fiori-text-muted)]">میز: {m.bolsterSize || '-'}</span>
+                            <span className="text-[var(--fiori-border-default)]">•</span>
+                            <span className={isTonnageEnough ? 'text-[var(--fiori-positive)] font-bold' : 'text-[var(--fiori-critical)] font-bold'}>
+                              {isTonnageEnough ? 'تناژ کافی' : 'تناژ ناکافی'}
                             </span>
                           </div>
                         </div>
@@ -1442,8 +1516,8 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
                   })}
                 </div>
                 {(dieFormData.compatibleMachineCodes || []).length > 0 && (
-                  <div className="text-[10px] text-blue-800 font-medium flex items-center gap-1 pt-1 border-t border-slate-200/60">
-                    <CheckCircle2 className="w-3 h-3 text-blue-600 shrink-0" />
+                  <div className="text-[10px] text-[var(--fiori-brand)] font-medium flex items-center gap-1 pt-1 border-t border-[var(--fiori-border-subtle)] tabular-nums">
+                    <CheckCircle2 className="w-3 h-3 text-[var(--fiori-brand)] shrink-0" />
                     <span>
                       {toPersianDigits((dieFormData.compatibleMachineCodes || []).length)} پرس به عنوان ماشین‌های مجاز برای سوار کردن این قالب تخصیص یافتند.
                     </span>
@@ -1453,45 +1527,45 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-medium">تناژ پرس مورد نیاز (تن) *</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">تناژ پرس مورد نیاز (تن) *</label>
                   <input
                     type="number"
                     value={dieFormData.requiredTonnage || 250}
                     onChange={e => setDieFormData({ ...dieFormData, requiredTonnage: parseFloat(e.target.value) || 0 })}
                     placeholder="400"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-blue-500"
+                    className="fiori-input fiori-ltr-code w-full px-3 py-2"
                     required
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-medium">طول عمر اسمی قالب (تعداد ضرب)</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">طول عمر اسمی قالب (تعداد ضرب)</label>
                   <input
                     type="number"
                     value={dieFormData.strokeLifeTarget || 250000}
                     onChange={e => setDieFormData({ ...dieFormData, strokeLifeTarget: parseInt(e.target.value, 10) || 250000 })}
                     placeholder="250000"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-blue-500"
+                    className="fiori-input fiori-ltr-code w-full px-3 py-2"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-medium">محل در انبار قالب‌ها</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">محل در انبار قالب‌ها</label>
                   <input
                     type="text"
                     value={dieFormData.location || ''}
                     onChange={e => setDieFormData({ ...dieFormData, location: e.target.value })}
                     placeholder="قفسه A-04"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="fiori-input w-full px-3 py-2"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-medium">وضعیت فعلی</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">وضعیت فعلی</label>
                   <select
                     value={dieFormData.status}
                     onChange={e => setDieFormData({ ...dieFormData, status: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="fiori-input w-full px-3 py-2"
                   >
                     <option value="READY">آماده به کار در خط تولید</option>
                     <option value="UNDER_MAINTENANCE">در حال تعمیرات و تیزکاری سنبه ماتریس</option>
@@ -1500,7 +1574,7 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#e8e8e8]">
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[var(--fiori-border-subtle)]">
                 <button
                   type="button"
                   onClick={() => setIsDieModalOpen(false)}
@@ -1524,55 +1598,66 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
       {/* SLIDE-OVER DRAWER: ADD / EDIT OPERATOR */}
       {isOpModalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex justify-end"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex justify-end"
           onClick={() => setIsOpModalOpen(false)}
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="bg-white border-r border-slate-200 w-full max-w-md h-full p-6 shadow-2xl overflow-y-auto"
+            className="bg-[var(--fiori-bg-surface)] border-r border-[var(--fiori-border-default)] w-full max-w-md h-full p-6 shadow-2xl overflow-y-auto"
           >
-            <div className="sticky top-0 z-10 bg-white flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Users className="w-4 h-4 text-emerald-600" />
+            <div className="sticky top-0 z-10 bg-[var(--fiori-bg-surface)] flex items-center justify-between pb-3 border-b border-[var(--fiori-border-subtle)]">
+              <h3 className="text-sm font-bold text-[var(--fiori-text-primary)] flex items-center gap-2">
+                <Users className="w-4 h-4 text-[var(--fiori-positive)]" />
                 <span>کشوی ثبت و ویرایش اپراتور خط تولید</span>
               </h3>
-              <button onClick={() => setIsOpModalOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setIsOpModalOpen(false)}
+                className="text-[var(--fiori-text-muted)] hover:text-[var(--fiori-text-primary)] cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
+            {formError && (
+              <FioriMessageStrip compact tone="error" className="mt-3">
+                {formError}
+              </FioriMessageStrip>
+            )}
+
             <form onSubmit={handleOpSubmit} className="mt-4 space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-slate-700 font-medium">کد پرسنلی *</label>
+                <label className="text-[var(--fiori-text-primary)] font-medium">کد پرسنلی *</label>
                 <input
                   type="text"
+                  dir="ltr"
                   value={opFormData.personnelCode || ''}
                   onChange={e => setOpFormData({ ...opFormData, personnelCode: e.target.value })}
                   placeholder="EMP-115"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-emerald-500"
+                  className="fiori-input fiori-ltr-code w-full px-3 py-2"
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-700 font-medium">نام و نام خانوادگی *</label>
+                <label className="text-[var(--fiori-text-primary)] font-medium">نام و نام خانوادگی *</label>
                 <input
                   type="text"
                   value={opFormData.fullName || ''}
                   onChange={e => setOpFormData({ ...opFormData, fullName: e.target.value })}
                   placeholder="محمد حسینی"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-500"
+                  className="fiori-input w-full px-3 py-2"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-medium">شیفت کاری</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">شیفت کاری</label>
                   <select
                     value={opFormData.defaultShift}
                     onChange={e => setOpFormData({ ...opFormData, defaultShift: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-500"
+                    className="fiori-input w-full px-3 py-2"
                   >
                     <option value="MORNING">شیفت صبح</option>
                     <option value="EVENING">شیفت عصر</option>
@@ -1581,18 +1666,19 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-medium">تلفن تماس</label>
+                  <label className="text-[var(--fiori-text-primary)] font-medium">تلفن تماس</label>
                   <input
                     type="text"
+                    dir="ltr"
                     value={opFormData.phone || ''}
                     onChange={e => setOpFormData({ ...opFormData, phone: e.target.value })}
                     placeholder="0912..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-emerald-500"
+                    className="fiori-input fiori-ltr-code w-full px-3 py-2"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#e8e8e8]">
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[var(--fiori-border-subtle)]">
                 <button
                   type="button"
                   onClick={() => {
@@ -1617,321 +1703,295 @@ export const MachinesView: React.FC<MachinesViewProps> = ({
       )}
 
       {/* MODAL: OPERATOR TIMESHEET & PERFORMANCE REPORT (گزارش کارکرد هر نفر) */}
-      {selectedOpForReport && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-sm w-full max-w-2xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-[#e5f3fa] text-[#007cc0] rounded-sm border border-[#b3d7ff]">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#333333]">
-                    گزارش کارکرد و بازدهی: {selectedOpForReport.fullName}
-                  </h3>
-                  <p className="text-xs text-[#666666] font-mono">
-                    کد پرسنلی: {selectedOpForReport.personnelCode} • شیفت: {selectedOpForReport.defaultShift === 'MORNING' ? 'صبح' : 'عصر'}
-                  </p>
-                </div>
+      <FioriDialog
+        isOpen={Boolean(selectedOpForReport)}
+        onClose={() => setSelectedOpForReport(null)}
+        title={selectedOpForReport ? `گزارش کارکرد و بازدهی: ${selectedOpForReport.fullName}` : ''}
+        subtitle={
+          selectedOpForReport
+            ? `کد پرسنلی: ${selectedOpForReport.personnelCode} • شیفت: ${selectedOpForReport.defaultShift === 'MORNING' ? 'صبح' : 'عصر'}`
+            : undefined
+        }
+        icon={<FileText className="w-4 h-4" />}
+        size="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="sap-btn-standard flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>چاپ کارنامه</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedOpForReport(null)}
+              className="sap-btn-emphasized px-4 py-1.5 text-xs cursor-pointer"
+            >
+              بستن
+            </button>
+          </>
+        }
+      >
+        {loadingTimesheet ? (
+          <div className="py-12 text-center text-xs text-[var(--fiori-text-secondary)]">
+            در حال فراخوانی آمار و کارکرد شیفت‌ها...
+          </div>
+        ) : opTimesheetData ? (
+          <div className="space-y-4 text-xs">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="p-3 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] text-right">
+                <span className="text-[10px] text-[var(--fiori-text-secondary)] block">ساعات کارکرد کل:</span>
+                <span className="text-base font-extrabold text-[var(--fiori-text-primary)] font-mono tabular-nums">
+                  {toPersianDigits(opTimesheetData.summary.totalHoursWorked)} ساعت
+                </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedOpForReport(null)}
-                className="text-[#666666] hover:text-[#333333] p-1 rounded-sm hover:bg-[#f0f0f0] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="p-3 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-positive-bg)] border border-[var(--fiori-positive-border)] text-right">
+                <span className="text-[10px] text-[var(--fiori-positive)] block">تولید سالم کل:</span>
+                <span className="text-base font-extrabold text-[var(--fiori-positive)] font-mono tabular-nums">
+                  {formatNumber(opTimesheetData.summary.totalPiecesProduced)} عدد
+                </span>
+              </div>
+              <div className="p-3 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-critical-bg)] border border-[var(--fiori-critical-border)] text-right">
+                <span className="text-[10px] text-[var(--fiori-critical)] block">توقفات ثبت‌شده:</span>
+                <span className="text-base font-extrabold text-[var(--fiori-critical)] font-mono tabular-nums">
+                  {toPersianDigits(opTimesheetData.summary.downtimeReportedHours)} ساعت
+                </span>
+              </div>
+              <div className="p-3 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] text-right">
+                <span className="text-[10px] text-[var(--fiori-brand)] block">راندمان عملکرد:</span>
+                <span className="text-base font-extrabold text-[var(--fiori-brand)] font-mono tabular-nums">
+                  {toPersianDigits(opTimesheetData.summary.overallEfficiencyPercent)}%
+                </span>
+              </div>
             </div>
 
-            {loadingTimesheet ? (
-              <div className="py-12 text-center text-xs text-[#666666]">
-                در حال فراخوانی آمار و کارکرد شیفت‌ها...
+            {/* Shift Log Table */}
+            <div className="sap-card overflow-hidden">
+              <FioriToolbar
+                variant="table"
+                title="ریز عملکرد روزانه و شیفت‌های اخیر"
+                count={opTimesheetData.shiftRecords.length}
+                countLabel="شیفت"
+              />
+              <div className="overflow-x-auto">
+                <table className="sap-table-compact w-full text-right text-xs">
+                  <thead className="bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-default)] text-[var(--fiori-text-primary)] font-semibold">
+                    <tr>
+                      <th>تاریخ و شیفت</th>
+                      <th>دستگاه</th>
+                      <th>قطعه تولیدی</th>
+                      <th className="text-center">تولید سالم</th>
+                      <th className="text-center">ضایعات</th>
+                      <th className="text-center">توقف (دقیقه)</th>
+                      <th>علت توقف</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--fiori-border-subtle)] text-[var(--fiori-text-primary)] font-mono tabular-nums">
+                    {opTimesheetData.shiftRecords.map((r: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-[var(--fiori-bg-hover)]">
+                        <td className="font-sans font-medium text-[var(--fiori-text-primary)]">
+                          {r.date} <span className="text-[10px] text-[var(--fiori-text-muted)] block">{r.shift}</span>
+                        </td>
+                        <td className="fiori-ltr-code font-bold text-[var(--fiori-text-primary)]">{r.machineCode}</td>
+                        <td className="font-sans">
+                          <span className="font-semibold text-[var(--fiori-text-primary)]">{r.partName}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedOpForReport(null);
+                              traceDocument(r.partCode, 'INVENTORY_LEDGER');
+                            }}
+                            className="sap-doc-link text-[10px] block fiori-ltr-code"
+                          >
+                            {r.partCode}
+                          </button>
+                        </td>
+                        <td className="text-center font-bold text-[var(--fiori-positive)]">
+                          {formatNumber(r.actualProduced)}
+                        </td>
+                        <td className="text-center text-[var(--fiori-negative)] font-semibold">
+                          {toPersianDigits(r.scrapCount)}
+                        </td>
+                        <td className="text-center text-[var(--fiori-critical)]">
+                          {toPersianDigits(r.downtimeMin)}
+                        </td>
+                        <td className="font-sans text-[var(--fiori-text-secondary)] text-[11px] max-w-xs truncate">
+                          {r.downtimeReason}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : opTimesheetData ? (
-              <div className="space-y-4 text-xs">
-                {/* KPI Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div className="p-3 rounded-sm bg-[#f7f9fa] border border-[#d9d9d9] text-right">
-                    <span className="text-[10px] text-[#666666] block">ساعات کارکرد کل:</span>
-                    <span className="text-base font-extrabold text-[#333333] font-mono">
-                      {toPersianDigits(opTimesheetData.summary.totalHoursWorked)} ساعت
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-sm bg-[#eefaf2] border border-[#b6e4c8] text-right">
-                    <span className="text-[10px] text-[#107e3e] block">تولید سالم کل:</span>
-                    <span className="text-base font-extrabold text-[#107e3e] font-mono">
-                      {formatNumber(opTimesheetData.summary.totalPiecesProduced)} عدد
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-sm bg-[#fff7eb] border border-[#f5d29c] text-right">
-                    <span className="text-[10px] text-[#e9730c] block">توقفات ثبت‌شده:</span>
-                    <span className="text-base font-extrabold text-[#e9730c] font-mono">
-                      {toPersianDigits(opTimesheetData.summary.downtimeReportedHours)} ساعت
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-sm bg-[#e5f3fa] border border-[#b3d7ff] text-right">
-                    <span className="text-[10px] text-[#007cc0] block">راندمان عملکرد:</span>
-                    <span className="text-base font-extrabold text-[#007cc0] font-mono">
-                      {toPersianDigits(opTimesheetData.summary.overallEfficiencyPercent)}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* Shift Log Table */}
-                <div>
-                  <h4 className="font-bold text-[#333333] mb-2">ریز عملکرد روزانه و شیفت‌های اخیر:</h4>
-                  <div className="overflow-x-auto rounded-sm border border-[#d9d9d9]">
-                    <table className="sap-table-compact w-full text-right text-xs">
-                      <thead className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                        <tr>
-                          <th>تاریخ و شیفت</th>
-                          <th>دستگاه</th>
-                          <th>قطعه تولیدی</th>
-                          <th className="text-center">تولید سالم</th>
-                          <th className="text-center">ضایعات</th>
-                          <th className="text-center">توقف (دقیقه)</th>
-                          <th>علت توقف</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#e8e8e8] text-[#333333] font-mono">
-                        {opTimesheetData.shiftRecords.map((r: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-[#e5f3fa]/55">
-                            <td className="font-sans font-medium text-[#333333]">
-                              {r.date} <span className="text-[10px] text-[#666666] block">{r.shift}</span>
-                            </td>
-                            <td className="font-bold text-[#333333]">{r.machineCode}</td>
-                            <td className="font-sans">
-                              <span className="font-semibold text-[#333333]">{r.partName}</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedOpForReport(null);
-                                  traceDocument(r.partCode, 'INVENTORY_LEDGER');
-                                }}
-                                className="sap-doc-link text-[10px] block font-mono"
-                              >
-                                {r.partCode}
-                              </button>
-                            </td>
-                            <td className="text-center font-bold text-[#107e3e]">
-                              {formatNumber(r.actualProduced)}
-                            </td>
-                            <td className="text-center text-[#bb0000] font-semibold">
-                              {toPersianDigits(r.scrapCount)}
-                            </td>
-                            <td className="text-center text-[#e9730c]">
-                              {toPersianDigits(r.downtimeMin)}
-                            </td>
-                            <td className="font-sans text-[#666666] text-[11px] max-w-xs truncate">
-                              {r.downtimeReason}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#e8e8e8]">
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="sap-btn-standard flex items-center gap-1.5 px-3.5 py-1.5 cursor-pointer"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>چاپ کارنامه</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOpForReport(null)}
-                    className="sap-btn-emphasized px-4 py-1.5 cursor-pointer"
-                  >
-                    بستن
-                  </button>
-                </div>
-              </div>
-            ) : null}
+            </div>
           </div>
-        </div>
-      )}
+        ) : null}
+      </FioriDialog>
 
       {/* MODAL: DYNAMIC PROCESS CAPABILITIES MANAGEMENT (مدیریت قابلیت‌های فرآیندی پرس) */}
-      {isNewProcessModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-md w-full max-w-md p-5 space-y-4 shadow-lg">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4 text-[#007cc0]" />
-                <h3 className="text-sm font-bold text-[#333333]">مدیریت قابلیت‌های فرآیندی پرس‌ها</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsNewProcessModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Existing Processes List */}
-            <div className="space-y-1 max-h-48 overflow-y-auto divide-y divide-[#e8e8e8] text-xs">
-              <span className="text-[11px] font-bold text-[#666666] block mb-1">قابلیت‌های ثبت‌شده در سیستم:</span>
-              {availableProcesses.map(p => (
-                <div key={p.code} className="flex items-center justify-between py-1.5 px-1">
-                  <div>
-                    <span className="font-bold text-[#333333] font-mono">{p.code}</span>
-                    <span className="text-[#666666] mr-2 text-[11px]">{p.name}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteProcess(p.code)}
-                    className="text-[#bb0000] hover:bg-[#fdf3f3] p-1 rounded cursor-pointer"
-                    title="حذف قابلیت"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Form to add a new process */}
-            <form onSubmit={handleCreateProcess} className="pt-3 border-t border-[#e8e8e8] space-y-2.5 text-xs">
-              <span className="text-[11px] font-bold text-[#333333] block">افزودن قابلیت فرآیندی جدید:</span>
-              <div className="grid grid-cols-2 gap-2">
+      <FioriDialog
+        isOpen={isNewProcessModalOpen}
+        onClose={() => setIsNewProcessModalOpen(false)}
+        title="مدیریت قابلیت‌های فرآیندی پرس‌ها"
+        icon={<Settings className="w-4 h-4" />}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsNewProcessModalOpen(false)}
+              className="sap-btn-standard text-xs"
+            >
+              بستن
+            </button>
+            <button
+              type="submit"
+              form="mch-new-proc-form"
+              className="sap-btn-emphasized text-xs"
+            >
+              + افزودن قابلیت
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4 text-xs">
+          {/* Existing Processes List */}
+          <div className="space-y-1 max-h-48 overflow-y-auto divide-y divide-[var(--fiori-border-subtle)]">
+            <span className="text-[11px] font-bold text-[var(--fiori-text-secondary)] block mb-1">قابلیت‌های ثبت‌شده در سیستم:</span>
+            {availableProcesses.map(p => (
+              <div key={p.code} className="flex items-center justify-between py-1.5 px-1">
                 <div>
-                  <label className="text-[10px] text-[#666666] block mb-0.5">شناسه انگلیسی (Code) *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: COINING یا FLANGING"
-                    value={newProcCode}
-                    onChange={e => setNewProcCode(e.target.value)}
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 font-mono text-xs text-[#333333] focus:outline-none focus:border-[#007cc0] uppercase"
-                  />
+                  <span className="fiori-ltr-code font-bold text-[var(--fiori-text-primary)]">{p.code}</span>
+                  <span className="text-[var(--fiori-text-secondary)] mr-2 text-[11px]">{p.name}</span>
                 </div>
-                <div>
-                  <label className="text-[10px] text-[#666666] block mb-0.5">عنوان فارسی فرایند *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: سکه‌زنی یا فلنج‌کاری"
-                    value={newProcName}
-                    onChange={e => setNewProcName(e.target.value)}
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsNewProcessModalOpen(false)}
-                  className="sap-btn-standard text-xs"
+                  onClick={() => handleDeleteProcess(p.code)}
+                  className="text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] p-1 rounded-[var(--fiori-radius-sm)] cursor-pointer"
+                  title="حذف قابلیت"
                 >
-                  بستن
-                </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized text-xs"
-                >
-                  + افزودن قابلیت
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-            </form>
+            ))}
           </div>
+
+          {/* Form to add a new process */}
+          <form id="mch-new-proc-form" onSubmit={handleCreateProcess} className="pt-3 border-t border-[var(--fiori-border-subtle)] space-y-2.5">
+            <span className="text-[11px] font-bold text-[var(--fiori-text-primary)] block">افزودن قابلیت فرآیندی جدید:</span>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-[var(--fiori-text-secondary)] block mb-0.5">شناسه انگلیسی (Code) *</label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  required
+                  placeholder="مثال: COINING یا FLANGING"
+                  value={newProcCode}
+                  onChange={e => setNewProcCode(e.target.value)}
+                  className="fiori-input fiori-ltr-code w-full px-2.5 py-1.5 text-xs uppercase"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-[var(--fiori-text-secondary)] block mb-0.5">عنوان فارسی فرایند *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="مثال: سکه‌زنی یا فلنج‌کاری"
+                  value={newProcName}
+                  onChange={e => setNewProcName(e.target.value)}
+                  className="fiori-input w-full px-2.5 py-1.5 text-xs"
+                />
+              </div>
+            </div>
+          </form>
         </div>
-      )}
+      </FioriDialog>
 
       {/* MODAL: QUICK ADD FACTORY HALL (تعریف سالن استقرار جدید) */}
-      {isQuickHallModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-md w-full max-w-md p-5 space-y-4 shadow-lg text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <div className="flex items-center gap-2">
-                <Building className="w-4 h-4 text-[#007cc0]" />
-                <h3 className="text-sm font-bold text-[#333333]">ثبت و تعریف سالن تولید جدید</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsQuickHallModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateQuickHall} className="space-y-3 text-xs">
-              <div>
-                <label className="text-[11px] font-bold text-[#333333] block mb-1">کد سالن *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="HALL-PRESS-02"
-                  value={quickHallCode}
-                  onChange={e => setQuickHallCode(e.target.value)}
-                  className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 font-mono text-[#333333] uppercase focus:outline-none focus:border-[#007cc0] font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-[#333333] block mb-1">نام سالن تولید *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: سالن پرس متوسط و فیدر خطوط تارا"
-                  value={quickHallName}
-                  onChange={e => setQuickHallName(e.target.value)}
-                  className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-[#333333] block mb-1">نوع سالن *</label>
-                  <select
-                    value={quickHallType}
-                    onChange={e => setQuickHallType(e.target.value as any)}
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  >
-                    <option value="STAMPING">پرسکاری و پرس ضربه‌ای</option>
-                    <option value="WELDING">مجموعه‌سازی و جوشکاری</option>
-                    <option value="PAINT">رنگ و پوشش‌دهی</option>
-                    <option value="ASSEMBLY">مونتاژ نهایی</option>
-                    <option value="WAREHOUSE">انبار و لجستیک داخلی</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-[#333333] block mb-1">سرپرست سالن</label>
-                  <input
-                    type="text"
-                    placeholder="مهندس مرادی"
-                    value={quickHallSupervisor}
-                    onChange={e => setQuickHallSupervisor(e.target.value)}
-                    className="w-full bg-white border border-[#bfbfbf] rounded px-3 py-2 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsQuickHallModalOpen(false)}
-                  className="sap-btn-standard text-xs"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingQuickHall}
-                  className="sap-btn-emphasized text-xs disabled:opacity-50"
-                >
-                  {savingQuickHall ? 'در حال ثبت...' : 'ثبت و انتخاب سالن'}
-                </button>
-              </div>
-            </form>
+      <FioriDialog
+        isOpen={isQuickHallModalOpen}
+        onClose={() => setIsQuickHallModalOpen(false)}
+        title="ثبت و تعریف سالن تولید جدید"
+        icon={<Building className="w-4 h-4" />}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsQuickHallModalOpen(false)}
+              className="sap-btn-standard text-xs"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="mch-quick-hall-form"
+              disabled={savingQuickHall}
+              className="sap-btn-emphasized text-xs disabled:opacity-50"
+            >
+              {savingQuickHall ? 'در حال ثبت...' : 'ثبت و انتخاب سالن'}
+            </button>
+          </>
+        }
+      >
+        <form id="mch-quick-hall-form" onSubmit={handleCreateQuickHall} className="space-y-3 text-xs">
+          <div>
+            <label className="text-[11px] font-bold text-[var(--fiori-text-primary)] block mb-1">کد سالن *</label>
+            <input
+              type="text"
+              dir="ltr"
+              required
+              placeholder="HALL-PRESS-02"
+              value={quickHallCode}
+              onChange={e => setQuickHallCode(e.target.value)}
+              className="fiori-input fiori-ltr-code w-full px-3 py-2 uppercase font-bold"
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="text-[11px] font-bold text-[var(--fiori-text-primary)] block mb-1">نام سالن تولید *</label>
+            <input
+              type="text"
+              required
+              placeholder="مثال: سالن پرس متوسط و فیدر خطوط تارا"
+              value={quickHallName}
+              onChange={e => setQuickHallName(e.target.value)}
+              className="fiori-input w-full px-3 py-2 font-medium"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold text-[var(--fiori-text-primary)] block mb-1">نوع سالن *</label>
+              <select
+                value={quickHallType}
+                onChange={e => setQuickHallType(e.target.value as any)}
+                className="fiori-input w-full px-3 py-2"
+              >
+                <option value="STAMPING">پرسکاری و پرس ضربه‌ای</option>
+                <option value="WELDING">مجموعه‌سازی و جوشکاری</option>
+                <option value="PAINT">رنگ و پوشش‌دهی</option>
+                <option value="ASSEMBLY">مونتاژ نهایی</option>
+                <option value="WAREHOUSE">انبار و لجستیک داخلی</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-[var(--fiori-text-primary)] block mb-1">سرپرست سالن</label>
+              <input
+                type="text"
+                placeholder="مهندس مرادی"
+                value={quickHallSupervisor}
+                onChange={e => setQuickHallSupervisor(e.target.value)}
+                className="fiori-input w-full px-3 py-2"
+              />
+            </div>
+          </div>
+        </form>
+      </FioriDialog>
     </div>
   );
 };

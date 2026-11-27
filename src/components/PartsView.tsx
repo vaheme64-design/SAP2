@@ -25,6 +25,8 @@ import { useEnterpriseUx } from '../context/EnterpriseUxContext';
 import { useErpRouter } from '../context/RouterContext';
 import { DataImportExportView } from './inventory/DataImportExportView';
 import { loadMaterialGrades, MaterialGradeItem } from '../utils/materialGradesStorage';
+import { FioriDialog, FioriMessageStrip, FioriObjectStatus, FioriToolbar } from './fiori/ui';
+import { EmptyState } from './common/EmptyState';
 
 interface PartsViewProps {
   parts: Part[];
@@ -422,13 +424,18 @@ export const PartsView: React.FC<PartsViewProps> = ({ parts, onSavePart, onRefre
       {/* Header */}
       <div className="sap-card p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-[#333333] flex items-center gap-2">
-              <Layers className="w-5 h-5 text-[#007cc0]" />
-              کاتالوگ جامع قطعات و مواد اولیه ({toPersianDigits(parts.length)} قطعه فعال)
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-base font-bold text-[var(--fiori-text-primary)] flex items-center gap-2">
+              <Layers className="w-5 h-5 text-[var(--fiori-brand)]" />
+              <span>کاتالوگ جامع قطعات و مواد اولیه</span>
             </h2>
+            <FioriObjectStatus
+              tone="brand"
+              label={`${toPersianDigits(parts.length)} قطعه فعال`}
+              size="sm"
+            />
           </div>
-          <p className="text-xs text-[#666666] mt-1">
+          <p className="text-xs text-[var(--fiori-text-secondary)] mt-1">
             اطلاعات پایه قطعات بدنه و سازه خودرو (پژو ۲۰۶، تارا، دنا پلاس، شاهین، کوییک)، مشخصات فنی ساپکو و وزن مرجع
           </p>
         </div>
@@ -437,21 +444,23 @@ export const PartsView: React.FC<PartsViewProps> = ({ parts, onSavePart, onRefre
           <button
             type="button"
             onClick={() => setIsExcelImportOpen(true)}
-            className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs border-[#107e3e] text-[#107e3e] hover:bg-[#ebf7ef]"
+            className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs border-[var(--fiori-positive-border)] text-[var(--fiori-positive)] hover:bg-[var(--fiori-positive-bg)] cursor-pointer"
           >
-            <Upload className="w-3.5 h-3.5 text-[#107e3e]" />
+            <Upload className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
             <span>ورود قطعات از اکسل (.xlsx / .csv)</span>
           </button>
           <button
+            type="button"
             onClick={handleExportCsv}
-            className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs"
+            className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-[#107e3e]" />
+            <Download className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
             <span>خروجی اکسل (CSV)</span>
           </button>
           <button
+            type="button"
             onClick={() => handleOpenNewModal()}
-            className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs"
+            className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>تعریف قطعه جدید</span>
@@ -460,22 +469,12 @@ export const PartsView: React.FC<PartsViewProps> = ({ parts, onSavePart, onRefre
       </div>
 
       {actionBanner && (
-        <div
-          className={`sap-card px-4 py-2.5 text-xs flex items-center justify-between gap-2 border ${
-            actionBanner.type === 'success'
-              ? 'bg-[#ebf5ec] border-[#b7dfbf] text-[#107e3e]'
-              : 'bg-[#ffecec] border-[#f5b7b1] text-[#bb0000]'
-          }`}
+        <FioriMessageStrip
+          tone={actionBanner.type === 'success' ? 'success' : 'error'}
+          onClose={() => setActionBanner(null)}
         >
-          <span>{actionBanner.text}</span>
-          <button
-            type="button"
-            onClick={() => setActionBanner(null)}
-            className="p-0.5 rounded hover:bg-black/5 cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+          {actionBanner.text}
+        </FioriMessageStrip>
       )}
 
       {/* Filter and Search Bar */}
@@ -483,13 +482,13 @@ export const PartsView: React.FC<PartsViewProps> = ({ parts, onSavePart, onRefre
         <div className="flex flex-wrap items-center gap-2.5 flex-1">
           {/* Search */}
           <div className="relative min-w-[240px] flex-1">
-            <Search className="w-4 h-4 text-[#666666] absolute right-3 top-2" />
+            <Search className="w-4 h-4 text-[var(--fiori-text-secondary)] absolute right-3 top-2 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="جستجوی نام قطعه، کد کاتالوگ یا کد ساپکو..."
-              className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm pr-9 pl-3 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
+              className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] pr-9 pl-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
             />
           </div>
 
@@ -497,10 +496,10 @@ export const PartsView: React.FC<PartsViewProps> = ({ parts, onSavePart, onRefre
           <select
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
-            className="bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0] font-semibold"
+            className="bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)] font-semibold cursor-pointer"
           >
             <option value="ALL">همه دسته‌بندی‌ها</option>
-            <option value="PINNED">📌 قطعات کلیدی نشانه‌گذاری‌شده (VIP)</option>
+            <option value="PINNED">قطعات کلیدی نشانه‌گذاری‌شده (VIP)</option>
             <option value="RAW_MATERIAL">مواد اولیه (ورق و کویل ساپکو)</option>
             <option value="WIP_PART">قطعات نیمه‌ساخته (WIP)</option>
             <option value="FINISHED_GOOD">محصولات نهایی آماده تحویل</option>
@@ -510,7 +509,7 @@ export const PartsView: React.FC<PartsViewProps> = ({ parts, onSavePart, onRefre
           <select
             value={carModelFilter}
             onChange={e => setCarModelFilter(e.target.value)}
-            className="bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0] font-semibold"
+            className="bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)] font-semibold cursor-pointer"
           >
             <option value="ALL">همه خودروها</option>
             {carModels.map(m => (
@@ -522,10 +521,10 @@ export const PartsView: React.FC<PartsViewProps> = ({ parts, onSavePart, onRefre
           <button
             type="button"
             onClick={() => setCategoryFilter(categoryFilter === 'PINNED' ? 'ALL' : 'PINNED')}
-            className={`px-3 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-[var(--fiori-radius-sm)] text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer tabular-nums ${
               categoryFilter === 'PINNED'
-                ? 'bg-[#e9730c] text-white border-[#e9730c]'
-                : 'bg-[#fff4e5] hover:bg-[#ffe8cc] text-[#e9730c] border-[#f9d6a7]'
+                ? 'bg-[var(--fiori-warning)] text-white border-[var(--fiori-warning)]'
+                : 'bg-[var(--fiori-warning-bg)] hover:opacity-90 text-[var(--fiori-warning)] border-[var(--fiori-warning-border)]'
             }`}
           >
             <Pin className="w-3.5 h-3.5 fill-current" />
@@ -533,7 +532,7 @@ export const PartsView: React.FC<PartsViewProps> = ({ parts, onSavePart, onRefre
           </button>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-[#666666]">
+        <div className="flex items-center gap-2 text-xs text-[var(--fiori-text-secondary)]">
           {route.docQuery && (
             <button
               type="button"
@@ -541,387 +540,405 @@ export const PartsView: React.FC<PartsViewProps> = ({ parts, onSavePart, onRefre
                 clearDocQuery();
                 setSearchTerm('');
               }}
-              className="px-2 py-1 rounded bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] flex items-center gap-1 cursor-pointer"
+              className="px-2 py-1 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-info-border)] flex items-center gap-1 cursor-pointer"
             >
               <span>فیلتر لینک: {route.docQuery}</span>
               <X className="w-3 h-3" />
             </button>
           )}
-          <span>
-            تعداد نمایش: <span className="font-bold text-[#333333] tabular-nums">{formatNumber(filteredParts.length)}</span> قطعه
+          <span className="tabular-nums">
+            تعداد نمایش: <span className="font-bold text-[var(--fiori-text-primary)]">{formatNumber(filteredParts.length)}</span> قطعه
           </span>
         </div>
       </div>
 
       {/* Missing Part Prompt + Quick Create CTA */}
       {searchTerm.trim() && filteredParts.length === 0 && (
-        <div className="sap-card p-4 bg-[#fff4e5] border border-[#f9d6a7] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start sm:items-center gap-2.5 text-xs text-[#333333]">
-            <ShieldAlert className="w-5 h-5 text-[#e9730c] shrink-0" />
-            <div>
-              <div className="font-bold text-[#e9730c]">
-                قطعه «{searchTerm.trim()}» در کاتالوگ نرم‌افزار وجود ندارد
-              </div>
-              <div className="text-[11px] text-[#666666] mt-0.5">
-                برای ادامه فرآیند برنامه‌ریزی تولید، مسیر عملیات (Routing) و BOM، ابتدا این قطعه را با یک کلیک در کاتالوگ تعریف کنید.
-              </div>
+        <FioriMessageStrip
+          tone="warning"
+          title={`قطعه «${searchTerm.trim()}» در کاتالوگ نرم‌افزار وجود ندارد`}
+          actions={
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleOpenNewModal(searchTerm.trim())}
+                className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>تعریف فوری قطعه «{searchTerm.trim()}»</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearDocQuery();
+                  setSearchTerm('');
+                }}
+                className="sap-btn-standard px-3 py-1.5 text-xs cursor-pointer"
+              >
+                نمایش همه قطعات
+              </button>
             </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => handleOpenNewModal(searchTerm.trim())}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>تعریف فوری قطعه «{searchTerm.trim()}»</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clearDocQuery();
-                setSearchTerm('');
-              }}
-              className="sap-btn-standard px-3 py-1.5 text-xs cursor-pointer"
-            >
-              نمایش همه قطعات
-            </button>
-          </div>
-        </div>
+          }
+        >
+          برای ادامه فرآیند برنامه‌ریزی تولید، مسیر عملیات (Routing) و BOM، ابتدا این قطعه را با یک کلیک در کاتالوگ تعریف کنید.
+        </FioriMessageStrip>
       )}
 
       {/* Table */}
       <div className="sap-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs sap-table-compact">
-            <thead>
-              <tr className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                <th className="w-24 text-center">قطعه کلیدی (VIP)</th>
-                <th>کد کاتالوگ</th>
-                <th>عنوان قطعه / ماده اولیه</th>
-                <th>دسته‌بندی</th>
-                <th>مدل خودرو</th>
-                <th>کد ساپکو</th>
-                <th>وزن واحد (kg)</th>
-                <th>ضخامت (mm)</th>
-                <th>گرید فولاد</th>
-                <th>واحد پایه</th>
-                <th className="text-center">عملیات</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e8e8e8]">
-              {filteredParts.map(p => {
-                const isRaw = p.category === 'RAW_MATERIAL';
-                const isFinished = p.category === 'FINISHED_GOOD';
-                const isVip = Boolean(p.isVIP || p.isPinned);
-                return (
-                  <tr
-                    key={p.id}
-                    className={`transition-colors ${
-                      isVip ? 'bg-[#fff4e5]/60 hover:bg-[#fff4e5]' : 'hover:bg-[#e5f3fa]'
-                    }`}
-                  >
-                    <td className="text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleVip(p)}
-                        className={`px-2 py-0.5 rounded-sm border text-[11px] font-semibold inline-flex items-center gap-1 transition-all cursor-pointer ${
-                          isVip
-                            ? 'bg-[#e9730c] text-white border-[#e9730c] hover:bg-[#d06408]'
-                            : 'bg-[#f5f5f5] text-[#666666] border-[#d9d9d9] hover:bg-[#fff4e5] hover:text-[#e9730c] hover:border-[#f9d6a7]'
-                        }`}
-                        title={isVip ? 'حذف نشان قطعه کلیدی (VIP)' : 'افزودن به قطعات کلیدی استراتژیک (VIP)'}
-                      >
-                        <Pin className={`w-3 h-3 ${isVip ? 'fill-white' : ''}`} />
-                        <span>{isVip ? 'VIP فعال' : 'نشان VIP'}</span>
-                      </button>
-                    </td>
-                    <td className="font-mono font-bold">
-                      <button
-                        type="button"
-                        onClick={() => traceDocument(p.code, 'INVENTORY_LEDGER')}
-                        className="sap-doc-link"
-                        title="رهگیری کاردکس و سوابق موجودی این قطعه"
-                      >
-                        {p.code}
-                      </button>
-                    </td>
-                    <td className="text-[#333333] font-medium max-w-xs">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={isVip ? 'font-bold text-[#333333]' : ''}>{p.name}</span>
-                        {isVip && (
-                          <span className="px-1.5 py-0.5 rounded-sm bg-[#fff4e5] text-[#e9730c] text-[10px] font-semibold border border-[#f9d6a7]">
-                            VIP
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <span
-                        className={`px-2 py-0.5 rounded-sm text-[10px] font-medium border ${
-                          isRaw
-                            ? 'bg-[#fff4e5] text-[#e9730c] border-[#f9d6a7]'
-                            : isFinished
-                            ? 'bg-[#ebf7ef] text-[#107e3e] border-[#a9dfbf]'
-                            : 'bg-[#e5f3fa] text-[#007cc0] border-[#b3ddf2]'
-                        }`}
-                      >
-                        {isRaw ? 'ماده اولیه' : isFinished ? 'محصول نهایی' : 'نیمه‌ساخته WIP'}
-                      </span>
-                    </td>
-                    <td className="text-[#333333]">
-                      <div className="flex items-center gap-1">
-                        <Car className="w-3 h-3 text-[#666666]" />
-                        <span>{p.carModel || 'مشترک'}</span>
-                      </div>
-                    </td>
-                    <td className="font-mono text-[#666666] text-[11px]">{p.sapcoCode || '-'}</td>
-                    <td className="font-bold text-[#333333] font-mono">{p.weightPerUnitKg}</td>
-                    <td className="font-mono text-[#333333]">{p.thicknessMm ? `${p.thicknessMm} mm` : '-'}</td>
-                    <td className="font-mono text-[#007cc0] font-semibold">{p.materialGrade || '-'}</td>
-                    <td className="text-[#666666]">{p.unit}</td>
-                    <td>
-                      <div className="flex items-center justify-center gap-1.5">
+        <FioriToolbar
+          variant="table"
+          title="فهرست قطعات و اقلام پایه"
+          count={filteredParts.length}
+          countLabel="قطعه"
+          endContent={
+            (searchTerm || categoryFilter !== 'ALL' || carModelFilter !== 'ALL') ? (
+              <button
+                type="button"
+                onClick={() => {
+                  clearDocQuery();
+                  setSearchTerm('');
+                  setCategoryFilter('ALL');
+                  setCarModelFilter('ALL');
+                }}
+                className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer"
+              >
+                پاک کردن فیلترها
+              </button>
+            ) : undefined
+          }
+        />
+
+        {filteredParts.length === 0 ? (
+          <EmptyState
+            variant={searchTerm || categoryFilter !== 'ALL' || carModelFilter !== 'ALL' ? 'FILTER_NO_MATCH' : 'NO_DATA'}
+            title="قطعه یا ماده اولیه‌ای یافت نشد"
+            description="هیچ رکوردی با فیلتر یا عبارت جستجوی فعلی مطابقت ندارد."
+            actionLabel="پاک کردن فیلترها"
+            onAction={() => {
+              clearDocQuery();
+              setSearchTerm('');
+              setCategoryFilter('ALL');
+              setCarModelFilter('ALL');
+            }}
+            compact
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-xs sap-table-compact">
+              <thead>
+                <tr className="bg-[var(--fiori-surface-muted)] border-b border-[var(--fiori-border)] text-[var(--fiori-text-primary)] font-semibold">
+                  <th className="w-24 text-center">قطعه کلیدی (VIP)</th>
+                  <th>کد کاتالوگ</th>
+                  <th>عنوان قطعه / ماده اولیه</th>
+                  <th>دسته‌بندی</th>
+                  <th>مدل خودرو</th>
+                  <th>کد ساپکو</th>
+                  <th>وزن واحد (kg)</th>
+                  <th>ضخامت (mm)</th>
+                  <th>گرید فولاد</th>
+                  <th>واحد پایه</th>
+                  <th className="text-center">عملیات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--fiori-border-subtle)]">
+                {filteredParts.map(p => {
+                  const isRaw = p.category === 'RAW_MATERIAL';
+                  const isFinished = p.category === 'FINISHED_GOOD';
+                  const isVip = Boolean(p.isVIP || p.isPinned);
+                  return (
+                    <tr
+                      key={p.id}
+                      className={`transition-colors ${
+                        isVip
+                          ? 'bg-[var(--fiori-warning-bg)]/50 hover:bg-[var(--fiori-warning-bg)]'
+                          : 'hover:bg-[var(--fiori-row-hover)]'
+                      }`}
+                    >
+                      <td className="text-center">
                         <button
                           type="button"
-                          onClick={() => handleEditPart(p)}
-                          className="sap-btn-standard px-2 py-0.5 text-[11px] inline-flex items-center gap-1"
-                          title="ویرایش مشخصات قطعه / کلاف"
+                          onClick={() => handleToggleVip(p)}
+                          className={`px-2 py-0.5 rounded-[var(--fiori-radius-sm)] border text-[11px] font-semibold inline-flex items-center gap-1 transition-all cursor-pointer ${
+                            isVip
+                              ? 'bg-[var(--fiori-warning)] text-white border-[var(--fiori-warning)]'
+                              : 'bg-[var(--fiori-surface-muted)] text-[var(--fiori-text-secondary)] border-[var(--fiori-border)] hover:bg-[var(--fiori-warning-bg)] hover:text-[var(--fiori-warning)] hover:border-[var(--fiori-warning-border)]'
+                          }`}
+                          title={isVip ? 'حذف نشان قطعه کلیدی (VIP)' : 'افزودن به قطعات کلیدی استراتژیک (VIP)'}
                         >
-                          <Edit3 className="w-3 h-3" />
-                          <span>ویرایش</span>
+                          <Pin className={`w-3 h-3 ${isVip ? 'fill-white' : ''}`} />
+                          <span>{isVip ? 'VIP فعال' : 'نشان VIP'}</span>
                         </button>
+                      </td>
+                      <td className="font-mono font-bold">
                         <button
                           type="button"
-                          onClick={() => handleDuplicatePart(p)}
-                          className="px-2 py-0.5 rounded-sm text-[11px] font-medium text-[#333333] bg-[#f5f5f5] hover:bg-[#e8e8e8] border border-[#d9d9d9] inline-flex items-center gap-1 transition-colors cursor-pointer"
-                          title="کپی‌گیری سریع (Duplicate) برای ایجاد رکورد مشابه"
+                          onClick={() => traceDocument(p.code, 'INVENTORY_LEDGER')}
+                          className="sap-doc-link fiori-ltr-code cursor-pointer"
+                          title="رهگیری کاردکس و سوابق موجودی این قطعه"
                         >
-                          <Copy className="w-3 h-3" />
-                          <span>کپی‌گیری</span>
+                          {p.code}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePart(p)}
-                          className="px-2 py-0.5 rounded-sm text-[11px] font-medium text-[#bb0000] bg-[#ffecec] hover:bg-[#f5b7b1] border border-[#f5b7b1] inline-flex items-center gap-1 transition-colors cursor-pointer"
-                          title="حذف قطعه از کاتالوگ مرکزی"
-                        >
-                          <Trash2 className="w-3 h-3 text-[#bb0000]" />
-                          <span>حذف</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td className="text-[var(--fiori-text-primary)] font-medium max-w-xs">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={isVip ? 'font-bold text-[var(--fiori-text-primary)]' : ''}>{p.name}</span>
+                          {isVip && <FioriObjectStatus tone="critical" label="VIP" size="sm" />}
+                        </div>
+                      </td>
+                      <td>
+                        <FioriObjectStatus
+                          tone={isRaw ? 'critical' : isFinished ? 'positive' : 'brand'}
+                          label={isRaw ? 'ماده اولیه' : isFinished ? 'محصول نهایی' : 'نیمه‌ساخته WIP'}
+                          size="sm"
+                        />
+                      </td>
+                      <td className="text-[var(--fiori-text-primary)]">
+                        <div className="flex items-center gap-1">
+                          <Car className="w-3 h-3 text-[var(--fiori-text-secondary)] shrink-0" />
+                          <span>{p.carModel || 'مشترک'}</span>
+                        </div>
+                      </td>
+                      <td className="font-mono text-[var(--fiori-text-secondary)] text-[11px] fiori-ltr-code">
+                        {p.sapcoCode || '-'}
+                      </td>
+                      <td className="font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums">
+                        {toPersianDigits(p.weightPerUnitKg)}
+                      </td>
+                      <td className="font-mono text-[var(--fiori-text-primary)] tabular-nums">
+                        {p.thicknessMm ? `${toPersianDigits(p.thicknessMm)} mm` : '-'}
+                      </td>
+                      <td className="font-mono text-[var(--fiori-brand)] font-semibold fiori-ltr-code">
+                        {p.materialGrade || '-'}
+                      </td>
+                      <td className="text-[var(--fiori-text-secondary)]">{p.unit}</td>
+                      <td>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleEditPart(p)}
+                            className="sap-btn-standard px-2 py-0.5 text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                            title="ویرایش مشخصات قطعه / کلاف"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>ویرایش</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicatePart(p)}
+                            className="sap-btn-standard px-2 py-0.5 text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                            title="کپی‌گیری سریع (Duplicate) برای ایجاد رکورد مشابه"
+                          >
+                            <Copy className="w-3 h-3" />
+                            <span>کپی‌گیری</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePart(p)}
+                            className="px-2 py-0.5 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium text-[var(--fiori-negative)] bg-[var(--fiori-negative-bg)] hover:opacity-85 border border-[var(--fiori-negative-border)] inline-flex items-center gap-1 transition-colors cursor-pointer"
+                            title="حذف قطعه از کاتالوگ مرکزی"
+                          >
+                            <Trash2 className="w-3 h-3 text-[var(--fiori-negative)]" />
+                            <span>حذف</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal for Create/Edit Part */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 flex items-center justify-center p-4">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm w-full max-w-xl p-5 shadow-lg">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h3 className="text-sm font-bold text-[#333333]">
-                {editingPart ? 'ویرایش مشخصات قطعه' : 'تعریف قطعه / ماده اولیه جدید'}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <FioriDialog
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingPart ? 'ویرایش مشخصات قطعه' : 'تعریف قطعه / ماده اولیه جدید'}
+        icon={<Layers className="w-4 h-4 text-[var(--fiori-brand)]" />}
+        size="lg"
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="part-edit-form"
+              disabled={formLoading}
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer disabled:opacity-50"
+            >
+              {formLoading ? 'در حال ذخیره...' : 'ذخیره در کاتالوگ'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {formError && (
+            <FioriMessageStrip tone="error" compact>
+              {formError}
+            </FioriMessageStrip>
+          )}
 
-            {formError && (
-              <div className="mt-3 p-3 rounded-sm bg-[#ffecec] border border-[#f5b7b1] text-[#bb0000] text-xs">
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleFormSubmit} className="mt-4 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">کد کاتالوگ قطعه *</label>
-                  <input
-                    type="text"
-                    value={formData.code || ''}
-                    onChange={e => setFormData({ ...formData, code: e.target.value })}
-                    placeholder="مثال: IKCO-206-BRK05"
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">دسته‌بندی *</label>
-                  <select
-                    value={formData.category}
-                    onChange={e => setFormData({ ...formData, category: e.target.value as any })}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  >
-                    <option value="RAW_MATERIAL">ماده اولیه (کویل/ورق ساپکو)</option>
-                    <option value="WIP_PART">قطعه نیمه‌ساخته (WIP)</option>
-                    <option value="FINISHED_GOOD">محصول نهایی آماده تحویل</option>
-                  </select>
-                </div>
-              </div>
-
+          <form id="part-edit-form" onSubmit={handleFormSubmit} className="space-y-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[#333333] font-medium">عنوان کامل قطعه در خط تولید *</label>
+                <label className="text-[var(--fiori-text-primary)] font-medium block">کد کاتالوگ قطعه *</label>
                 <input
                   type="text"
-                  value={formData.name || ''}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="مثال: براکت تقویتی ستون وسط تارا با پوشش کاتافورز"
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
+                  value={formData.code || ''}
+                  onChange={e => setFormData({ ...formData, code: e.target.value })}
+                  placeholder="مثال: IKCO-206-BRK05"
+                  className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] font-mono fiori-ltr-code focus:outline-none focus:border-[var(--fiori-brand)]"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">واحد اندازه‌گیری *</label>
-                  <select
-                    value={formData.unit}
-                    onChange={e => setFormData({ ...formData, unit: e.target.value as any })}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  >
-                    <option value="PCS">عدد (PCS)</option>
-                    <option value="KG">کیلوگرم (KG)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">وزن واحد (کیلوگرم) *</label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0.001"
-                    value={formData.weightPerUnitKg || 1}
-                    onChange={e => setFormData({ ...formData, weightPerUnitKg: parseFloat(e.target.value) || 1 })}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">ضخامت ورق (mm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.thicknessMm || ''}
-                    onChange={e => setFormData({ ...formData, thicknessMm: parseFloat(e.target.value) || undefined })}
-                    placeholder="مثلاً: 1.5"
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">گرید و جنس ورق / فولاد</label>
-                  <input
-                    type="text"
-                    list="kpims-material-grades-datalist"
-                    value={formData.materialGrade || ''}
-                    onChange={e => setFormData({ ...formData, materialGrade: e.target.value })}
-                    placeholder="انتخاب از لیست یا تایپ گرید (ST14, DC04...)"
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                  <datalist id="kpims-material-grades-datalist">
-                    {materialGradesList.map(g => (
-                      <option key={g.id} value={g.code}>
-                        {g.name}
-                      </option>
-                    ))}
-                  </datalist>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">مدل خودرو / خانواده محصول</label>
-                  <SearchableSelect
-                    value={formData.carModel || ''}
-                    onChange={val => setFormData({ ...formData, carModel: val })}
-                    placeholder="انتخاب مدل خودرو..."
-                    searchPlaceholder="جستجوی مدل خودرو (۲۰۶، تارا، دنا...)"
-                    options={[
-                      { value: 'مشترک', label: 'مشترک بین چند خودرو' },
-                      ...carModelsList.map(c => ({
-                        value: c.name,
-                        label: c.name,
-                        sublabel: c.oem,
-                        badge: c.code,
-                      })),
-                    ]}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[#333333] font-medium">کد ساپکو / OEM</label>
-                  <input
-                    type="text"
-                    value={formData.sapcoCode || ''}
-                    onChange={e => setFormData({ ...formData, sapcoCode: e.target.value })}
-                    placeholder="SAP-88102"
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5"
+              <div className="space-y-1">
+                <label className="text-[var(--fiori-text-primary)] font-medium block">دسته‌بندی *</label>
+                <select
+                  value={formData.category}
+                  onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                  className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
                 >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  disabled={formLoading}
-                  className="sap-btn-emphasized px-5 py-1.5"
-                >
-                  {formLoading ? 'در حال ذخیره...' : 'ذخیره در کاتالوگ'}
-                </button>
+                  <option value="RAW_MATERIAL">ماده اولیه (کویل/ورق ساپکو)</option>
+                  <option value="WIP_PART">قطعه نیمه‌ساخته (WIP)</option>
+                  <option value="FINISHED_GOOD">محصول نهایی آماده تحویل</option>
+                </select>
               </div>
-            </form>
-          </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[var(--fiori-text-primary)] font-medium block">عنوان کامل قطعه در خط تولید *</label>
+              <input
+                type="text"
+                value={formData.name || ''}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                placeholder="مثال: براکت تقویتی ستون وسط تارا با پوشش کاتافورز"
+                className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-[var(--fiori-text-primary)] font-medium block">واحد اندازه‌گیری *</label>
+                <select
+                  value={formData.unit}
+                  onChange={e => setFormData({ ...formData, unit: e.target.value as any })}
+                  className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+                >
+                  <option value="PCS">عدد (PCS)</option>
+                  <option value="KG">کیلوگرم (KG)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[var(--fiori-text-primary)] font-medium block">وزن واحد (کیلوگرم) *</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0.001"
+                  value={formData.weightPerUnitKg || 1}
+                  onChange={e => setFormData({ ...formData, weightPerUnitKg: parseFloat(e.target.value) || 1 })}
+                  className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] font-mono tabular-nums focus:outline-none focus:border-[var(--fiori-brand)]"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[var(--fiori-text-primary)] font-medium block">ضخامت ورق (mm)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.thicknessMm || ''}
+                  onChange={e => setFormData({ ...formData, thicknessMm: parseFloat(e.target.value) || undefined })}
+                  placeholder="مثلاً: 1.5"
+                  className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] font-mono tabular-nums focus:outline-none focus:border-[var(--fiori-brand)]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-[var(--fiori-text-primary)] font-medium block">گرید و جنس ورق / فولاد</label>
+                <input
+                  type="text"
+                  list="kpims-material-grades-datalist"
+                  value={formData.materialGrade || ''}
+                  onChange={e => setFormData({ ...formData, materialGrade: e.target.value })}
+                  placeholder="انتخاب از لیست یا تایپ گرید (ST14, DC04...)"
+                  className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] font-mono fiori-ltr-code focus:outline-none focus:border-[var(--fiori-brand)]"
+                />
+                <datalist id="kpims-material-grades-datalist">
+                  {materialGradesList.map(g => (
+                    <option key={g.id} value={g.code}>
+                      {g.name}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[var(--fiori-text-primary)] font-medium block">مدل خودرو / خانواده محصول</label>
+                <SearchableSelect
+                  value={formData.carModel || ''}
+                  onChange={val => setFormData({ ...formData, carModel: val })}
+                  placeholder="انتخاب مدل خودرو..."
+                  searchPlaceholder="جستجوی مدل خودرو (۲۰۶، تارا، دنا...)"
+                  options={[
+                    { value: 'مشترک', label: 'مشترک بین چند خودرو' },
+                    ...carModelsList.map(c => ({
+                      value: c.name,
+                      label: c.name,
+                      sublabel: c.oem,
+                      badge: c.code,
+                    })),
+                  ]}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[var(--fiori-text-primary)] font-medium block">کد ساپکو / OEM</label>
+                <input
+                  type="text"
+                  value={formData.sapcoCode || ''}
+                  onChange={e => setFormData({ ...formData, sapcoCode: e.target.value })}
+                  placeholder="SAP-88102"
+                  className="w-full bg-[var(--fiori-surface)] border border-[var(--fiori-border)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-[var(--fiori-text-primary)] font-mono fiori-ltr-code focus:outline-none focus:border-[var(--fiori-brand)]"
+                />
+              </div>
+            </div>
+          </form>
         </div>
-      )}
+      </FioriDialog>
 
       {/* Modal for Excel Bulk Import of Parts */}
-      {isExcelImportOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm w-full max-w-5xl p-4 shadow-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#e8e8e8]">
-              <h3 className="text-sm font-bold text-[#333333]">
-                ورود گروهی قطعات و مواد اولیه از فایل اکسل (.xlsx / .csv) به دیتابیس اصلی
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsExcelImportOpen(false)}
-                className="text-[#666666] hover:text-[#333333] transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <DataImportExportView
-              initialTemplateType="PARTS"
-              currentUser={{ uid: 'USR-ADMIN', displayName: 'مدیر مهندسی' }}
-              onSuccess={async () => {
-                if (onRefreshParts) {
-                  await onRefreshParts();
-                } else {
-                  window.dispatchEvent(new CustomEvent('kpims-parts-imported'));
-                }
-              }}
-            />
-          </div>
-        </div>
-      )}
+      <FioriDialog
+        isOpen={isExcelImportOpen}
+        onClose={() => setIsExcelImportOpen(false)}
+        title="ورود گروهی قطعات و مواد اولیه از فایل اکسل (.xlsx / .csv) به دیتابیس اصلی"
+        icon={<Upload className="w-4 h-4 text-[var(--fiori-positive)]" />}
+        size="xl"
+      >
+        <DataImportExportView
+          initialTemplateType="PARTS"
+          currentUser={{ uid: 'USR-ADMIN', displayName: 'مدیر مهندسی' }}
+          onSuccess={async () => {
+            if (onRefreshParts) {
+              await onRefreshParts();
+            } else {
+              window.dispatchEvent(new CustomEvent('kpims-parts-imported'));
+            }
+          }}
+        />
+      </FioriDialog>
     </div>
   );
 };

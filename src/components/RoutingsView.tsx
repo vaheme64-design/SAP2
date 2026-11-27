@@ -42,6 +42,13 @@ import { toPersianDigits, formatNumber } from '../utils/formatters';
 import { MasterDataDifferenceGuideModal } from './common/MasterDataDifferenceGuideModal';
 import { TraceabilityTagModal } from './wip/TraceabilityTagModal';
 import { SearchableSelect } from './common/SearchableSelect';
+import { EmptyState } from './common/EmptyState';
+import {
+  FioriDialog,
+  FioriMessageStrip,
+  FioriObjectStatus,
+  FioriToolbar,
+} from './fiori/ui';
 import { useErpRouter } from '../context/RouterContext';
 import { useEnterpriseUx } from '../context/EnterpriseUxContext';
 
@@ -605,19 +612,20 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
       <div className="sap-card p-4 space-y-3.5">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="w-9 h-9 rounded-sm bg-[#e5f3fa] border border-[#b3d7ff] text-[#007cc0] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] border border-[var(--fiori-brand-border)] text-[var(--fiori-brand)] flex items-center justify-center shrink-0">
               <GitFork className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-[#333333]">
+                <h2 className="text-base font-bold text-[var(--fiori-text-primary)]">
                   مدیریت مسیرهای مهندسی تولید (Manufacturing Routings)
                 </h2>
-                <span className="text-[11px] bg-[#e5f3fa] text-[#007cc0] border border-[#b3d7ff] px-2 py-0.5 rounded-sm font-mono font-bold">
-                  {toPersianDigits(routings.length)} مسیر فعال
-                </span>
+                <FioriObjectStatus
+                  tone="info"
+                  label={<span className="tabular-nums">{toPersianDigits(routings.length)} مسیر فعال</span>}
+                />
               </div>
-              <p className="text-xs text-[#666666] mt-0.5">
+              <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
                 تعیین توالی ایستگاه‌های کاری (OP10 برش، OP20 کشش، OP30 پانچ و...)، انتساب پرس، قالب و زمان‌های استاندارد
               </p>
             </div>
@@ -639,7 +647,7 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
               <span>تعریف مسیر تولید برای قطعه جدید</span>
             </button>
 
-            <div className="inline-flex rounded-sm border border-[#d9d9d9] p-0.5 bg-[#f0f0f0] text-xs">
+            <div className="inline-flex rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] p-0.5 bg-[var(--fiori-bg-subtle)] text-xs">
               <button
                 type="button"
                 onClick={() => {
@@ -652,8 +660,10 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
                   }
                   setViewMode('STEPPER');
                 }}
-                className={`px-3 py-1 rounded-sm font-medium transition cursor-pointer ${
-                  viewMode === 'STEPPER' ? 'bg-white font-bold text-[#007cc0] border border-[#d9d9d9]' : 'text-[#666666] hover:text-[#333333]'
+                className={`px-3 py-1 rounded-[var(--fiori-radius-sm)] font-medium transition cursor-pointer ${
+                  viewMode === 'STEPPER'
+                    ? 'bg-[var(--fiori-bg-surface)] font-bold text-[var(--fiori-brand)] border border-[var(--fiori-border-default)]'
+                    : 'text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)]'
                 }`}
               >
                 نمای مراحل عملیات
@@ -670,8 +680,10 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
                   }
                   setViewMode('DIRECTORY');
                 }}
-                className={`px-3 py-1 rounded-sm font-medium transition cursor-pointer ${
-                  viewMode === 'DIRECTORY' ? 'bg-white font-bold text-[#007cc0] border border-[#d9d9d9]' : 'text-[#666666] hover:text-[#333333]'
+                className={`px-3 py-1 rounded-[var(--fiori-radius-sm)] font-medium transition cursor-pointer tabular-nums ${
+                  viewMode === 'DIRECTORY'
+                    ? 'bg-[var(--fiori-bg-surface)] font-bold text-[var(--fiori-brand)] border border-[var(--fiori-border-default)]'
+                    : 'text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)]'
                 }`}
               >
                 کاتالوگ کلیه قطعات ({toPersianDigits(parts.length)})
@@ -691,17 +703,17 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
         </div>
 
         {/* Filter and Search Bar */}
-        <div className="pt-3 border-t border-[#e8e8e8] flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="pt-3 border-t border-[var(--fiori-border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 flex-wrap">
             {/* Instant Search Input */}
             <div className="relative">
-              <Search className="w-4 h-4 text-[#666666] absolute right-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[var(--fiori-text-secondary)] absolute right-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="جستجو در کد فنی، نام قطعه یا گام عملیات..."
-                className="bg-white border border-[#d9d9d9] rounded-sm pr-9 pl-3 py-1.5 text-xs text-[#333333] w-64 focus:outline-none focus:border-[#007cc0]"
+                className="fiori-input pr-9 pl-3 py-1.5 text-xs w-64"
               />
             </div>
 
@@ -710,10 +722,10 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedCarModel('ALL')}
-                className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition cursor-pointer border ${
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium transition cursor-pointer border ${
                   selectedCarModel === 'ALL'
-                    ? 'bg-[#e5f3fa] text-[#007cc0] border-[#007cc0] font-bold'
-                    : 'bg-white text-[#666666] border-[#d9d9d9] hover:bg-[#f0f0f0]'
+                    ? 'bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border-[var(--fiori-brand)] font-bold'
+                    : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-secondary)] border-[var(--fiori-border-default)] hover:bg-[var(--fiori-bg-hover)]'
                 }`}
               >
                 همه مدل‌ها
@@ -723,10 +735,10 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
                   key={m.id}
                   type="button"
                   onClick={() => setSelectedCarModel(m.name)}
-                  className={`px-2.5 py-1 rounded-sm text-[11px] font-medium transition cursor-pointer border whitespace-nowrap ${
+                  className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium transition cursor-pointer border whitespace-nowrap ${
                     selectedCarModel === m.name
-                      ? 'bg-[#e5f3fa] text-[#007cc0] border-[#007cc0] font-bold'
-                      : 'bg-white text-[#666666] border-[#d9d9d9] hover:bg-[#f0f0f0]'
+                      ? 'bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border-[var(--fiori-brand)] font-bold'
+                      : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-secondary)] border-[var(--fiori-border-default)] hover:bg-[var(--fiori-bg-hover)]'
                   }`}
                 >
                   {m.name}
@@ -744,13 +756,13 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
                   clearDocQuery();
                   setSearchQuery('');
                 }}
-                className="px-2 py-1 rounded-sm bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] flex items-center gap-1 cursor-pointer text-[11px]"
+                className="px-2 py-1 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-brand-border)] flex items-center gap-1 cursor-pointer text-[11px]"
               >
-                <span>فیلتر لینک: {route.docQuery}</span>
+                <span>فیلتر لینک: <span className="fiori-ltr-code font-mono">{route.docQuery}</span></span>
                 <X className="w-3 h-3" />
               </button>
             )}
-            <span className="text-[#666666] text-[11px]">انتخاب مسیر جاری:</span>
+            <span className="text-[var(--fiori-text-secondary)] text-[11px]">انتخاب مسیر جاری:</span>
             <select
               value={activeRouting?.id || ''}
               onChange={e => {
@@ -771,7 +783,7 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
                 setSelectedRoutingId(nextId);
                 setViewMode('STEPPER');
               }}
-              className="bg-white border border-[#d9d9d9] rounded-sm px-2.5 py-1 text-xs text-[#333333] font-bold focus:outline-none focus:border-[#007cc0] cursor-pointer"
+              className="fiori-input px-2.5 py-1 text-xs font-bold cursor-pointer"
             >
               {filteredRoutings.map(r => (
                 <option key={r.id} value={r.id}>
@@ -785,71 +797,74 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
 
       {/* Missing Routing CTA for searched/linked part */}
       {searchQuery.trim() && filteredRoutings.length === 0 && (
-        <div className="sap-card p-4 bg-[#fff4e5] border border-[#f9d6a7] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start sm:items-center gap-2.5 text-xs text-[#333333]">
-            <AlertCircle className="w-5 h-5 text-[#e9730c] shrink-0" />
-            <div>
-              <div className="font-bold text-[#e9730c]">
-                مسیر عملیات تولید (Routing) برای «{searchQuery.trim()}» یافت نشد
-              </div>
-              <div className="text-[11px] text-[#666666] mt-0.5">
-                برای زمان‌بندی ماشین‌آلات و صدور دستور کار (MO) ابتدا باید مسیر عملیات قطعه را تعریف کنید.
-              </div>
+        <FioriMessageStrip
+          tone="warning"
+          title={`مسیر عملیات تولید (Routing) برای «${searchQuery.trim()}» یافت نشد`}
+          actions={
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const q = searchQuery.trim().toLowerCase();
+                  const matchedPart = parts.find(
+                    p =>
+                      p.code.toLowerCase() === q ||
+                      p.name.toLowerCase() === q ||
+                      p.code.toLowerCase().includes(q) ||
+                      p.name.toLowerCase().includes(q),
+                  );
+                  setNewRoutingPartId(matchedPart?.id || '');
+                  setNewRoutingVersion('V1.0');
+                  setNewRoutingNotes('');
+                  setFormError(null);
+                  setIsNewRoutingModalOpen(true);
+                }}
+                className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1 text-xs cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>تعریف مسیر عملیات برای این قطعه</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearDocQuery();
+                  setSearchQuery('');
+                }}
+                className="sap-btn-standard px-3 py-1 text-xs cursor-pointer"
+              >
+                نمایش همه مسیرها
+              </button>
             </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                const q = searchQuery.trim().toLowerCase();
-                const matchedPart = parts.find(
-                  p =>
-                    p.code.toLowerCase() === q ||
-                    p.name.toLowerCase() === q ||
-                    p.code.toLowerCase().includes(q) ||
-                    p.name.toLowerCase().includes(q),
-                );
-                setNewRoutingPartId(matchedPart?.id || '');
-                setNewRoutingVersion('V1.0');
-                setNewRoutingNotes('');
-                setFormError(null);
-                setIsNewRoutingModalOpen(true);
-              }}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>تعریف مسیر عملیات برای این قطعه</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clearDocQuery();
-                setSearchQuery('');
-              }}
-              className="sap-btn-standard px-3 py-1.5 text-xs cursor-pointer"
-            >
-              نمایش همه مسیرها
-            </button>
-          </div>
-        </div>
+          }
+        >
+          برای زمان‌بندی ماشین‌آلات و صدور دستور کار (MO) ابتدا باید مسیر عملیات قطعه را تعریف کنید.
+        </FioriMessageStrip>
       )}
 
       {/* VIEW MODE 1: ALL PARTS DIRECTORY */}
       {viewMode === 'DIRECTORY' && (
-        <div className="sap-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-[#333333] flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#007cc0]" />
-              <span>وضعیت تخصیص مسیر تولید به قطعات کاتالوگ کارخانه:</span>
-            </h3>
-            <span className="text-xs text-[#666666]">
-              {toPersianDigits(parts.length)} قطعه در کاتالوگ • {toPersianDigits(routings.length)} دارای مسیر ساخت
-            </span>
-          </div>
+        <div className="sap-card overflow-hidden">
+          <FioriToolbar
+            variant="table"
+            title={
+              <span className="inline-flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[var(--fiori-brand)]" />
+                <span>وضعیت تخصیص مسیر تولید به قطعات کاتالوگ کارخانه</span>
+              </span>
+            }
+            count={parts.length}
+            countLabel="قطعه در کاتالوگ"
+            endContent={
+              <FioriObjectStatus
+                tone="positive"
+                label={<span className="tabular-nums">{toPersianDigits(routings.length)} دارای مسیر ساخت</span>}
+              />
+            }
+          />
 
-          <div className="overflow-x-auto border border-[#d9d9d9] rounded-sm">
+          <div className="overflow-x-auto">
             <table className="sap-table-compact w-full text-right text-xs">
-              <thead className="bg-[#ffffff] text-[#333333] border-b border-[#d9d9d9] font-semibold">
+              <thead>
                 <tr>
                   <th>کد قطعه</th>
                   <th>عنوان قطعه در خط</th>
@@ -860,83 +875,108 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
                   <th className="text-center">عملیات</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e8e8e8] text-[#333333]">
-                {parts.map(p => {
-                  const r = routings.find(rt => rt.partId === p.id || rt.partCode === p.code);
-                  return (
-                    <tr key={p.id} className="hover:bg-[#e5f3fa]/55 transition-colors">
-                      <td className="font-mono font-bold">
-                        <button
-                          type="button"
-                          onClick={() => traceDocument(p.code, 'INVENTORY_LEDGER')}
-                          className="sap-doc-link"
-                        >
-                          {p.code}
-                        </button>
-                      </td>
-                      <td className="font-medium text-[#333333]">{p.name}</td>
-                      <td>
-                        <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold ${
-                          p.category === 'FINISHED_GOOD' ? 'bg-[#eefaf2] text-[#107e3e] border border-[#b6e4c8]' :
-                          p.category === 'WIP_PART' ? 'bg-[#fff7eb] text-[#e9730c] border border-[#f5d29c]' : 'bg-[#f0f0f0] text-[#666666]'
-                        }`}>
-                          {p.category === 'FINISHED_GOOD' ? 'محصول نهایی' : p.category === 'WIP_PART' ? 'نیمه‌ساخته' : 'ماده اولیه'}
-                        </span>
-                      </td>
-                      <td className="text-[#666666]">{p.carModel || 'مشترک'}</td>
-                      <td>
-                        {r ? (
-                          <span className="inline-flex items-center gap-1 text-[#107e3e] font-semibold">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#107e3e]" />
-                            <span>دارای مسیر (نسخه {r.version})</span>
-                          </span>
-                        ) : (
-                          <span className="text-[#666666] font-medium">فاقد مسیر تولید</span>
-                        )}
-                      </td>
-                      <td className="font-mono">
-                        {r ? `${toPersianDigits(r.operations.length)} ایستگاه` : '—'}
-                      </td>
-                      <td className="text-center">
-                        {r ? (
+              <tbody className="divide-y divide-[var(--fiori-border-subtle)] text-[var(--fiori-text-primary)]">
+                {parts.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-4">
+                      <EmptyState
+                        compact
+                        variant="NO_DATA"
+                        title="هیچ قطعه‌ای در کاتالوگ ثبت نشده است"
+                        description="ابتدا قطعات را در کاتالوگ ثبت کنید تا وضعیت مسیر تولید آن‌ها نمایش داده شود."
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  parts.map(p => {
+                    const r = routings.find(rt => rt.partId === p.id || rt.partCode === p.code);
+                    return (
+                      <tr key={p.id} className="hover:bg-[var(--fiori-bg-hover)] transition-colors">
+                        <td className="font-mono font-bold">
                           <button
                             type="button"
-                            onClick={() => {
-                              const prevId = selectedRoutingId;
-                              const prevMode = viewMode;
-                              pushSelectionStep(
-                                `مسیر ${r.partCode}`,
-                                () => {
-                                  setSelectedRoutingId(prevId);
-                                  setViewMode(prevMode);
-                                },
-                                `routing-${r.id}`,
-                              );
-                              setSelectedRoutingId(r.id);
-                              setViewMode('STEPPER');
-                            }}
-                            className="sap-btn-standard px-2.5 py-1 text-xs cursor-pointer"
+                            onClick={() => traceDocument(p.code, 'INVENTORY_LEDGER')}
+                            className="sap-doc-link fiori-ltr-code"
                           >
-                            مشاهده و ویرایش مراحل ←
+                            {p.code}
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNewRoutingPartId(p.id);
-                              setNewRoutingVersion('V1.0');
-                              setNewRoutingNotes('');
-                              setIsNewRoutingModalOpen(true);
-                            }}
-                            className="sap-btn-emphasized px-2.5 py-1 text-xs cursor-pointer"
-                          >
-                            + ایجاد مسیر برای این قطعه
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="font-medium text-[var(--fiori-text-primary)]">{p.name}</td>
+                        <td>
+                          <FioriObjectStatus
+                            tone={
+                              p.category === 'FINISHED_GOOD'
+                                ? 'positive'
+                                : p.category === 'WIP_PART'
+                                ? 'critical'
+                                : 'neutral'
+                            }
+                            label={
+                              p.category === 'FINISHED_GOOD'
+                                ? 'محصول نهایی'
+                                : p.category === 'WIP_PART'
+                                ? 'نیمه‌ساخته'
+                                : 'ماده اولیه'
+                            }
+                          />
+                        </td>
+                        <td className="text-[var(--fiori-text-secondary)]">{p.carModel || 'مشترک'}</td>
+                        <td>
+                          {r ? (
+                            <FioriObjectStatus
+                              tone="positive"
+                              variant="text"
+                              icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                              label={`دارای مسیر (نسخه ${r.version})`}
+                            />
+                          ) : (
+                            <FioriObjectStatus tone="neutral" variant="text" label="فاقد مسیر تولید" />
+                          )}
+                        </td>
+                        <td className="font-mono tabular-nums">
+                          {r ? `${toPersianDigits(r.operations.length)} ایستگاه` : '—'}
+                        </td>
+                        <td className="text-center">
+                          {r ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const prevId = selectedRoutingId;
+                                const prevMode = viewMode;
+                                pushSelectionStep(
+                                  `مسیر ${r.partCode}`,
+                                  () => {
+                                    setSelectedRoutingId(prevId);
+                                    setViewMode(prevMode);
+                                  },
+                                  `routing-${r.id}`,
+                                );
+                                setSelectedRoutingId(r.id);
+                                setViewMode('STEPPER');
+                              }}
+                              className="sap-btn-standard px-2.5 py-1 text-xs cursor-pointer"
+                            >
+                              مشاهده و ویرایش مراحل ←
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNewRoutingPartId(p.id);
+                                setNewRoutingVersion('V1.0');
+                                setNewRoutingNotes('');
+                                setIsNewRoutingModalOpen(true);
+                              }}
+                              className="sap-btn-emphasized px-2.5 py-1 text-xs cursor-pointer"
+                            >
+                              + ایجاد مسیر برای این قطعه
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -948,29 +988,27 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
         <div className="space-y-4">
           {/* Active Routing Summary Card */}
           <div className="sap-card p-4 space-y-4">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-3 border-b border-[#e8e8e8]">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-3 border-b border-[var(--fiori-border-subtle)]">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => traceDocument(activeRouting.partCode, 'INVENTORY_LEDGER')}
-                    className="sap-doc-link text-xs px-2.5 py-0.5 rounded-sm bg-[#e5f3fa] border border-[#b3d7ff] font-mono font-bold"
+                    className="sap-doc-link text-xs px-2.5 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] border border-[var(--fiori-brand-border)] font-mono font-bold fiori-ltr-code"
                     title="رهگیری موجودی و کاردکس این قطعه"
                   >
                     {activeRouting.partCode}
                   </button>
-                  <span className="text-xs px-2.5 py-0.5 rounded-sm bg-[#f0f0f0] text-[#333333] border border-[#d9d9d9] font-bold">
-                    نسخه {activeRouting.version}
-                  </span>
-                  <span className="text-xs text-[#666666]">
+                  <FioriObjectStatus tone="neutral" label={`نسخه ${activeRouting.version}`} />
+                  <span className="text-xs text-[var(--fiori-text-secondary)] tabular-nums">
                     توالی: <strong>{toPersianDigits(activeRouting.operations.length)} ایستگاه عملیاتی</strong>
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-[#333333] mt-2">
+                <h3 className="text-base font-bold text-[var(--fiori-text-primary)] mt-2">
                   {activeRouting.partName}
                 </h3>
                 {activeRouting.notes && (
-                  <p className="text-xs text-[#666666] mt-1 leading-relaxed">
+                  <p className="text-xs text-[var(--fiori-text-secondary)] mt-1 leading-relaxed">
                     الزامات کیفی و یادداشت‌ها: {activeRouting.notes}
                   </p>
                 )}
@@ -978,9 +1016,9 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
 
               {/* Action Buttons for Active Routing */}
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <div className="px-3 py-1.5 bg-[#f7f9fa] border border-[#d9d9d9] rounded-sm text-left sm:text-right">
-                  <span className="text-[10px] text-[#666666] block">زمان چرخه کل ساخت:</span>
-                  <span className="text-xs font-bold text-[#107e3e] font-mono">
+                <div className="px-3 py-1.5 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] text-left sm:text-right">
+                  <span className="text-[10px] text-[var(--fiori-text-secondary)] block">زمان چرخه کل ساخت:</span>
+                  <span className="text-xs font-bold text-[var(--fiori-positive)] font-mono tabular-nums">
                     {toPersianDigits(activeRouting.operations.reduce((s, op) => s + op.standardCycleTimeSec, 0))} ثانیه
                   </span>
                 </div>
@@ -1006,7 +1044,7 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
                 <button
                   type="button"
                   onClick={handleDeleteRouting}
-                  className="p-1.5 text-[#bb0000] hover:bg-[#fff2f2] rounded-sm transition cursor-pointer border border-[#f5bcbc]"
+                  className="p-1.5 text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer border border-[var(--fiori-negative-border)]"
                   title="حذف این مسیر"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -1016,29 +1054,29 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
 
             {/* Visual Process Flow Horizontal Stepper */}
             <div className="space-y-2">
-              <span className="text-xs font-bold text-[#333333] block">گردش متوالی فرآیند ساخت:</span>
+              <span className="text-xs font-bold text-[var(--fiori-text-primary)] block">گردش متوالی فرآیند ساخت:</span>
               <div className="flex items-center gap-2 overflow-x-auto py-2">
                 {activeRouting.operations.map((op, idx) => (
                   <React.Fragment key={op.stepNumber || idx}>
-                    <div className="flex-1 min-w-[150px] p-2.5 rounded-sm bg-[#f7f9fa] border border-[#d9d9d9] text-right space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold text-[#007cc0] bg-[#e5f3fa] px-2 py-0.5 rounded-sm border border-[#b3d7ff]">
-                          {op.stepCode}
-                        </span>
-                        <span className="text-[10px] text-[#666666] font-mono">
+                    <div className="flex-1 min-w-[150px] p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] text-right space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <FioriObjectStatus tone="brand" ltrCode label={op.stepCode} />
+                        <span className="text-[10px] text-[var(--fiori-text-secondary)] font-mono tabular-nums">
                           {toPersianDigits(op.standardCycleTimeSec)}s
                         </span>
                       </div>
-                      <div className="font-bold text-xs text-[#333333] line-clamp-1 mt-1">{op.stepName}</div>
+                      <div className="font-bold text-xs text-[var(--fiori-text-primary)] line-clamp-1 mt-1">{op.stepName}</div>
                       {op.isSharedOperation && (
-                        <span className="text-[10px] font-bold text-[#007cc0] bg-[#e5f3fa] px-1.5 py-0.5 rounded-sm border border-[#b3d7ff] block mt-1">
-                          قالب ۲ کویته ({op.sharedPartCode || 'هم‌تولید'})
-                        </span>
+                        <FioriObjectStatus
+                          tone="info"
+                          label={`قالب ۲ کویته (${op.sharedPartCode || 'هم‌تولید'})`}
+                          className="mt-1"
+                        />
                       )}
-                      <div className="text-[11px] text-[#666666] line-clamp-1">{op.machineName || 'پرس دستی'}</div>
+                      <div className="text-[11px] text-[var(--fiori-text-secondary)] line-clamp-1">{op.machineName || 'پرس دستی'}</div>
                     </div>
                     {idx < activeRouting.operations.length - 1 && (
-                      <ArrowLeft className="w-4 h-4 text-[#666666] shrink-0" />
+                      <ArrowLeft className="w-4 h-4 text-[var(--fiori-text-secondary)] shrink-0" />
                     )}
                   </React.Fragment>
                 ))}
@@ -1046,14 +1084,17 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
             </div>
 
             {/* Operations Breakdown Table */}
-            <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-bold text-[#333333]">
-                جزئیات مهندسی ایستگاه‌ها، قالب‌ها و پارامترهای کنترل فرآیند:
-              </h4>
+            <div className="border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] overflow-hidden bg-[var(--fiori-bg-surface)]">
+              <FioriToolbar
+                variant="table"
+                title="جزئیات مهندسی ایستگاه‌ها، قالب‌ها و پارامترهای کنترل فرآیند"
+                count={activeRouting.operations.length}
+                countLabel="مرحله عملیاتی"
+              />
 
-              <div className="overflow-x-auto border border-[#d9d9d9] rounded-sm">
+              <div className="overflow-x-auto">
                 <table className="sap-table-compact w-full text-right text-xs">
-                  <thead className="bg-[#ffffff] text-[#333333] font-semibold border-b border-[#d9d9d9]">
+                  <thead>
                     <tr>
                       <th>شماره گام</th>
                       <th>کد و عنوان عملیات</th>
@@ -1067,98 +1108,111 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
                       <th className="text-center">عملیات</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#e8e8e8] text-[#333333]">
-                    {activeRouting.operations.map((step, idx) => (
-                      <tr key={step.stepNumber || idx} className="hover:bg-[#e5f3fa]/55 transition-colors">
-                        <td className="font-mono font-bold text-[#007cc0]">
-                          {step.stepCode}
-                        </td>
-                        <td className="font-bold text-[#333333]">
-                          {step.stepName}
-                          {step.isSharedOperation && (
-                            <span className="mt-1 block text-[10px] font-bold text-[#007cc0] bg-[#e5f3fa] border border-[#b3d7ff] px-2 py-0.5 rounded-sm w-fit">
-                              عملیات مشترک: خروجی همزمان{' '}
-                              {step.sharedPartCode ? (
-                                <button
-                                  type="button"
-                                  onClick={() => traceDocument(step.sharedPartCode!, 'INVENTORY_LEDGER')}
-                                  className="sap-doc-link font-mono"
-                                >
-                                  [{step.sharedPartCode}]
-                                </button>
-                              ) : null}{' '}
-                              ({toPersianDigits(step.sharedYieldRatio || 1)} عدد در هر ضرب)
-                            </span>
-                          )}
-                          {step.description && (
-                            <span className="block text-[11px] font-normal text-[#666666] mt-0.5">
-                              {step.description}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          <span className="px-2 py-0.5 rounded-sm bg-[#f0f0f0] text-[#333333] font-mono text-[11px] font-medium border border-[#d9d9d9]">
-                            {step.processType}
-                          </span>
-                        </td>
-                        <td className="text-[#333333] font-medium">
-                          {step.machineName || 'پرس مشترک سالن'}
-                        </td>
-                        <td className="font-mono text-[#007cc0] text-[11px]">
-                          {step.dieMoldName || 'فاقد قالب'}
-                        </td>
-                        <td className="text-center font-mono font-bold text-[#333333]">
-                          {step.requiredTonnage ? `${toPersianDigits(step.requiredTonnage)}T` : '—'}
-                        </td>
-                        <td className="text-center font-mono font-bold text-[#333333]">
-                          {toPersianDigits(step.standardCycleTimeSec)}
-                        </td>
-                        <td className="text-center font-mono text-[#666666]">
-                          {toPersianDigits(step.setupTimeMin || 0)}
-                        </td>
-                        <td className="text-center font-mono text-[#e9730c] font-bold">
-                          {toPersianDigits(step.scrapNormPercent)}%
-                        </td>
-                        <td className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              disabled={idx === 0}
-                              onClick={() => handleMoveStep(idx, 'UP')}
-                              className="p-1 text-[#666666] hover:text-[#333333] hover:bg-[#e5f3fa] disabled:opacity-30 rounded-sm transition cursor-pointer"
-                              title="انتقال به گام قبلی (تغییر توالی)"
-                            >
-                              <ChevronUp className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={idx === activeRouting.operations.length - 1}
-                              onClick={() => handleMoveStep(idx, 'DOWN')}
-                              className="p-1 text-[#666666] hover:text-[#333333] hover:bg-[#e5f3fa] disabled:opacity-30 rounded-sm transition cursor-pointer"
-                              title="انتقال به گام بعدی (تغییر توالی)"
-                            >
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditStep(step, idx)}
-                              className="p-1.5 text-[#007cc0] hover:bg-[#e5f3fa] rounded-sm transition cursor-pointer"
-                              title="ویرایش گام"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteStep(idx)}
-                              className="p-1.5 text-[#bb0000] hover:bg-[#fff2f2] rounded-sm transition cursor-pointer"
-                              title="حذف گام"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                  <tbody className="divide-y divide-[var(--fiori-border-subtle)] text-[var(--fiori-text-primary)]">
+                    {activeRouting.operations.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="p-4">
+                          <EmptyState
+                            compact
+                            variant="NO_DATA"
+                            title="هنوز مرحله عملیاتی برای این مسیر تعریف نشده است"
+                            description="برای تعریف ایستگاه‌ها، پرس‌ها و قالب‌های مرتبط روی دکمه افزودن مرحله کلیک کنید."
+                            actionLabel="افزودن مرحله عملیاتی جدید"
+                            onAction={handleOpenAddStep}
+                          />
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      activeRouting.operations.map((step, idx) => (
+                        <tr key={step.stepNumber || idx} className="hover:bg-[var(--fiori-bg-hover)] transition-colors">
+                          <td className="font-mono font-bold text-[var(--fiori-brand)]">
+                            <span className="fiori-ltr-code">{step.stepCode}</span>
+                          </td>
+                          <td className="font-bold text-[var(--fiori-text-primary)]">
+                            {step.stepName}
+                            {step.isSharedOperation && (
+                              <span className="mt-1 inline-flex items-center gap-1 flex-wrap text-[10px] font-bold text-[var(--fiori-brand)] bg-[var(--fiori-brand-bg)] border border-[var(--fiori-brand-border)] px-2 py-0.5 rounded-[var(--fiori-radius-sm)] w-fit tabular-nums">
+                                عملیات مشترک: خروجی همزمان{' '}
+                                {step.sharedPartCode ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => traceDocument(step.sharedPartCode!, 'INVENTORY_LEDGER')}
+                                    className="sap-doc-link font-mono fiori-ltr-code"
+                                  >
+                                    [{step.sharedPartCode}]
+                                  </button>
+                                ) : null}{' '}
+                                ({toPersianDigits(step.sharedYieldRatio || 1)} عدد در هر ضرب)
+                              </span>
+                            )}
+                            {step.description && (
+                              <span className="block text-[11px] font-normal text-[var(--fiori-text-secondary)] mt-0.5">
+                                {step.description}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <FioriObjectStatus tone="neutral" ltrCode label={step.processType} />
+                          </td>
+                          <td className="text-[var(--fiori-text-primary)] font-medium">
+                            {step.machineName || 'پرس مشترک سالن'}
+                          </td>
+                          <td className="font-mono text-[var(--fiori-brand)] text-[11px]">
+                            {step.dieMoldName || 'فاقد قالب'}
+                          </td>
+                          <td className="text-center font-mono font-bold text-[var(--fiori-text-primary)] tabular-nums">
+                            {step.requiredTonnage ? `${toPersianDigits(step.requiredTonnage)}T` : '—'}
+                          </td>
+                          <td className="text-center font-mono font-bold text-[var(--fiori-text-primary)] tabular-nums">
+                            {toPersianDigits(step.standardCycleTimeSec)}
+                          </td>
+                          <td className="text-center font-mono text-[var(--fiori-text-secondary)] tabular-nums">
+                            {toPersianDigits(step.setupTimeMin || 0)}
+                          </td>
+                          <td className="text-center font-mono text-[var(--fiori-critical)] font-bold tabular-nums">
+                            {toPersianDigits(step.scrapNormPercent)}%
+                          </td>
+                          <td className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveStep(idx, 'UP')}
+                                className="p-1 text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-brand-bg)] disabled:opacity-30 rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
+                                title="انتقال به گام قبلی (تغییر توالی)"
+                              >
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === activeRouting.operations.length - 1}
+                                onClick={() => handleMoveStep(idx, 'DOWN')}
+                                className="p-1 text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-brand-bg)] disabled:opacity-30 rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
+                                title="انتقال به گام بعدی (تغییر توالی)"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditStep(step, idx)}
+                                className="p-1.5 text-[var(--fiori-brand)] hover:bg-[var(--fiori-brand-bg)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
+                                title="ویرایش گام"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStep(idx)}
+                                className="p-1.5 text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
+                                title="حذف گام"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1168,675 +1222,629 @@ export const RoutingsView: React.FC<RoutingsViewProps> = ({
       )}
 
       {/* MODAL 1: CREATE NEW ROUTING */}
-      {isNewRoutingModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-sm w-full max-w-lg p-5 shadow-xl space-y-4 text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h3 className="font-bold text-sm text-[#333333] flex items-center gap-2">
-                <GitFork className="w-4 h-4 text-[#007cc0]" />
-                <span>تعریف مسیر تولید مهندسی برای قطعه جدید</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsNewRoutingModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <FioriDialog
+        isOpen={isNewRoutingModalOpen}
+        onClose={() => setIsNewRoutingModalOpen(false)}
+        title="تعریف مسیر تولید مهندسی برای قطعه جدید"
+        icon={<GitFork className="w-4 h-4" />}
+        tone="brand"
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsNewRoutingModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="rtg-new-form"
+              disabled={loading}
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer disabled:opacity-50"
+            >
+              {loading ? 'در حال ایجاد...' : 'ایجاد مسیر تولید'}
+            </button>
+          </>
+        }
+      >
+        {formError && (
+          <FioriMessageStrip compact tone="error">
+            {formError}
+          </FioriMessageStrip>
+        )}
 
-            {formError && (
-              <div className="p-3 rounded-sm bg-[#fff2f2] border border-[#f5bcbc] text-[#bb0000] text-xs">
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateNewRouting} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">
-                  انتخاب قطعه خودرویی از کاتالوگ *
-                </label>
-                <SearchableSelect
-                  value={newRoutingPartId}
-                  onChange={val => setNewRoutingPartId(val)}
-                  placeholder="جستجو و انتخاب قطعه برای ساخت مسیر..."
-                  searchPlaceholder="جستجوی کد یا نام قطعه..."
-                  options={parts.map(p => ({
-                    value: p.id,
-                    label: p.name,
-                    sublabel: `${p.code} • ${p.carModel || 'مشترک'}`,
-                    badge: p.category === 'FINISHED_GOOD' ? 'محصول' : p.category === 'WIP_PART' ? 'نیمه‌ساخته' : 'ماده اولیه',
-                  }))}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">نسخه مهندسی نقشه ساخت *</label>
-                <input
-                  type="text"
-                  required
-                  value={newRoutingVersion}
-                  onChange={e => setNewRoutingVersion(e.target.value)}
-                  placeholder="V1.0 یا V2.1"
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">یادداشت‌ها و الزامات قرارداد ساپکو</label>
-                <textarea
-                  rows={2}
-                  value={newRoutingNotes}
-                  onChange={e => setNewRoutingNotes(e.target.value)}
-                  placeholder="الزامات ابعادی، تلرانس‌های مجاز، نوع روانکاری ورق و کنترل پلیسه..."
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm p-2.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsNewRoutingModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
-                >
-                  {loading ? 'در حال ایجاد...' : 'ایجاد مسیر تولید'}
-                </button>
-              </div>
-            </form>
+        <form id="rtg-new-form" onSubmit={handleCreateNewRouting} className="space-y-3.5 text-xs">
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">
+              انتخاب قطعه خودرویی از کاتالوگ *
+            </label>
+            <SearchableSelect
+              value={newRoutingPartId}
+              onChange={val => setNewRoutingPartId(val)}
+              placeholder="جستجو و انتخاب قطعه برای ساخت مسیر..."
+              searchPlaceholder="جستجوی کد یا نام قطعه..."
+              options={parts.map(p => ({
+                value: p.id,
+                label: p.name,
+                sublabel: `${p.code} • ${p.carModel || 'مشترک'}`,
+                badge: p.category === 'FINISHED_GOOD' ? 'محصول' : p.category === 'WIP_PART' ? 'نیمه‌ساخته' : 'ماده اولیه',
+              }))}
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">نسخه مهندسی نقشه ساخت *</label>
+            <input
+              type="text"
+              required
+              value={newRoutingVersion}
+              onChange={e => setNewRoutingVersion(e.target.value)}
+              placeholder="V1.0 یا V2.1"
+              className="fiori-input w-full px-3 py-1.5 font-mono fiori-ltr-code"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">یادداشت‌ها و الزامات قرارداد ساپکو</label>
+            <textarea
+              rows={2}
+              value={newRoutingNotes}
+              onChange={e => setNewRoutingNotes(e.target.value)}
+              placeholder="الزامات ابعادی، تلرانس‌های مجاز، نوع روانکاری ورق و کنترل پلیسه..."
+              className="fiori-input w-full p-2.5"
+            />
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* MODAL 2: EDIT ACTIVE ROUTING */}
-      {isEditRoutingModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-sm w-full max-w-md p-5 shadow-xl space-y-4 text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h3 className="font-bold text-sm text-[#333333]">ویرایش مشخصات سند مسیر تولید</h3>
-              <button
-                type="button"
-                onClick={() => setIsEditRoutingModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEditRouting} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">نسخه مهندسی مسیر</label>
-                <input
-                  type="text"
-                  required
-                  value={editVersion}
-                  onChange={e => setEditVersion(e.target.value)}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">یادداشت‌ها و الزامات نقشه</label>
-                <textarea
-                  rows={3}
-                  value={editNotes}
-                  onChange={e => setEditNotes(e.target.value)}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm p-2.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsEditRoutingModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
-                >
-                  ثبت تغییرات
-                </button>
-              </div>
-            </form>
+      <FioriDialog
+        isOpen={isEditRoutingModalOpen}
+        onClose={() => setIsEditRoutingModalOpen(false)}
+        title="ویرایش مشخصات سند مسیر تولید"
+        icon={<Edit3 className="w-4 h-4" />}
+        tone="default"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsEditRoutingModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="rtg-edit-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
+            >
+              ثبت تغییرات
+            </button>
+          </>
+        }
+      >
+        <form id="rtg-edit-form" onSubmit={handleSaveEditRouting} className="space-y-3.5 text-xs">
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">نسخه مهندسی مسیر</label>
+            <input
+              type="text"
+              required
+              value={editVersion}
+              onChange={e => setEditVersion(e.target.value)}
+              className="fiori-input w-full px-3 py-1.5 font-mono fiori-ltr-code"
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">یادداشت‌ها و الزامات نقشه</label>
+            <textarea
+              rows={3}
+              value={editNotes}
+              onChange={e => setEditNotes(e.target.value)}
+              className="fiori-input w-full p-2.5"
+            />
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* MODAL 3: ADD / EDIT OPERATION STEP */}
-      {isStepModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-sm w-full max-w-xl p-5 shadow-xl space-y-4 text-right max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h3 className="font-bold text-sm text-[#333333] flex items-center gap-2">
-                <Settings className="w-4 h-4 text-[#007cc0]" />
-                <span>{editingStepIndex !== null ? 'ویرایش گام عملیات' : 'افزودن گام عملیاتی OP جدید'}</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsStepModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
+      <FioriDialog
+        isOpen={isStepModalOpen}
+        onClose={() => setIsStepModalOpen(false)}
+        title={editingStepIndex !== null ? 'ویرایش گام عملیات' : 'افزودن گام عملیاتی OP جدید'}
+        icon={<Settings className="w-4 h-4" />}
+        tone="brand"
+        size="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsStepModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="rtg-step-form"
+              disabled={loading}
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer disabled:opacity-50"
+            >
+              {loading ? 'در حال ذخیره...' : 'ذخیره گام عملیاتی'}
+            </button>
+          </>
+        }
+      >
+        {formError && (
+          <FioriMessageStrip compact tone="error">
+            {formError}
+          </FioriMessageStrip>
+        )}
+
+        <form id="rtg-step-form" onSubmit={handleSaveStep} className="space-y-3.5 text-xs">
+          {/* MASTER OPERATION LIBRARY SELECTOR */}
+          <div className="p-3 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[var(--fiori-text-primary)] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                <span>اتصال به عملیات استاندارد مهندسی (Master Operations Library)</span>
+              </label>
+              {selectedMasterOpId && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedMasterOpId('')}
+                  className="text-[10px] text-[var(--fiori-brand)] hover:underline cursor-pointer"
+                >
+                  قطع ارتباط
+                </button>
+              )}
+            </div>
+            <select
+              value={selectedMasterOpId}
+              onChange={e => handleSelectMasterOperation(e.target.value)}
+              className="fiori-input w-full px-2.5 py-1.5 text-xs font-medium"
+            >
+              <option value="">-- انتخاب از کاتالوگ عملیات تعریف‌شده در اطلاعات پایه (تکمیل خودکار) --</option>
+              {operationsLibrary.map(op => (
+                <option key={op.id} value={op.id}>
+                  [{op.code}] {op.name} — {op.stationType || op.category} (سیکل: {toPersianDigits(op.cycleTimeSec)}s، ستاپ: {toPersianDigits(op.setupTimeMin)}min)
+                </option>
+              ))}
+            </select>
+            {selectedMasterOpId ? (
+              <p className="text-[10px] text-[var(--fiori-positive)] flex items-center gap-1 tabular-nums">
+                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                <span>
+                  عنوان، زمان چرخه ({toPersianDigits(stepData.standardCycleTimeSec || 0)} ثانیه)، زمان تعویض قالب ({toPersianDigits(stepData.setupTimeMin || 0)} دقیقه) و ایستگاه کاری خودکار از شناسنامه عملیات پایه بارگذاری شدند.
+                </span>
+              </p>
+            ) : (
+              <p className="text-[10px] text-[var(--fiori-text-secondary)]">
+                با انتخاب یکی از عملیات استاندارد، فیلدهای فنی، زمان ستاپ و دستگاه منطبق به طور خودکار تکمیل می‌گردند.
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">شماره گام (Step Number) *</label>
+              <input
+                type="number"
+                step={10}
+                required
+                value={stepData.stepNumber || 10}
+                onChange={e => setStepData({ ...stepData, stepNumber: parseInt(e.target.value, 10) || 10 })}
+                className="fiori-input w-full px-3 py-1.5 font-mono tabular-nums"
+              />
+              <span className="text-[10px] text-[var(--fiori-text-secondary)] block mt-0.5">معمولاً به صورت مضارب ۱۰ (OP10, OP20, OP30)</span>
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">کد فنی گام *</label>
+              <input
+                type="text"
+                required
+                value={stepData.stepCode || ''}
+                onChange={e => setStepData({ ...stepData, stepCode: e.target.value })}
+                placeholder="OP20_DRAW"
+                className="fiori-input w-full px-3 py-1.5 font-mono fiori-ltr-code"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">عنوان کامل عملیات *</label>
+            <input
+              type="text"
+              required
+              value={stepData.stepName || ''}
+              onChange={e => setStepData({ ...stepData, stepName: e.target.value })}
+              placeholder="مثال: کشش عمیق پوسته و فرم‌دهی در پرس ۸۰۰ تن"
+              className="fiori-input w-full px-3 py-1.5 font-medium"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">نوع فرآیند *</label>
+              <select
+                value={stepData.processType}
+                onChange={e => setStepData({ ...stepData, processType: e.target.value as ProcessType })}
+                className="fiori-input w-full px-3 py-1.5"
               >
-                <X className="w-4 h-4" />
-              </button>
+                {PROCESS_DEFINITIONS.map(p => (
+                  <option key={p.code} value={p.code}>
+                    {p.name} ({p.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-medium text-[var(--fiori-text-primary)]">پرس / دستگاه انتسابی</label>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickMachineModalOpen(true)}
+                  className="text-[10px] text-[var(--fiori-brand)] hover:underline font-bold flex items-center gap-0.5 cursor-pointer"
+                  title="افزودن سریع پرس جدید بدون خروج از این صفحه"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ پرس جدید</span>
+                </button>
+              </div>
+              <select
+                value={stepData.machineId || ''}
+                onChange={e => setStepData({ ...stepData, machineId: e.target.value })}
+                className="fiori-input w-full px-3 py-1.5"
+              >
+                <option value="">-- بدون انتساب / دستی --</option>
+                {machines.map(m => (
+                  <option key={m.id} value={m.id}>
+                    [{m.code}] {m.name} ({m.tonnage}T)
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-medium text-[var(--fiori-text-primary)]">قالب پرس متصل (همبسته با قطعه)</label>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickDieModalOpen(true)}
+                  className="text-[10px] text-[var(--fiori-brand)] hover:underline font-bold flex items-center gap-0.5 cursor-pointer"
+                  title="افزودن سریع قالب جدید متصل به این قطعه"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ قالب جدید</span>
+                </button>
+              </div>
+              <select
+                value={stepData.dieMoldId || ''}
+                onChange={e => {
+                  const dId = e.target.value;
+                  const selectedDie = dies.find(d => d.id === dId || d.code === dId);
+                  setStepData({
+                    ...stepData,
+                    dieMoldId: dId,
+                    requiredTonnage: selectedDie?.requiredTonnage || stepData.requiredTonnage,
+                  });
+                }}
+                className="fiori-input w-full px-3 py-1.5"
+              >
+                <option value="">-- بدون قالب اختصاصی --</option>
+                {(showAllDies || correlatedDies.length === 0 ? dies : correlatedDies).map(d => (
+                  <option key={d.id} value={d.id}>
+                    [{d.code}] {d.name} ({d.requiredTonnage}T)
+                    {d.partCode ? ` • قطعه: ${d.partCode}` : ''}
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex items-center justify-between mt-1 text-[10px]">
+                <span className="text-[var(--fiori-text-secondary)] tabular-nums">
+                  {correlatedDies.length > 0 && !showAllDies
+                    ? `نمایش ${toPersianDigits(correlatedDies.length)} قالب اختصاصی «${activeRouting?.partName || 'این قطعه'}»`
+                    : `نمایش کل ${toPersianDigits(dies.length)} قالب کارخانه`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAllDies(!showAllDies)}
+                  className="text-[var(--fiori-brand)] hover:underline cursor-pointer font-medium"
+                >
+                  {showAllDies ? 'فقط قالب‌های مرتبط با این قطعه' : 'نمایش همه قالب‌ها'}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">تناژ اسمی مورد نیاز (تن)</label>
+              <input
+                type="number"
+                value={stepData.requiredTonnage || 0}
+                onChange={e => setStepData({ ...stepData, requiredTonnage: parseFloat(e.target.value) || 0 })}
+                placeholder="400"
+                className="fiori-input w-full px-3 py-1.5 font-mono tabular-nums"
+              />
+              <span className="text-[10px] text-[var(--fiori-text-secondary)] block mt-1">
+                تنظیم خودکار بر اساس ظرفیت قالب یا پرس انتخابی
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">زمان چرخه (ثانیه) *</label>
+              <input
+                type="number"
+                step="0.5"
+                required
+                value={stepData.standardCycleTimeSec || 10}
+                onChange={e => setStepData({ ...stepData, standardCycleTimeSec: parseFloat(e.target.value) || 10 })}
+                className="fiori-input w-full px-3 py-1.5 font-mono tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">زمان ستاپ قالب (دقیقه)</label>
+              <input
+                type="number"
+                value={stepData.setupTimeMin || 0}
+                onChange={e => setStepData({ ...stepData, setupTimeMin: parseFloat(e.target.value) || 0 })}
+                className="fiori-input w-full px-3 py-1.5 font-mono tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">نرم ضایعات مجاز (٪) *</label>
+              <input
+                type="number"
+                step="0.1"
+                required
+                value={stepData.scrapNormPercent || 1}
+                onChange={e => setStepData({ ...stepData, scrapNormPercent: parseFloat(e.target.value) || 1 })}
+                className="fiori-input w-full px-3 py-1.5 font-mono tabular-nums"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">دستورالعمل کنترل ابعادی و نکات قالب</label>
+            <textarea
+              rows={2}
+              value={stepData.description || ''}
+              onChange={e => setStepData({ ...stepData, description: e.target.value })}
+              placeholder="نکات تنظیم لقی سنبه ماتریس، کنترل چروکیدگی کشش، روغن‌کاری ورق..."
+              className="fiori-input w-full p-2.5"
+            />
+          </div>
+
+          {/* Shared Operation / Dual-Output Co-Production Config */}
+          <div className="p-3 bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] rounded-[var(--fiori-radius-sm)] space-y-2.5">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isSharedOpCheck"
+                checked={stepData.isSharedOperation || false}
+                onChange={e => setStepData({ ...stepData, isSharedOperation: e.target.checked })}
+                className="w-4 h-4 accent-[var(--fiori-brand)] rounded-sm cursor-pointer"
+              />
+              <label htmlFor="isSharedOpCheck" className="font-bold text-xs text-[var(--fiori-text-primary)] cursor-pointer">
+                عملیات مشترک / خروجی همزمان دوگانه (قالب ۲ کویته متقارن مانند چپ و راست)
+              </label>
             </div>
 
-            {formError && (
-              <div className="p-3 rounded-sm bg-[#fff2f2] border border-[#f5bcbc] text-[#bb0000] text-xs">
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleSaveStep} className="space-y-3.5 text-xs">
-              {/* MASTER OPERATION LIBRARY SELECTOR */}
-              <div className="p-3 rounded-sm bg-[#e5f3fa] border border-[#b3d7ff] space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[#333333] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#007cc0]" />
-                    <span>اتصال به عملیات استاندارد مهندسی (Master Operations Library)</span>
+            {stepData.isSharedOperation && (
+              <div className="space-y-2.5 pt-1 text-xs">
+                <div>
+                  <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">
+                    انتخاب قطعه دوم هم‌تولید (Co-Produced Part) *
                   </label>
-                  {selectedMasterOpId && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMasterOpId('')}
-                      className="text-[10px] text-[#007cc0] hover:underline cursor-pointer"
-                    >
-                      قطع ارتباط
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={selectedMasterOpId}
-                  onChange={e => handleSelectMasterOperation(e.target.value)}
-                  className="w-full bg-white border border-[#b3d7ff] rounded-sm px-2.5 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                >
-                  <option value="">-- انتخاب از کاتالوگ عملیات تعریف‌شده در اطلاعات پایه (تکمیل خودکار) --</option>
-                  {operationsLibrary.map(op => (
-                    <option key={op.id} value={op.id}>
-                      [{op.code}] {op.name} — {op.stationType || op.category} (سیکل: {toPersianDigits(op.cycleTimeSec)}s، ستاپ: {toPersianDigits(op.setupTimeMin)}min)
-                    </option>
-                  ))}
-                </select>
-                {selectedMasterOpId ? (
-                  <p className="text-[10px] text-[#107e3e] flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-[#107e3e] shrink-0" />
-                    <span>
-                      عنوان، زمان چرخه ({toPersianDigits(stepData.standardCycleTimeSec || 0)} ثانیه)، زمان تعویض قالب ({toPersianDigits(stepData.setupTimeMin || 0)} دقیقه) و ایستگاه کاری خودکار از شناسنامه عملیات پایه بارگذاری شدند.
-                    </span>
-                  </p>
-                ) : (
-                  <p className="text-[10px] text-[#666666]">
-                    با انتخاب یکی از عملیات استاندارد، فیلدهای فنی، زمان ستاپ و دستگاه منطبق به طور خودکار تکمیل می‌گردند.
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">شماره گام (Step Number) *</label>
-                  <input
-                    type="number"
-                    step={10}
-                    required
-                    value={stepData.stepNumber || 10}
-                    onChange={e => setStepData({ ...stepData, stepNumber: parseInt(e.target.value, 10) || 10 })}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                  <span className="text-[10px] text-[#666666] block mt-0.5">معمولاً به صورت مضارب ۱۰ (OP10, OP20, OP30)</span>
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">کد فنی گام *</label>
-                  <input
-                    type="text"
-                    required
-                    value={stepData.stepCode || ''}
-                    onChange={e => setStepData({ ...stepData, stepCode: e.target.value })}
-                    placeholder="OP20_DRAW"
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">عنوان کامل عملیات *</label>
-                <input
-                  type="text"
-                  required
-                  value={stepData.stepName || ''}
-                  onChange={e => setStepData({ ...stepData, stepName: e.target.value })}
-                  placeholder="مثال: کشش عمیق پوسته و فرم‌دهی در پرس ۸۰۰ تن"
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">نوع فرآیند *</label>
                   <select
-                    value={stepData.processType}
-                    onChange={e => setStepData({ ...stepData, processType: e.target.value as ProcessType })}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  >
-                    {PROCESS_DEFINITIONS.map(p => (
-                      <option key={p.code} value={p.code}>
-                        {p.name} ({p.code})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-medium text-[#333333]">پرس / دستگاه انتسابی</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsQuickMachineModalOpen(true)}
-                      className="text-[10px] text-[#007cc0] hover:text-[#006299] font-bold flex items-center gap-0.5 cursor-pointer"
-                      title="افزودن سریع پرس جدید بدون خروج از این صفحه"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>+ پرس جدید</span>
-                    </button>
-                  </div>
-                  <select
-                    value={stepData.machineId || ''}
-                    onChange={e => setStepData({ ...stepData, machineId: e.target.value })}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  >
-                    <option value="">-- بدون انتساب / دستی --</option>
-                    {machines.map(m => (
-                      <option key={m.id} value={m.id}>
-                        [{m.code}] {m.name} ({m.tonnage}T)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-medium text-[#333333]">قالب پرس متصل (همبسته با قطعه)</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsQuickDieModalOpen(true)}
-                      className="text-[10px] text-[#007cc0] hover:text-[#006299] font-bold flex items-center gap-0.5 cursor-pointer"
-                      title="افزودن سریع قالب جدید متصل به این قطعه"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>+ قالب جدید</span>
-                    </button>
-                  </div>
-                  <select
-                    value={stepData.dieMoldId || ''}
+                    value={stepData.sharedPartId || ''}
                     onChange={e => {
-                      const dId = e.target.value;
-                      const selectedDie = dies.find(d => d.id === dId || d.code === dId);
+                      const pId = e.target.value;
+                      const found = parts.find(p => p.id === pId || p.code === pId);
                       setStepData({
                         ...stepData,
-                        dieMoldId: dId,
-                        requiredTonnage: selectedDie?.requiredTonnage || stepData.requiredTonnage,
+                        sharedPartId: pId,
+                        sharedPartCode: found?.code || '',
+                        sharedPartName: found?.name || '',
                       });
                     }}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
+                    className="fiori-input w-full px-3 py-1.5 font-medium"
                   >
-                    <option value="">-- بدون قالب اختصاصی --</option>
-                    {(showAllDies || correlatedDies.length === 0 ? dies : correlatedDies).map(d => (
-                      <option key={d.id} value={d.id}>
-                        [{d.code}] {d.name} ({d.requiredTonnage}T)
-                        {d.partCode ? ` • قطعه: ${d.partCode}` : ''}
+                    <option value="">-- انتخاب قطعه مکمل (مثلاً پشت صندلی راست) --</option>
+                    {parts.map(p => (
+                      <option key={p.id} value={p.id}>
+                        [{p.code}] {p.name}
                       </option>
                     ))}
                   </select>
+                </div>
 
-                  <div className="flex items-center justify-between mt-1 text-[10px]">
-                    <span className="text-[#666666]">
-                      {correlatedDies.length > 0 && !showAllDies
-                        ? `نمایش ${toPersianDigits(correlatedDies.length)} قالب اختصاصی «${activeRouting?.partName || 'این قطعه'}»`
-                        : `نمایش کل ${toPersianDigits(dies.length)} قالب کارخانه`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowAllDies(!showAllDies)}
-                      className="text-[#007cc0] hover:underline cursor-pointer font-medium"
-                    >
-                      {showAllDies ? 'فقط قالب‌های مرتبط با این قطعه' : 'نمایش همه قالب‌ها'}
-                    </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">کد فنی قطعه دوم</label>
+                    <input
+                      type="text"
+                      value={stepData.sharedPartCode || ''}
+                      onChange={e => setStepData({ ...stepData, sharedPartCode: e.target.value })}
+                      placeholder="SAPCO-ST-BACK-RH"
+                      className="fiori-input w-full px-3 py-1.5 font-mono fiori-ltr-code"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">نسبت خروجی در هر ضرب</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={stepData.sharedYieldRatio || 1}
+                      onChange={e => setStepData({ ...stepData, sharedYieldRatio: parseInt(e.target.value, 10) || 1 })}
+                      className="fiori-input w-full px-3 py-1.5 font-mono font-bold tabular-nums"
+                    />
                   </div>
                 </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">تناژ اسمی مورد نیاز (تن)</label>
-                  <input
-                    type="number"
-                    value={stepData.requiredTonnage || 0}
-                    onChange={e => setStepData({ ...stepData, requiredTonnage: parseFloat(e.target.value) || 0 })}
-                    placeholder="400"
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                  <span className="text-[10px] text-[#666666] block mt-1">
-                    تنظیم خودکار بر اساس ظرفیت قالب یا پرس انتخابی
-                  </span>
-                </div>
               </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">زمان چرخه (ثانیه) *</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    required
-                    value={stepData.standardCycleTimeSec || 10}
-                    onChange={e => setStepData({ ...stepData, standardCycleTimeSec: parseFloat(e.target.value) || 10 })}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">زمان ستاپ قالب (دقیقه)</label>
-                  <input
-                    type="number"
-                    value={stepData.setupTimeMin || 0}
-                    onChange={e => setStepData({ ...stepData, setupTimeMin: parseFloat(e.target.value) || 0 })}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">نرم ضایعات مجاز (٪) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={stepData.scrapNormPercent || 1}
-                    onChange={e => setStepData({ ...stepData, scrapNormPercent: parseFloat(e.target.value) || 1 })}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">دستورالعمل کنترل ابعادی و نکات قالب</label>
-                <textarea
-                  rows={2}
-                  value={stepData.description || ''}
-                  onChange={e => setStepData({ ...stepData, description: e.target.value })}
-                  placeholder="نکات تنظیم لقی سنبه ماتریس، کنترل چروکیدگی کشش، روغن‌کاری ورق..."
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm p-2.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-              </div>
-
-              {/* Shared Operation / Dual-Output Co-Production Config */}
-              <div className="p-3 bg-[#e5f3fa] border border-[#b3d7ff] rounded-sm space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isSharedOpCheck"
-                    checked={stepData.isSharedOperation || false}
-                    onChange={e => setStepData({ ...stepData, isSharedOperation: e.target.checked })}
-                    className="w-4 h-4 accent-[#007cc0] rounded-sm cursor-pointer"
-                  />
-                  <label htmlFor="isSharedOpCheck" className="font-bold text-xs text-[#333333] cursor-pointer">
-                    عملیات مشترک / خروجی همزمان دوگانه (قالب ۲ کویته متقارن مانند چپ و راست)
-                  </label>
-                </div>
-
-                {stepData.isSharedOperation && (
-                  <div className="space-y-2.5 pt-1 text-xs">
-                    <div>
-                      <label className="block font-semibold text-[#333333] mb-1">
-                        انتخاب قطعه دوم هم‌تولید (Co-Produced Part) *
-                      </label>
-                      <select
-                        value={stepData.sharedPartId || ''}
-                        onChange={e => {
-                          const pId = e.target.value;
-                          const found = parts.find(p => p.id === pId || p.code === pId);
-                          setStepData({
-                            ...stepData,
-                            sharedPartId: pId,
-                            sharedPartCode: found?.code || '',
-                            sharedPartName: found?.name || '',
-                          });
-                        }}
-                        className="w-full bg-white border border-[#b3d7ff] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                      >
-                        <option value="">-- انتخاب قطعه مکمل (مثلاً پشت صندلی راست) --</option>
-                        {parts.map(p => (
-                          <option key={p.id} value={p.id}>
-                            [{p.code}] {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-semibold text-[#333333] mb-1">کد فنی قطعه دوم</label>
-                        <input
-                          type="text"
-                          value={stepData.sharedPartCode || ''}
-                          onChange={e => setStepData({ ...stepData, sharedPartCode: e.target.value })}
-                          placeholder="SAPCO-ST-BACK-RH"
-                          className="w-full bg-white border border-[#b3d7ff] rounded-sm px-3 py-1.5 font-mono text-[#333333]"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-[#333333] mb-1">نسبت خروجی در هر ضرب</label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={stepData.sharedYieldRatio || 1}
-                          onChange={e => setStepData({ ...stepData, sharedYieldRatio: parseInt(e.target.value, 10) || 1 })}
-                          className="w-full bg-white border border-[#b3d7ff] rounded-sm px-3 py-1.5 font-mono font-bold text-[#333333]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsStepModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
-                >
-                  {loading ? 'در حال ذخیره...' : 'ذخیره گام عملیاتی'}
-                </button>
-              </div>
-            </form>
+            )}
           </div>
-        </div>
-      )}
+        </form>
+      </FioriDialog>
 
       {/* MODAL 4: QUICK ADD MACHINE / PRESS */}
-      {isQuickMachineModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-sm w-full max-w-md p-5 shadow-xl space-y-4 text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <h3 className="font-bold text-sm text-[#333333] flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-[#007cc0]" />
-                <span>تعریف سریع پرس / دستگاه جدید</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsQuickMachineModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateQuickMachine} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">نام و مشخصات پرس / دستگاه *</label>
-                <input
-                  type="text"
-                  required
-                  value={quickMachineName}
-                  onChange={e => setQuickMachineName(e.target.value)}
-                  placeholder="مثال: پرس ضربه‌ای ۲۵۰ تن کوماتسو شماره ۴"
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">کد دستگاه (اختیاری)</label>
-                  <input
-                    type="text"
-                    value={quickMachineCode}
-                    onChange={e => setQuickMachineCode(e.target.value)}
-                    placeholder="PRS-250T-04"
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">تناژ اسمی (تن) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={quickMachineTonnage}
-                    onChange={e => setQuickMachineTonnage(Number(e.target.value) || 250)}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0] font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">سالن استقرار</label>
-                <select
-                  value={quickMachineHall}
-                  onChange={e => setQuickMachineHall(e.target.value)}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                >
-                  <option value="سالن برش">سالن برش</option>
-                  <option value="سالن پرس">سالن پرس</option>
-                  <option value="سالن پرس سنگین">سالن پرس سنگین</option>
-                  <option value="سالن جوشکاری">سالن جوشکاری</option>
-                  <option value="سالن رنگ">سالن رنگ</option>
-                  <option value="سالن کیفیت">سالن کیفیت</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsQuickMachineModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingQuickMachine}
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
-                >
-                  {savingQuickMachine ? 'در حال ثبت...' : 'ثبت سریع و انتخاب پرس'}
-                </button>
-              </div>
-            </form>
+      <FioriDialog
+        isOpen={isQuickMachineModalOpen}
+        onClose={() => setIsQuickMachineModalOpen(false)}
+        title="تعریف سریع پرس / دستگاه جدید"
+        icon={<Cpu className="w-4 h-4" />}
+        tone="brand"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsQuickMachineModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="rtg-quick-machine-form"
+              disabled={savingQuickMachine}
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer disabled:opacity-50"
+            >
+              {savingQuickMachine ? 'در حال ثبت...' : 'ثبت سریع و انتخاب پرس'}
+            </button>
+          </>
+        }
+      >
+        <form id="rtg-quick-machine-form" onSubmit={handleCreateQuickMachine} className="space-y-3.5 text-xs">
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">نام و مشخصات پرس / دستگاه *</label>
+            <input
+              type="text"
+              required
+              value={quickMachineName}
+              onChange={e => setQuickMachineName(e.target.value)}
+              placeholder="مثال: پرس ضربه‌ای ۲۵۰ تن کوماتسو شماره ۴"
+              className="fiori-input w-full px-3 py-1.5 font-medium"
+            />
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">کد دستگاه (اختیاری)</label>
+              <input
+                type="text"
+                value={quickMachineCode}
+                onChange={e => setQuickMachineCode(e.target.value)}
+                placeholder="PRS-250T-04"
+                className="fiori-input w-full px-3 py-1.5 font-mono fiori-ltr-code"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">تناژ اسمی (تن) *</label>
+              <input
+                type="number"
+                required
+                value={quickMachineTonnage}
+                onChange={e => setQuickMachineTonnage(Number(e.target.value) || 250)}
+                className="fiori-input w-full px-3 py-1.5 font-mono font-bold tabular-nums"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">سالن استقرار</label>
+            <select
+              value={quickMachineHall}
+              onChange={e => setQuickMachineHall(e.target.value)}
+              className="fiori-input w-full px-3 py-1.5"
+            >
+              <option value="سالن برش">سالن برش</option>
+              <option value="سالن پرس">سالن پرس</option>
+              <option value="سالن پرس سنگین">سالن پرس سنگین</option>
+              <option value="سالن جوشکاری">سالن جوشکاری</option>
+              <option value="سالن رنگ">سالن رنگ</option>
+              <option value="سالن کیفیت">سالن کیفیت</option>
+            </select>
+          </div>
+        </form>
+      </FioriDialog>
 
       {/* MODAL 5: QUICK ADD DIE / MOLD */}
-      {isQuickDieModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#d9d9d9] rounded-sm w-full max-w-md p-5 shadow-xl space-y-4 text-right">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8e8e8]">
-              <div>
-                <h3 className="font-bold text-sm text-[#333333] flex items-center gap-2">
-                  <Wrench className="w-4 h-4 text-[#007cc0]" />
-                  <span>تعریف سریع قالب اختصاصی قطعه</span>
-                </h3>
-                <span className="text-[11px] text-[#666666] mt-0.5 block">
-                  همبسته به قطعه: <strong className="text-[#333333]">{activeRouting?.partName || 'قطعه جاری'}</strong>
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsQuickDieModalOpen(false)}
-                className="text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateQuickDie} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-medium text-[#333333] mb-1">نام قالب پرس *</label>
-                <input
-                  type="text"
-                  required
-                  value={quickDieName}
-                  onChange={e => setQuickDieName(e.target.value)}
-                  placeholder={`قالب سنبه ماتریس مرحله ${stepData.stepCode || 'OP'} ${activeRouting?.partName || ''}`}
-                  className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 text-[#333333] focus:outline-none focus:border-[#007cc0] font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">کد قالب (اختیاری)</label>
-                  <input
-                    type="text"
-                    value={quickDieCode}
-                    onChange={e => setQuickDieCode(e.target.value)}
-                    placeholder={`DIE-${activeRouting?.partCode || 'PART'}-01`}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-[#333333] mb-1">تناژ مورد نیاز (تن) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={quickDieTonnage}
-                    onChange={e => setQuickDieTonnage(Number(e.target.value) || 250)}
-                    className="w-full bg-white border border-[#d9d9d9] rounded-sm px-3 py-1.5 font-mono text-[#333333] focus:outline-none focus:border-[#007cc0] font-bold"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-[#fff7eb] border border-[#f5d29c] rounded-sm text-[#333333] text-[11px] leading-relaxed">
-                این قالب مستقیماً به کد قطعه <strong>{activeRouting?.partCode}</strong> انتساب می‌یابد تا هنگام انتخاب قالب برای این قطعه، در صدر لیست و با همبستگی فنی نمایش داده شود.
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsQuickDieModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingQuickDie}
-                  className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer"
-                >
-                  {savingQuickDie ? 'در حال ثبت...' : 'ثبت سریع و انتخاب قالب'}
-                </button>
-              </div>
-            </form>
+      <FioriDialog
+        isOpen={isQuickDieModalOpen}
+        onClose={() => setIsQuickDieModalOpen(false)}
+        title="تعریف سریع قالب اختصاصی قطعه"
+        subtitle={`همبسته به قطعه: ${activeRouting?.partName || 'قطعه جاری'}`}
+        icon={<Wrench className="w-4 h-4" />}
+        tone="brand"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsQuickDieModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="rtg-quick-die-form"
+              disabled={savingQuickDie}
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer disabled:opacity-50"
+            >
+              {savingQuickDie ? 'در حال ثبت...' : 'ثبت سریع و انتخاب قالب'}
+            </button>
+          </>
+        }
+      >
+        <form id="rtg-quick-die-form" onSubmit={handleCreateQuickDie} className="space-y-3.5 text-xs">
+          <div>
+            <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">نام قالب پرس *</label>
+            <input
+              type="text"
+              required
+              value={quickDieName}
+              onChange={e => setQuickDieName(e.target.value)}
+              placeholder={`قالب سنبه ماتریس مرحله ${stepData.stepCode || 'OP'} ${activeRouting?.partName || ''}`}
+              className="fiori-input w-full px-3 py-1.5 font-medium"
+            />
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">کد قالب (اختیاری)</label>
+              <input
+                type="text"
+                value={quickDieCode}
+                onChange={e => setQuickDieCode(e.target.value)}
+                placeholder={`DIE-${activeRouting?.partCode || 'PART'}-01`}
+                className="fiori-input w-full px-3 py-1.5 font-mono fiori-ltr-code"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[var(--fiori-text-primary)] mb-1">تناژ مورد نیاز (تن) *</label>
+              <input
+                type="number"
+                required
+                value={quickDieTonnage}
+                onChange={e => setQuickDieTonnage(Number(e.target.value) || 250)}
+                className="fiori-input w-full px-3 py-1.5 font-mono font-bold tabular-nums"
+              />
+            </div>
+          </div>
+
+          <FioriMessageStrip compact tone="warning">
+            این قالب مستقیماً به کد قطعه <strong className="fiori-ltr-code font-mono">{activeRouting?.partCode}</strong> انتساب می‌یابد تا هنگام انتخاب قالب برای این قطعه، در صدر لیست و با همبستگی فنی نمایش داده شود.
+          </FioriMessageStrip>
+        </form>
+      </FioriDialog>
 
       {/* Guide Modal */}
       <MasterDataDifferenceGuideModal
