@@ -4,13 +4,11 @@ import {
   Download,
   Building2,
   RefreshCw,
-  ArrowUpDown,
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
   Layers,
   Boxes,
-  BookmarkCheck,
   FileSpreadsheet,
   ArrowDownLeft,
   ArrowUpRight,
@@ -48,6 +46,15 @@ import { useErpRouter } from '../../context/RouterContext';
 import { FormulaTooltip } from '../common/FormulaTooltip';
 import { FioriAnalyticalListPage, AlpVisualKpiItem } from '../fiori/FioriAnalyticalListPage';
 import { FioriObjectPage } from '../fiori/FioriObjectPage';
+import {
+  FioriToolbar,
+  FioriDataTable,
+  FioriTableColumn,
+  FioriObjectStatus,
+  FioriMessageStrip,
+  FioriDialog,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 import {
   loadQcHoldMap,
   loadVipPartsMap,
@@ -398,7 +405,6 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
     expandAll: expandAllGroups,
     collapseAll: collapseAllGroups,
   } = usePersistedExpandMap('stock_inquiry_groups', {});
-  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [savedViewNotice, setSavedViewNotice] = useState(false);
 
@@ -752,15 +758,6 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
     exportToCsv(`گزارش_موجودی_انبار_${Date.now()}`, headers, rows);
   };
 
-  const handleSort = (field: keyof DetailedStockBalance) => {
-    if (sortField === field) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortField(field);
-      setSortAsc(false);
-    }
-  };
-
   // Helper to get effective Reorder Point (نقطه سفارش) for any Part
   const getPartReorderPoint = (part?: Part, unit?: string, category?: string): number => {
     if (part && typeof part.minStock === 'number' && part.minStock > 0) {
@@ -1057,29 +1054,33 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
                     onClick={() => setSelectedCardexPartId(item.part.id)}
                     className={`w-full text-right px-3 py-2 transition-colors flex items-start justify-between gap-2 cursor-pointer ${
                       isSelected
-                        ? 'bg-[#e5f3fa] text-[#007cc0] border-r-[3px] border-[#007cc0]'
-                        : 'hover:bg-[#e5f3fa]/50 text-[#333333]'
+                        ? 'bg-[var(--fiori-bg-selected)] text-[var(--fiori-brand)]'
+                        : 'hover:bg-[var(--fiori-bg-hover)] text-[var(--fiori-text-primary)]'
                     }`}
                   >
                     <div className="min-w-0 flex-1 space-y-1">
-                      <div className={`text-xs leading-snug truncate ${isSelected ? 'font-semibold text-[#007cc0]' : 'font-normal text-[#333333]'}`}>
+                      <div className={`text-xs leading-snug truncate ${isSelected ? 'font-semibold text-[var(--fiori-brand)]' : 'font-normal text-[var(--fiori-text-primary)]'}`}>
                         {item.part.name}
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                        <span className={`fiori-ltr-code text-[10px] font-mono px-1.5 py-0.5 rounded-[var(--fiori-radius-sm)] border ${
                           isSelected
-                            ? 'bg-[#ffffff] text-[#007cc0] border border-[#b3ddf2]'
-                            : 'bg-[#f5f5f5] text-[#666666] border border-[#e8e8e8]'
+                            ? 'bg-white text-[var(--fiori-brand)] border-[var(--fiori-brand-border)]'
+                            : 'bg-[var(--fiori-bg-subtle)] text-[var(--fiori-text-secondary)] border-[var(--fiori-border-subtle)]'
                         }`}>
                           {item.part.code}
                         </span>
                         {item.blockedTotal > 0 && (
-                          <span className="w-2 h-2 rounded-full bg-[#bb0000]" title="دارای موجودی قرنطینه کیفی" />
+                          <FioriObjectStatus
+                            tone="negative"
+                            variant="dot"
+                            size="sm"
+                            label="قرنطینه"
+                            title="دارای موجودی قرنطینه کیفی"
+                          />
                         )}
                         {item.needsPurchase && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#fff0f0] text-[#bb0000]">
-                            کسری
-                          </span>
+                          <FioriObjectStatus tone="negative" size="sm" label="کسری" />
                         )}
                       </div>
                     </div>
@@ -1088,10 +1089,10 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
                       <div
                         className={`text-xs font-mono font-semibold whitespace-nowrap ${
                           item.needsPurchase
-                            ? 'text-[#bb0000]'
+                            ? 'text-[var(--fiori-negative)]'
                             : item.availableTotal > 0
-                            ? 'text-[#107e3e]'
-                            : 'text-[#666666]'
+                            ? 'text-[var(--fiori-positive)]'
+                            : 'text-[var(--fiori-text-secondary)]'
                         }`}
                       >
                         {formatNumber(item.availableTotal)}{' '}
@@ -1099,7 +1100,7 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
                           {item.part.unit === 'KG' ? 'kg' : 'عدد'}
                         </span>
                       </div>
-                      <div className="text-[10px] mt-0.5 font-mono whitespace-nowrap text-[#666666]">
+                      <div className="text-[10px] mt-0.5 font-mono whitespace-nowrap text-[var(--fiori-text-secondary)]">
                         حداقل: {formatNumber(item.reorderPoint)}
                       </div>
                     </div>
@@ -1115,30 +1116,37 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
               <>
                 {/* SAP Object Header & Warehouse Stock Breakdown */}
                 <div className="sap-card overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-[#d9d9d9] bg-[#ffffff] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+                  <div className="px-4 py-3 border-b border-[var(--fiori-border-default)] bg-[var(--fiori-bg-surface)] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 rounded bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] font-mono text-xs font-semibold whitespace-nowrap">
-                          {activeCardexPartSummary.part.code}
-                        </span>
-                        <h3 className="text-sm font-semibold text-[#333333]">
+                        <FioriObjectStatus
+                          tone="brand"
+                          size="sm"
+                          ltrCode
+                          label={activeCardexPartSummary.part.code}
+                        />
+                        <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)]">
                           {activeCardexPartSummary.part.name}
                         </h3>
                         {activeCardexPartSummary.needsPurchase ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#fff0f0] text-[#bb0000] border border-[#f5b7b1] whitespace-nowrap">
-                            <AlertTriangle className="w-3 h-3" />
-                            زیر نقطه سفارش
-                          </span>
+                          <FioriObjectStatus
+                            tone="negative"
+                            icon
+                            size="sm"
+                            label="زیر نقطه سفارش"
+                          />
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#f2f8f4] text-[#107e3e] border border-[#b7dfc7] whitespace-nowrap">
-                            <CheckCircle2 className="w-3 h-3" />
-                            موجودی ایمن
-                          </span>
+                          <FioriObjectStatus
+                            tone="positive"
+                            icon
+                            size="sm"
+                            label="موجودی ایمن"
+                          />
                         )}
                       </div>
-                      <p className="text-[11px] text-[#666666]">
+                      <p className="text-[11px] text-[var(--fiori-text-secondary)]">
                         واحد سنجش:{' '}
-                        <strong className="text-[#333333]">
+                        <strong className="text-[var(--fiori-text-primary)]">
                           {activeCardexPartSummary.part.unit === 'KG' ? 'کیلوگرم (KG)' : 'عدد (PCS)'}
                         </strong>
                         {activeCardexPartSummary.part.materialGrade && (
@@ -1225,218 +1233,303 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
                   </div>
 
                   {/* Section A: Warehouse & Coil-Pack Balances for this Part */}
-                  <div className="p-3.5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[#333333] flex items-center gap-1.5">
-                        <Boxes className="w-3.5 h-3.5 text-[#007cc0]" />
-                        <span>
-                          الف) تفکیک موجودی در انبارها و بچ‌ها ({toPersianDigits(activeCardexPartSummary.balances.length)} ردیف)
-                        </span>
-                      </h4>
-                    </div>
-
-                    {activeCardexPartSummary.balances.length === 0 ? (
-                      <div className="p-4 bg-[#f5f5f5] border border-[#d9d9d9] rounded text-xs text-[#666666] text-center">
-                        در حال حاضر هیچ موجودی فعالی برای این قطعه در انبارها ثبت نشده است.
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto border border-[#d9d9d9] rounded">
-                        <table className="sap-table-compact w-full text-right text-xs">
-                          <thead className="bg-[#f5f5f5] border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                            <tr>
-                              <th className="py-1.5 px-2.5 whitespace-nowrap">انبار و جایگاه</th>
-                              <th className="py-1.5 px-2.5 whitespace-nowrap">شماره کویل‌پک / بچ</th>
-                              <th className="py-1.5 px-2.5 whitespace-nowrap">مالکیت / قرارداد</th>
-                              <th className="py-1.5 px-2.5 whitespace-nowrap text-[#107e3e]">آزاد (Unrestricted)</th>
-                              <th className="py-1.5 px-2.5 whitespace-nowrap text-[#e9730c]">کنترل کیفی (QI)</th>
-                              <th className="py-1.5 px-2.5 whitespace-nowrap text-[#bb0000]">مسدود (Blocked)</th>
-                              <th className="py-1.5 px-2.5 whitespace-nowrap text-[#007cc0]">آزاد قابل تخصیص (ATP)</th>
-                              <th className="py-1.5 px-2.5 text-center whitespace-nowrap">انتقال وضعیت کیفی QM</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#e8e8e8] tabular-nums">
-                            {activeCardexPartSummary.balances.map(b => {
-                              const hasHold = b.qualityInspectionQty + b.blockedQty > 0;
-                              const unitLbl = b.unit === 'KG' ? 'kg' : 'عدد';
-                              return (
-                                <tr
-                                  key={b.id}
+                  <div className="p-3.5 space-y-2.5">
+                    <FioriDataTable<DetailedStockBalance>
+                      toolbar={
+                        <FioriToolbar
+                          variant="table"
+                          title={
+                            <span className="inline-flex items-center gap-1.5">
+                              <Boxes className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                              <span>الف) تفکیک موجودی در انبارها و بچ‌ها</span>
+                            </span>
+                          }
+                          count={activeCardexPartSummary.balances.length}
+                          countLabel="ردیف"
+                        />
+                      }
+                      data={activeCardexPartSummary.balances}
+                      rowKey={b => b.id}
+                      onRowClick={b => setSelectedObjectBalance(b)}
+                      rowClassName={b =>
+                        b.qualityInspectionQty + b.blockedQty > 0
+                          ? 'bg-[var(--fiori-critical-bg)]/45 hover:bg-[var(--fiori-negative-bg)]/40'
+                          : ''
+                      }
+                      emptyState={
+                        <EmptyState
+                          variant="NO_DATA"
+                          compact
+                          title="هیچ موجودی فعالی ثبت نشده است"
+                          description="در حال حاضر هیچ موجودی فعالی برای این قطعه در انبارها ثبت نشده است."
+                        />
+                      }
+                      columns={[
+                        {
+                          key: 'warehouse',
+                          header: 'انبار و جایگاه',
+                          nowrap: true,
+                          render: b => (
+                            <>
+                              <span className="font-medium text-[var(--fiori-text-primary)]">{b.warehouseName}</span>{' '}
+                              <span className="fiori-ltr-code text-[10px] font-mono text-[var(--fiori-text-secondary)]">
+                                ({b.locationCode})
+                              </span>
+                            </>
+                          ),
+                        },
+                        {
+                          key: 'lotNumber',
+                          header: 'شماره کویل‌پک / بچ',
+                          nowrap: true,
+                          render: b => (
+                            <span onClick={e => e.stopPropagation()}>
+                              {b.lotNumber ? (
+                                <button
+                                  type="button"
                                   onClick={() => setSelectedObjectBalance(b)}
-                                  className={`cursor-pointer ${hasHold ? 'bg-[#fff5eb]/40 hover:bg-[#ffecec]/60' : 'hover:bg-[#e5f3fa]/60'}`}
+                                  className="sap-doc-link fiori-ltr-code font-mono font-semibold cursor-pointer"
+                                  title="نمایش Object Page و جریان اسناد"
                                 >
-                                  <td className="px-2.5 font-medium text-[#333333] whitespace-nowrap">
-                                    <span>{b.warehouseName}</span>{' '}
-                                    <span className="text-[10px] font-mono text-[#666666]">({b.locationCode})</span>
-                                  </td>
-                                  <td className="px-2.5 font-mono font-semibold whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                                    {b.lotNumber ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => setSelectedObjectBalance(b)}
-                                        className="sap-doc-link font-mono font-semibold cursor-pointer"
-                                        title="نمایش Object Page و جریان اسناد"
-                                      >
-                                        {b.lotNumber}
-                                      </button>
-                                    ) : (
-                                      <span className="text-[#666666]">عمومی</span>
-                                    )}
-                                  </td>
-                                  <td className="px-2.5 whitespace-nowrap">
-                                    <span>{b.ownership === 'SAPCO_SUPPLIER_OWNED' ? 'امانی ساپکو' : 'ملکی شرکت'}</span>
-                                    {b.contractNumber && (
-                                      <span className="font-mono text-[11px] text-[#007cc0] mr-1.5">{b.contractNumber}</span>
-                                    )}
-                                  </td>
-                                  <td className="px-2.5 font-mono font-semibold text-[#107e3e] whitespace-nowrap">
-                                    {formatNumber(b.unrestrictedQty)} {unitLbl}
-                                  </td>
-                                  <td className="px-2.5 font-mono font-semibold text-[#e9730c] whitespace-nowrap">
-                                    {b.qualityInspectionQty > 0 ? `${formatNumber(b.qualityInspectionQty)} ${unitLbl}` : '—'}
-                                  </td>
-                                  <td className="px-2.5 font-mono font-semibold text-[#bb0000] whitespace-nowrap">
-                                    {b.blockedQty > 0 ? `${formatNumber(b.blockedQty)} ${unitLbl}` : '—'}
-                                  </td>
-                                  <td className="px-2.5 font-mono font-bold text-[#007cc0] whitespace-nowrap">
-                                    {formatNumber(b.availableQty)} {unitLbl}
-                                  </td>
-                                  <td className="px-2.5 text-center whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                                    <div className="inline-flex items-center gap-1">
-                                      {b.unrestrictedQty - (b.reservedQty || 0) > 0 && (
-                                        <>
-                                          <button
-                                            type="button"
-                                            onClick={() => openQmTransferModal(b, '322')}
-                                            className="sap-btn-standard px-2 py-0.5 text-[11px] text-[#e9730c] border-[#f5cba7] hover:bg-[#fff4e5] cursor-pointer whitespace-nowrap"
-                                            title="انتقال به قرنطینه کیفی (MvT 322)"
-                                          >
-                                            قرنطینه ۳۲۲
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => openQmTransferModal(b, '344')}
-                                            className="sap-btn-standard px-2 py-0.5 text-[11px] text-[#bb0000] border-[#f2b8b5] hover:bg-[#ffecec] cursor-pointer whitespace-nowrap"
-                                            title="مسدودسازی کیفی (MvT 344)"
-                                          >
-                                            مسدود ۳۴۴
-                                          </button>
-                                        </>
-                                      )}
-                                      {hasHold && (
-                                        <button
-                                          type="button"
-                                          onClick={() => openQmTransferModal(b, '321')}
-                                          className="sap-btn-standard px-2 py-0.5 text-[11px] text-[#107e3e] border-[#b7dfc7] hover:bg-[#eef8f2] cursor-pointer whitespace-nowrap"
-                                          title="آزادسازی به موجودی آزاد (MvT 321)"
-                                        >
-                                          آزادسازی ۳۲۱
-                                        </button>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                                  {b.lotNumber}
+                                </button>
+                              ) : (
+                                <span className="text-[var(--fiori-text-secondary)]">عمومی</span>
+                              )}
+                            </span>
+                          ),
+                        },
+                        {
+                          key: 'ownership',
+                          header: 'مالکیت / قرارداد',
+                          nowrap: true,
+                          render: b => (
+                            <>
+                              <FioriObjectStatus
+                                tone={b.ownership === 'SAPCO_SUPPLIER_OWNED' ? 'critical' : 'neutral'}
+                                variant="text"
+                                size="sm"
+                                label={b.ownership === 'SAPCO_SUPPLIER_OWNED' ? 'امانی ساپکو' : 'ملکی شرکت'}
+                              />
+                              {b.contractNumber && (
+                                <span className="fiori-ltr-code font-mono text-[11px] text-[var(--fiori-brand)] mr-1.5">
+                                  {b.contractNumber}
+                                </span>
+                              )}
+                            </>
+                          ),
+                        },
+                        {
+                          key: 'unrestricted',
+                          header: 'آزاد (Unrestricted)',
+                          nowrap: true,
+                          isMono: true,
+                          cellClassName: 'font-semibold text-[var(--fiori-positive)]',
+                          render: b => `${formatNumber(b.unrestrictedQty)} ${b.unit === 'KG' ? 'kg' : 'عدد'}`,
+                        },
+                        {
+                          key: 'qi',
+                          header: 'کنترل کیفی (QI)',
+                          nowrap: true,
+                          isMono: true,
+                          cellClassName: 'font-semibold text-[var(--fiori-critical)]',
+                          render: b =>
+                            b.qualityInspectionQty > 0
+                              ? `${formatNumber(b.qualityInspectionQty)} ${b.unit === 'KG' ? 'kg' : 'عدد'}`
+                              : '—',
+                        },
+                        {
+                          key: 'blocked',
+                          header: 'مسدود (Blocked)',
+                          nowrap: true,
+                          isMono: true,
+                          cellClassName: 'font-semibold text-[var(--fiori-negative)]',
+                          render: b =>
+                            b.blockedQty > 0
+                              ? `${formatNumber(b.blockedQty)} ${b.unit === 'KG' ? 'kg' : 'عدد'}`
+                              : '—',
+                        },
+                        {
+                          key: 'atp',
+                          header: 'آزاد قابل تخصیص (ATP)',
+                          nowrap: true,
+                          isMono: true,
+                          cellClassName: 'font-bold text-[var(--fiori-brand)]',
+                          render: b => `${formatNumber(b.availableQty)} ${b.unit === 'KG' ? 'kg' : 'عدد'}`,
+                        },
+                        {
+                          key: 'qmActions',
+                          header: 'انتقال وضعیت کیفی QM',
+                          align: 'center',
+                          nowrap: true,
+                          render: b => {
+                            const hasHold = b.qualityInspectionQty + b.blockedQty > 0;
+                            const freeToMove = Math.max(0, b.unrestrictedQty - (b.reservedQty || 0));
+                            return (
+                              <div className="inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                {freeToMove > 0 && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => openQmTransferModal(b, '322')}
+                                      className="sap-btn-standard px-2 py-0.5 text-[11px] text-[var(--fiori-critical)] border-[var(--fiori-critical-border)] hover:bg-[var(--fiori-critical-bg)] cursor-pointer whitespace-nowrap"
+                                      title="انتقال به قرنطینه کیفی (MvT 322)"
+                                    >
+                                      قرنطینه ۳۲۲
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openQmTransferModal(b, '344')}
+                                      className="sap-btn-standard px-2 py-0.5 text-[11px] text-[var(--fiori-negative)] border-[var(--fiori-negative-border)] hover:bg-[var(--fiori-negative-bg)] cursor-pointer whitespace-nowrap"
+                                      title="مسدودسازی کیفی (MvT 344)"
+                                    >
+                                      مسدود ۳۴۴
+                                    </button>
+                                  </>
+                                )}
+                                {hasHold && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openQmTransferModal(b, '321')}
+                                    className="sap-btn-standard px-2 py-0.5 text-[11px] text-[var(--fiori-positive)] border-[var(--fiori-positive-border)] hover:bg-[var(--fiori-positive-bg)] cursor-pointer whitespace-nowrap"
+                                    title="آزادسازی به موجودی آزاد (MvT 321)"
+                                  >
+                                    آزادسازی ۳۲۱
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          },
+                        },
+                      ]}
+                    />
                   </div>
                 </div>
 
                 {/* Section B: Chronological Stock Cardex (کاردکس جامع ورود و خروج قطعه) */}
-                <div className="sap-card p-3.5 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h4 className="text-xs font-bold text-[#333333] flex items-center gap-1.5">
-                      <History className="w-3.5 h-3.5 text-[#007cc0]" />
-                      <span>
-                        ب) کاردکس گردش کالا («{activeCardexPartSummary.part.name}»)
-                      </span>
-                    </h4>
-                    <span className="text-[11px] text-[#666666] tabular-nums">
-                      تعداد اسناد گردش:{' '}
-                      <strong className="font-mono text-[#333333]">
-                        {toPersianDigits(selectedPartCardexRows.length)}
-                      </strong>{' '}
-                      تراکنش
-                    </span>
-                  </div>
-
-                  {docsLoading ? (
-                    <div className="py-8 text-center text-xs text-[#666666]">
-                      در حال بارگذاری کاردکس گردش کالا...
-                    </div>
-                  ) : selectedPartCardexRows.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-[#666666] bg-[#f5f5f5] rounded border border-[#d9d9d9]">
-                      هنوز هیچ سند ورود یا خروجی برای این کالا در کاردکس ثبت نشده است.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto border border-[#d9d9d9] rounded">
-                      <table className="sap-table-compact w-full text-right text-xs">
-                        <thead className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                          <tr>
-                            <th className="py-1.5 px-2.5 whitespace-nowrap">تاریخ و ساعت</th>
-                            <th className="py-1.5 px-2.5 whitespace-nowrap">شماره سند</th>
-                            <th className="py-1.5 px-2.5 whitespace-nowrap">نوع عملیات</th>
-                            <th className="py-1.5 px-2.5 whitespace-nowrap">انبار</th>
-                            <th className="py-1.5 px-2.5 whitespace-nowrap">کویل‌پک / بچ</th>
-                            <th className="py-1.5 px-2.5 whitespace-nowrap text-[#107e3e]">وارده (+)</th>
-                            <th className="py-1.5 px-2.5 whitespace-nowrap text-[#bb0000]">صادره (-)</th>
-                            <th className="py-1.5 px-2.5 whitespace-nowrap bg-[#f5f5f5] font-bold text-[#333333]">
-                              مانده پس از سند
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#e8e8e8] tabular-nums">
-                          {selectedPartCardexRows.map((tx: any) => {
-                            const badge = getDocTypeBadge(tx.docType, tx.movementCode);
-                            return (
-                              <tr key={tx.id} className="hover:bg-[#e5f3fa]/60">
-                                <td className="px-2.5 font-mono text-[11px] text-[#666666] whitespace-nowrap">
-                                  {formatDateTime(tx.docDate)}
-                                </td>
-                                <td className="px-2.5 font-mono font-semibold text-[#333333] whitespace-nowrap">
-                                  <button
-                                    type="button"
-                                    onClick={() => traceDocument(tx.docNumber, 'INVENTORY_LEDGER')}
-                                    className="sap-doc-link font-mono font-semibold cursor-pointer"
-                                  >
-                                    {tx.docNumber}
-                                  </button>
-                                  {tx.referenceNumber !== '—' && (
-                                    <span className="text-[10px] text-[#666666] font-normal mr-1.5">
-                                      · مرجع: {tx.referenceNumber}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="px-2.5 whitespace-nowrap">
-                                  <span className={`font-mono font-bold text-[11px] ${badge.colorClass}`}>
-                                    {badge.code}
-                                  </span>
-                                  <span className="text-[11px] text-[#333333] mr-1.5">{badge.label}</span>
-                                </td>
-                                <td className="px-2.5 text-[#333333] whitespace-nowrap">{tx.warehouseName}</td>
-                                <td className="px-2.5 font-mono text-[#333333] whitespace-nowrap">{tx.lotNumber}</td>
-                                <td className="px-2.5 font-mono font-bold text-[#107e3e] whitespace-nowrap">
-                                  {tx.inQty > 0 ? `+${formatNumber(tx.inQty)}` : '—'}
-                                </td>
-                                <td className="px-2.5 font-mono font-bold text-[#bb0000] whitespace-nowrap">
-                                  {tx.outQty > 0 ? `-${formatNumber(tx.outQty)}` : '—'}
-                                </td>
-                                <td className="px-2.5 font-mono font-bold text-[#333333] bg-[#f5f5f5] whitespace-nowrap">
-                                  {formatNumber(tx.runningBalance)}{' '}
-                                  <span className="text-[10px] font-normal text-[#666666]">
-                                    {tx.unit === 'KG' ? 'kg' : 'عدد'}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                <FioriDataTable<any>
+                  loading={docsLoading}
+                  toolbar={
+                    <FioriToolbar
+                      variant="table"
+                      title={
+                        <span className="inline-flex items-center gap-1.5">
+                          <History className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                          <span>ب) کاردکس گردش کالا («{activeCardexPartSummary.part.name}»)</span>
+                        </span>
+                      }
+                      count={selectedPartCardexRows.length}
+                      countLabel="تراکنش"
+                    />
+                  }
+                  data={selectedPartCardexRows}
+                  rowKey={tx => tx.id}
+                  emptyState={
+                    <EmptyState
+                      variant="NO_DATA"
+                      compact
+                      title="گردش ثبت نشده است"
+                      description="هنوز هیچ سند ورود یا خروجی برای این کالا در کاردکس ثبت نشده است."
+                    />
+                  }
+                  columns={[
+                    {
+                      key: 'docDate',
+                      header: 'تاریخ و ساعت',
+                      nowrap: true,
+                      isMono: true,
+                      cellClassName: 'text-[11px] text-[var(--fiori-text-secondary)]',
+                      render: tx => formatDateTime(tx.docDate),
+                    },
+                    {
+                      key: 'docNumber',
+                      header: 'شماره سند',
+                      nowrap: true,
+                      render: tx => (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => traceDocument(tx.docNumber, 'INVENTORY_LEDGER')}
+                            className="sap-doc-link fiori-ltr-code font-mono font-semibold cursor-pointer"
+                          >
+                            {tx.docNumber}
+                          </button>
+                          {tx.referenceNumber !== '—' && (
+                            <span className="text-[10px] text-[var(--fiori-text-secondary)] font-normal">
+                              · مرجع: <span className="fiori-ltr-code font-mono">{tx.referenceNumber}</span>
+                            </span>
+                          )}
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'opType',
+                      header: 'نوع عملیات',
+                      nowrap: true,
+                      render: tx => {
+                        const badge = getDocTypeBadge(tx.docType, tx.movementCode);
+                        const tone = badge.colorClass.includes('107e3e')
+                          ? 'positive'
+                          : badge.colorClass.includes('bb0000')
+                          ? 'negative'
+                          : badge.colorClass.includes('e9730c')
+                          ? 'critical'
+                          : 'brand';
+                        return (
+                          <div className="inline-flex items-center gap-1.5">
+                            <FioriObjectStatus tone={tone} size="sm" ltrCode label={badge.code} />
+                            <span className="text-[11px] text-[var(--fiori-text-primary)]">{badge.label}</span>
+                          </div>
+                        );
+                      },
+                    },
+                    {
+                      key: 'warehouse',
+                      header: 'انبار',
+                      nowrap: true,
+                      render: tx => tx.warehouseName,
+                    },
+                    {
+                      key: 'lotNumber',
+                      header: 'کویل‌پک / بچ',
+                      nowrap: true,
+                      isMono: true,
+                      isLtrCode: true,
+                      render: tx => tx.lotNumber,
+                    },
+                    {
+                      key: 'inQty',
+                      header: 'وارده (+)',
+                      nowrap: true,
+                      isMono: true,
+                      cellClassName: 'font-bold text-[var(--fiori-positive)]',
+                      render: tx => (tx.inQty > 0 ? `+${formatNumber(tx.inQty)}` : '—'),
+                    },
+                    {
+                      key: 'outQty',
+                      header: 'صادره (-)',
+                      nowrap: true,
+                      isMono: true,
+                      cellClassName: 'font-bold text-[var(--fiori-negative)]',
+                      render: tx => (tx.outQty > 0 ? `-${formatNumber(tx.outQty)}` : '—'),
+                    },
+                    {
+                      key: 'runningBalance',
+                      header: 'مانده پس از سند',
+                      nowrap: true,
+                      isMono: true,
+                      cellClassName: 'font-bold text-[var(--fiori-text-primary)] bg-[var(--fiori-bg-subtle)]',
+                      render: tx => (
+                        <>
+                          {formatNumber(tx.runningBalance)}{' '}
+                          <span className="text-[10px] font-sans font-normal text-[var(--fiori-text-secondary)]">
+                            {tx.unit === 'KG' ? 'kg' : 'عدد'}
+                          </span>
+                        </>
+                      ),
+                    },
+                  ]}
+                />
               </>
             ) : null}
           </div>
@@ -1447,26 +1540,26 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
       {/* MODE 2: SAP ANALYTICAL LIST PAGE (3-Status QM & Compact Table)        */}
       {/* ==================================================================== */}
       {showColumnPicker && (
-        <div className="sap-card p-3.5 space-y-3 text-xs">
-          <div className="flex items-center justify-between border-b border-[#e8e8e8] pb-2">
-            <span className="font-bold text-[#333333]">انتخاب ستون‌های قابل نمایش در جدول موجودی:</span>
-            <div className="flex items-center gap-2">
-              {savedViewNotice && (
-                <span className="text-[#107e3e] font-semibold flex items-center gap-1">
-                  <BookmarkCheck className="w-3.5 h-3.5" />
-                  <span>نمای دلخواه ذخیره شد</span>
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={handleSaveViewPreferences}
-                className="sap-btn-emphasized px-3 py-1 text-[11px] cursor-pointer"
-              >
-                ذخیره پیش‌فرض
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="sap-card overflow-hidden text-xs">
+          <FioriToolbar
+            variant="table"
+            title="انتخاب ستون‌های قابل نمایش در جدول موجودی"
+            endContent={
+              <div className="flex items-center gap-2">
+                {savedViewNotice && (
+                  <FioriObjectStatus tone="positive" icon size="sm" label="نمای دلخواه ذخیره شد" />
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveViewPreferences}
+                  className="sap-btn-emphasized px-3 py-1 text-[11px] cursor-pointer"
+                >
+                  ذخیره پیش‌فرض
+                </button>
+              </div>
+            }
+          />
+          <div className="p-3.5 flex flex-wrap items-center gap-4">
             {[
               { key: 'partCode', label: 'کد کالا' },
               { key: 'partName', label: 'نام و مشخصات فنی' },
@@ -1478,12 +1571,12 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
               { key: 'physicalKg', label: 'وزن فیزیکی کل' },
               { key: 'lastTx', label: 'آخرین گردش' },
             ].map(col => (
-              <label key={col.key} className="flex items-center gap-1.5 text-[#333333] cursor-pointer select-none">
+              <label key={col.key} className="flex items-center gap-1.5 text-[var(--fiori-text-primary)] cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={(visibleCols as any)[col.key]}
                   onChange={e => setVisibleCols(prev => ({ ...prev, [col.key]: e.target.checked }))}
-                  className="rounded border-[#cccccc] text-[#007cc0]"
+                  className="rounded border-[var(--fiori-border-input)] text-[var(--fiori-brand)]"
                 />
                 <span>{col.label}</span>
               </label>
@@ -1688,28 +1781,32 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
         }
       >
         {groupBy !== 'NONE' ? (
-          <div className="divide-y divide-[#d9d9d9]">
-            <div className="px-3 py-2 bg-[#fafafa] flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="text-[#666666] tabular-nums">
-                نمایش <strong className="font-mono text-[#333333]">{toPersianDigits(groupedData.length)}</strong> گروه (کلیک روی سرگروه جهت مشاهده ردیف‌ها)
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => expandAllGroups(groupedData.map(g => g.groupKey))}
-                  className="sap-btn-standard px-2.5 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
-                >
-                  باز کردن همه گروه‌ها
-                </button>
-                <button
-                  type="button"
-                  onClick={collapseAllGroups}
-                  className="sap-btn-standard px-2.5 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
-                >
-                  بستن همه
-                </button>
-              </div>
-            </div>
+          <div className="divide-y divide-[var(--fiori-border-default)]">
+            <FioriToolbar
+              variant="table"
+              title="نمای گروه‌بندی موجودی"
+              count={groupedData.length}
+              countLabel="گروه"
+              subtitle="کلیک روی سرگروه جهت مشاهده ردیف‌ها"
+              endContent={
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => expandAllGroups(groupedData.map(g => g.groupKey))}
+                    className="sap-btn-standard px-2.5 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
+                  >
+                    باز کردن همه گروه‌ها
+                  </button>
+                  <button
+                    type="button"
+                    onClick={collapseAllGroups}
+                    className="sap-btn-standard px-2.5 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
+                  >
+                    بستن همه
+                  </button>
+                </div>
+              }
+            />
 
             {groupedData.map(group => {
               const isOpen = isGroupExpanded(group.groupKey);
@@ -1718,248 +1815,325 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleGroupExpand(group.groupKey)}
-                  className="w-full bg-[#f5f5f5] hover:bg-[#edf4fa] px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs text-right cursor-pointer transition-colors"
+                  className="w-full bg-[var(--fiori-bg-subtle)] hover:bg-[var(--fiori-bg-hover)] px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs text-right cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     {isOpen ? (
-                      <ChevronUp className="w-3.5 h-3.5 text-[#007cc0] shrink-0" />
+                      <ChevronUp className="w-3.5 h-3.5 text-[var(--fiori-brand)] shrink-0" />
                     ) : (
-                      <ChevronDown className="w-3.5 h-3.5 text-[#666666] shrink-0" />
+                      <ChevronDown className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)] shrink-0" />
                     )}
-                    <Layers className="w-3.5 h-3.5 text-[#007cc0] shrink-0" />
-                    <strong className="text-[#333333]">{group.groupTitle}</strong>
-                    <span className="text-[#666666] font-mono">({toPersianDigits(group.items.length)} ردیف)</span>
+                    <Layers className="w-3.5 h-3.5 text-[var(--fiori-brand)] shrink-0" />
+                    <strong className="text-[var(--fiori-text-primary)]">{group.groupTitle}</strong>
+                    <span className="text-[var(--fiori-text-secondary)] font-mono">({toPersianDigits(group.items.length)} ردیف)</span>
                   </div>
                   <div className="flex items-center gap-4 font-mono tabular-nums">
-                    <span className="text-[#666666]">فیزیکی: <strong>{formatWeightKg(group.totalPhysicalKg)}</strong></span>
-                    <span className="text-[#107e3e]">آزاد ATP: <strong>{formatWeightKg(group.totalAvailableKg)}</strong></span>
+                    <span className="text-[var(--fiori-text-secondary)]">فیزیکی: <strong>{formatWeightKg(group.totalPhysicalKg)}</strong></span>
+                    <span className="text-[var(--fiori-positive)]">آزاد ATP: <strong>{formatWeightKg(group.totalAvailableKg)}</strong></span>
                   </div>
                 </button>
                 {isOpen && (
-                <div className="overflow-x-auto">
-                  <table className="sap-table-compact w-full text-right text-xs">
-                    <thead className="bg-white border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                      <tr>
-                        <th className="py-1.5 px-2.5">کد و نام کالا</th>
-                        <th className="py-1.5 px-2.5">انبار</th>
-                        <th className="py-1.5 px-2.5">کویل‌پک / بچ</th>
-                        <th className="py-1.5 px-2.5 text-[#107e3e]">آزاد (Unrestricted)</th>
-                        <th className="py-1.5 px-2.5 text-[#e9730c]">کنترل کیفی (QI)</th>
-                        <th className="py-1.5 px-2.5 text-[#bb0000]">مسدود (Blocked)</th>
-                        <th className="py-1.5 px-2.5">وزن فیزیکی</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#e8e8e8] tabular-nums">
-                      {group.items.map(item => (
-                        <tr
-                          key={item.id}
-                          onClick={() => setSelectedObjectBalance(item)}
-                          className="hover:bg-[#e5f3fa]/60 cursor-pointer"
-                        >
-                          <td className="px-2.5 font-medium text-[#333333]">
-                            <span className="font-mono text-[#007cc0] ml-1.5">{item.partCode}</span>
-                            {item.partName}
-                          </td>
-                          <td className="px-2.5 text-[#666666]">{item.warehouseName}</td>
-                          <td className="px-2.5 font-mono">{item.lotNumber || '—'}</td>
-                          <td className="px-2.5 font-mono font-semibold text-[#107e3e]">{formatNumber(item.unrestrictedQty)}</td>
-                          <td className="px-2.5 font-mono text-[#e9730c]">{item.qualityInspectionQty > 0 ? formatNumber(item.qualityInspectionQty) : '—'}</td>
-                          <td className="px-2.5 font-mono text-[#bb0000]">{item.blockedQty > 0 ? formatNumber(item.blockedQty) : '—'}</td>
-                          <td className="px-2.5 font-mono font-semibold">{formatWeightKg(item.physicalKg)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                  <FioriDataTable<DetailedStockBalance>
+                    bordered={false}
+                    data={group.items}
+                    rowKey={item => item.id}
+                    onRowClick={item => setSelectedObjectBalance(item)}
+                    columns={[
+                      {
+                        key: 'part',
+                        header: 'کد و نام کالا',
+                        render: item => (
+                          <>
+                            <span className="fiori-ltr-code font-mono text-[var(--fiori-brand)] ml-1.5">{item.partCode}</span>
+                            <span className="font-medium text-[var(--fiori-text-primary)]">{item.partName}</span>
+                          </>
+                        ),
+                      },
+                      {
+                        key: 'warehouse',
+                        header: 'انبار',
+                        cellClassName: 'text-[var(--fiori-text-secondary)]',
+                        render: item => item.warehouseName,
+                      },
+                      {
+                        key: 'lot',
+                        header: 'کویل‌پک / بچ',
+                        isMono: true,
+                        isLtrCode: true,
+                        render: item => item.lotNumber || '—',
+                      },
+                      {
+                        key: 'unrestricted',
+                        header: 'آزاد (Unrestricted)',
+                        isMono: true,
+                        cellClassName: 'font-semibold text-[var(--fiori-positive)]',
+                        render: item => formatNumber(item.unrestrictedQty),
+                      },
+                      {
+                        key: 'qi',
+                        header: 'کنترل کیفی (QI)',
+                        isMono: true,
+                        cellClassName: 'text-[var(--fiori-critical)]',
+                        render: item => (item.qualityInspectionQty > 0 ? formatNumber(item.qualityInspectionQty) : '—'),
+                      },
+                      {
+                        key: 'blocked',
+                        header: 'مسدود (Blocked)',
+                        isMono: true,
+                        cellClassName: 'text-[var(--fiori-negative)]',
+                        render: item => (item.blockedQty > 0 ? formatNumber(item.blockedQty) : '—'),
+                      },
+                      {
+                        key: 'physicalKg',
+                        header: 'وزن فیزیکی',
+                        isMono: true,
+                        cellClassName: 'font-semibold',
+                        render: item => formatWeightKg(item.physicalKg),
+                      },
+                    ]}
+                  />
                 )}
               </div>
               );
             })}
           </div>
         ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="sap-table-compact w-full text-right text-xs">
-                <thead>
-                  <tr className="bg-[#f5f5f5] border-b border-[#d9d9d9] text-[#333333] font-semibold select-none">
-                    {visibleCols.partCode && <th className="py-1.5 px-2.5">کد کالا</th>}
-                    {visibleCols.partName && <th className="py-1.5 px-2.5">نام کالا و مشخصات</th>}
-                    {visibleCols.warehouse && <th className="py-1.5 px-2.5">انبار و جایگاه</th>}
-                    {visibleCols.lotNumber && <th className="py-1.5 px-2.5">کویل‌پک / ذوب</th>}
-                    {visibleCols.contract && <th className="py-1.5 px-2.5">قرارداد</th>}
-                    {visibleCols.ownership && <th className="py-1.5 px-2.5">مالکیت</th>}
-                    <th
-                      onClick={() => handleSort('availableQty')}
-                      className="py-1.5 px-2.5 cursor-pointer text-[#107e3e]"
-                    >
-                      آزاد (Unrestricted)
-                    </th>
-                    <th className="py-1.5 px-2.5 text-[#e9730c]">کنترل کیفی (QI)</th>
-                    <th className="py-1.5 px-2.5 text-[#bb0000]">مسدود (Blocked)</th>
-                    {visibleCols.reservedQty && <th className="py-1.5 px-2.5 text-[#007cc0]">رزرو تولید</th>}
-                    {visibleCols.physicalKg && (
-                      <th onClick={() => handleSort('physicalKg')} className="py-1.5 px-2.5 cursor-pointer">
-                        وزن کل (kg)
-                      </th>
-                    )}
-                    <th className="py-1.5 px-2.5 text-left whitespace-nowrap">عملیات کیفی QM (۳۲۱/۳۲۲/۳۴۴)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e8e8e8] bg-white tabular-nums">
-                  {paginatedBalances.length === 0 ? (
-                    <tr>
-                      <td colSpan={12} className="py-10 text-center text-[#666666]">
-                        هیچ موجودی منطبق با فیلترهای انتخابی یافت نشد.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedBalances.map(item => {
-                      const unitLbl = item.unit === 'KG' ? 'kg' : 'عدد';
-                      const hasHold = item.qualityInspectionQty + item.blockedQty > 0;
-                      const freeToMove = Math.max(0, item.unrestrictedQty - (item.reservedQty || 0));
-                      return (
-                        <tr
-                          key={item.id}
+          <FioriDataTable<DetailedStockBalance>
+            bordered={false}
+            loading={loading}
+            data={paginatedBalances}
+            rowKey={item => item.id}
+            onRowClick={item => setSelectedObjectBalance(item)}
+            rowClassName={item =>
+              item.qualityInspectionQty + item.blockedQty > 0
+                ? 'bg-[var(--fiori-critical-bg)]/35 hover:bg-[var(--fiori-negative-bg)]/35'
+                : ''
+            }
+            sortKey={String(sortField)}
+            sortDirection={sortAsc ? 'asc' : 'desc'}
+            onSortChange={(key, dir) => {
+              setSortField(key as keyof DetailedStockBalance);
+              setSortAsc(dir === 'asc');
+            }}
+            pagination={{
+              currentPage,
+              pageSize,
+              totalItems: filteredBalances.length,
+              onPageChange: setCurrentPage,
+            }}
+            emptyState={
+              <EmptyState
+                variant={balances.length === 0 ? 'NO_DATA' : 'FILTER_NO_MATCH'}
+                compact
+                title="موجودی یافت نشد"
+                description="هیچ موجودی منطبق با فیلترهای انتخابی یافت نشد."
+              />
+            }
+            columns={([
+              visibleCols.partCode
+                ? {
+                    key: 'partCode',
+                    header: 'کد کالا',
+                    sortable: true,
+                    nowrap: true,
+                    render: (item: DetailedStockBalance) => (
+                      <span onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
                           onClick={() => setSelectedObjectBalance(item)}
-                          className={`cursor-pointer transition-colors ${
-                            hasHold ? 'bg-[#fff5eb]/35 hover:bg-[#ffecec]/55' : 'hover:bg-[#e5f3fa]/60'
-                          }`}
+                          className="sap-doc-link fiori-ltr-code font-mono font-semibold cursor-pointer"
+                          title="نمایش Object Page و جریان اسناد"
                         >
-                          {visibleCols.partCode && (
-                            <td className="px-2.5 font-mono font-semibold text-[#007cc0] whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedObjectBalance(item)}
-                                className="sap-doc-link font-mono font-semibold cursor-pointer"
-                                title="نمایش Object Page و جریان اسناد"
-                              >
-                                {item.partCode}
-                              </button>
-                            </td>
-                          )}
-                          {visibleCols.partName && (
-                            <td className="px-2.5 font-medium text-[#333333]">
-                              <span>{item.partName}</span>
-                              {item.materialGrade && (
-                                <span className="text-[11px] text-[#666666] mr-1.5 font-mono">
-                                  ({item.materialGrade}{item.thicknessMm ? ` · ${item.thicknessMm}mm` : ''})
-                                </span>
-                              )}
-                            </td>
-                          )}
-                          {visibleCols.warehouse && (
-                            <td className="px-2.5 text-[#333333] whitespace-nowrap">
-                              <span>{item.warehouseName}</span>
-                              <span className="text-[10px] font-mono text-[#666666] mr-1">({item.locationCode})</span>
-                            </td>
-                          )}
-                          {visibleCols.lotNumber && (
-                            <td className="px-2.5 font-mono whitespace-nowrap">
-                              {item.lotNumber || '—'}
-                              {item.heatNumber && (
-                                <span className="text-[10px] text-[#666666] mr-1.5">ذوب: {item.heatNumber}</span>
-                              )}
-                            </td>
-                          )}
-                          {visibleCols.contract && (
-                            <td className="px-2.5 font-mono text-[#333333] whitespace-nowrap">
-                              {item.contractNumber || 'آزاد'}
-                            </td>
-                          )}
-                          {visibleCols.ownership && (
-                            <td className="px-2.5 whitespace-nowrap">
-                              <span className={item.ownership === 'SAPCO_SUPPLIER_OWNED' ? 'text-[#e9730c] font-semibold' : 'text-[#333333]'}>
-                                {item.ownership === 'SAPCO_SUPPLIER_OWNED' ? 'امانی ساپکو' : 'ملکی شرکت'}
-                              </span>
-                            </td>
-                          )}
-                          <td className="px-2.5 font-mono font-semibold text-[#107e3e] whitespace-nowrap">
-                            {formatNumber(item.unrestrictedQty)} {unitLbl}
-                          </td>
-                          <td className="px-2.5 font-mono font-semibold text-[#e9730c] whitespace-nowrap">
-                            {item.qualityInspectionQty > 0 ? `${formatNumber(item.qualityInspectionQty)} ${unitLbl}` : '—'}
-                          </td>
-                          <td className="px-2.5 font-mono font-semibold text-[#bb0000] whitespace-nowrap">
-                            {item.blockedQty > 0 ? `${formatNumber(item.blockedQty)} ${unitLbl}` : '—'}
-                          </td>
-                          {visibleCols.reservedQty && (
-                            <td className="px-2.5 font-mono text-[#007cc0] whitespace-nowrap">
-                              {item.reservedQty > 0 ? formatNumber(item.reservedQty) : '—'}
-                            </td>
-                          )}
-                          {visibleCols.physicalKg && (
-                            <td className="px-2.5 font-mono font-semibold text-[#333333] whitespace-nowrap">
-                              {formatWeightKg(item.physicalKg)}
-                            </td>
-                          )}
-                          <td className="px-2.5 text-left whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                            <div className="inline-flex items-center gap-1">
-                              {freeToMove > 0 && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => openQmTransferModal(item, '322')}
-                                    className="sap-btn-standard px-2 py-0.5 text-[11px] text-[#e9730c] border-[#f5cba7] hover:bg-[#fff4e5] cursor-pointer"
-                                    title="انتقال به قرنطینه کیفی (MvT 322)"
-                                  >
-                                    قرنطینه ۳۲۲
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => openQmTransferModal(item, '344')}
-                                    className="sap-btn-standard px-2 py-0.5 text-[11px] text-[#bb0000] border-[#f2b8b5] hover:bg-[#ffecec] cursor-pointer"
-                                    title="مسدودسازی کیفی (MvT 344)"
-                                  >
-                                    مسدود ۳۴۴
-                                  </button>
-                                </>
-                              )}
-                              {hasHold && (
-                                <button
-                                  type="button"
-                                  onClick={() => openQmTransferModal(item, '321')}
-                                  className="sap-btn-standard px-2 py-0.5 text-[11px] text-[#107e3e] border-[#b7dfc7] hover:bg-[#eef8f2] cursor-pointer"
-                                  title="آزادسازی به موجودی آزاد (MvT 321)"
-                                >
-                                  آزاد ۳۲۱
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {totalPages > 1 && (
-              <div className="px-3 py-2 bg-[#fafafa] border-t border-[#d9d9d9] flex items-center justify-between text-xs">
-                <span className="text-[#666666]">
-                  صفحه {toPersianDigits(currentPage)} از {toPersianDigits(totalPages)}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    className="sap-btn-standard px-3 py-1 disabled:opacity-40 cursor-pointer"
-                  >
-                    قبلی
-                  </button>
-                  <button
-                    type="button"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    className="sap-btn-standard px-3 py-1 disabled:opacity-40 cursor-pointer"
-                  >
-                    بعدی
-                  </button>
-                </div>
-              </div>
+                          {item.partCode}
+                        </button>
+                      </span>
+                    ),
+                  }
+                : null,
+              visibleCols.partName
+                ? {
+                    key: 'partName',
+                    header: 'نام کالا و مشخصات',
+                    sortable: true,
+                    render: (item: DetailedStockBalance) => (
+                      <>
+                        <span className="font-medium text-[var(--fiori-text-primary)]">{item.partName}</span>
+                        {item.materialGrade && (
+                          <span className="fiori-ltr-code text-[11px] text-[var(--fiori-text-secondary)] mr-1.5 font-mono">
+                            ({item.materialGrade}{item.thicknessMm ? ` · ${item.thicknessMm}mm` : ''})
+                          </span>
+                        )}
+                      </>
+                    ),
+                  }
+                : null,
+              visibleCols.warehouse
+                ? {
+                    key: 'warehouseName',
+                    header: 'انبار و جایگاه',
+                    sortable: true,
+                    nowrap: true,
+                    render: (item: DetailedStockBalance) => (
+                      <>
+                        <span>{item.warehouseName}</span>
+                        <span className="fiori-ltr-code text-[10px] font-mono text-[var(--fiori-text-secondary)] mr-1">
+                          ({item.locationCode})
+                        </span>
+                      </>
+                    ),
+                  }
+                : null,
+              visibleCols.lotNumber
+                ? {
+                    key: 'lotNumber',
+                    header: 'کویل‌پک / ذوب',
+                    nowrap: true,
+                    isMono: true,
+                    render: (item: DetailedStockBalance) => (
+                      <>
+                        <span className="fiori-ltr-code">{item.lotNumber || '—'}</span>
+                        {item.heatNumber && (
+                          <span className="text-[10px] text-[var(--fiori-text-secondary)] mr-1.5">
+                            ذوب: <span className="fiori-ltr-code">{item.heatNumber}</span>
+                          </span>
+                        )}
+                      </>
+                    ),
+                  }
+                : null,
+              visibleCols.contract
+                ? {
+                    key: 'contractNumber',
+                    header: 'قرارداد',
+                    nowrap: true,
+                    isMono: true,
+                    render: (item: DetailedStockBalance) =>
+                      item.contractNumber ? (
+                        <span className="fiori-ltr-code">{item.contractNumber}</span>
+                      ) : (
+                        <span className="text-[var(--fiori-text-secondary)]">آزاد</span>
+                      ),
+                  }
+                : null,
+              visibleCols.ownership
+                ? {
+                    key: 'ownership',
+                    header: 'مالکیت',
+                    nowrap: true,
+                    render: (item: DetailedStockBalance) => (
+                      <FioriObjectStatus
+                        tone={item.ownership === 'SAPCO_SUPPLIER_OWNED' ? 'critical' : 'neutral'}
+                        variant="text"
+                        size="sm"
+                        label={item.ownership === 'SAPCO_SUPPLIER_OWNED' ? 'امانی ساپکو' : 'ملکی شرکت'}
+                      />
+                    ),
+                  }
+                : null,
+              {
+                key: 'availableQty',
+                header: 'آزاد (Unrestricted)',
+                sortable: true,
+                nowrap: true,
+                isMono: true,
+                cellClassName: 'font-semibold text-[var(--fiori-positive)]',
+                render: (item: DetailedStockBalance) =>
+                  `${formatNumber(item.unrestrictedQty)} ${item.unit === 'KG' ? 'kg' : 'عدد'}`,
+              },
+              {
+                key: 'qualityInspectionQty',
+                header: 'کنترل کیفی (QI)',
+                sortable: true,
+                nowrap: true,
+                isMono: true,
+                cellClassName: 'font-semibold text-[var(--fiori-critical)]',
+                render: (item: DetailedStockBalance) =>
+                  item.qualityInspectionQty > 0
+                    ? `${formatNumber(item.qualityInspectionQty)} ${item.unit === 'KG' ? 'kg' : 'عدد'}`
+                    : '—',
+              },
+              {
+                key: 'blockedQty',
+                header: 'مسدود (Blocked)',
+                sortable: true,
+                nowrap: true,
+                isMono: true,
+                cellClassName: 'font-semibold text-[var(--fiori-negative)]',
+                render: (item: DetailedStockBalance) =>
+                  item.blockedQty > 0
+                    ? `${formatNumber(item.blockedQty)} ${item.unit === 'KG' ? 'kg' : 'عدد'}`
+                    : '—',
+              },
+              visibleCols.reservedQty
+                ? {
+                    key: 'reservedQty',
+                    header: 'رزرو تولید',
+                    nowrap: true,
+                    isMono: true,
+                    cellClassName: 'text-[var(--fiori-brand)]',
+                    render: (item: DetailedStockBalance) =>
+                      item.reservedQty > 0 ? formatNumber(item.reservedQty) : '—',
+                  }
+                : null,
+              visibleCols.physicalKg
+                ? {
+                    key: 'physicalKg',
+                    header: 'وزن کل (kg)',
+                    sortable: true,
+                    nowrap: true,
+                    isMono: true,
+                    cellClassName: 'font-semibold text-[var(--fiori-text-primary)]',
+                    render: (item: DetailedStockBalance) => formatWeightKg(item.physicalKg),
+                  }
+                : null,
+              {
+                key: 'qmActions',
+                header: 'عملیات کیفی QM (۳۲۱/۳۲۲/۳۴۴)',
+                align: 'left',
+                nowrap: true,
+                render: (item: DetailedStockBalance) => {
+                  const hasHold = item.qualityInspectionQty + item.blockedQty > 0;
+                  const freeToMove = Math.max(0, item.unrestrictedQty - (item.reservedQty || 0));
+                  return (
+                    <div className="inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      {freeToMove > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openQmTransferModal(item, '322')}
+                            className="sap-btn-standard px-2 py-0.5 text-[11px] text-[var(--fiori-critical)] border-[var(--fiori-critical-border)] hover:bg-[var(--fiori-critical-bg)] cursor-pointer"
+                            title="انتقال به قرنطینه کیفی (MvT 322)"
+                          >
+                            قرنطینه ۳۲۲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openQmTransferModal(item, '344')}
+                            className="sap-btn-standard px-2 py-0.5 text-[11px] text-[var(--fiori-negative)] border-[var(--fiori-negative-border)] hover:bg-[var(--fiori-negative-bg)] cursor-pointer"
+                            title="مسدودسازی کیفی (MvT 344)"
+                          >
+                            مسدود ۳۴۴
+                          </button>
+                        </>
+                      )}
+                      {hasHold && (
+                        <button
+                          type="button"
+                          onClick={() => openQmTransferModal(item, '321')}
+                          className="sap-btn-standard px-2 py-0.5 text-[11px] text-[var(--fiori-positive)] border-[var(--fiori-positive-border)] hover:bg-[var(--fiori-positive-bg)] cursor-pointer"
+                          title="آزادسازی به موجودی آزاد (MvT 321)"
+                        >
+                          آزاد ۳۲۱
+                        </button>
+                      )}
+                    </div>
+                  );
+                },
+              },
+            ] as Array<FioriTableColumn<DetailedStockBalance> | null>).filter(
+              (c): c is FioriTableColumn<DetailedStockBalance> => Boolean(c)
             )}
-          </>
+          />
         )}
       </FioriAnalyticalListPage>
         </>
@@ -2073,40 +2247,67 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
               {
                 id: 'movements',
                 label: `تراکنش‌های مرتبط (${toPersianDigits(relatedDocs.length)})`,
-                content: relatedDocs.length === 0 ? (
-                  <div className="text-center py-6 text-xs text-[#666666]">تراکنشی برای این ردیف ثبت نشده است.</div>
-                ) : (
-                  <div className="overflow-x-auto border border-[#d9d9d9] rounded">
-                    <table className="sap-table-compact w-full text-right text-xs">
-                      <thead className="bg-[#f5f5f5] border-b border-[#d9d9d9] text-[#333333] font-semibold">
-                        <tr>
-                          <th className="py-1.5 px-2.5">شماره سند</th>
-                          <th className="py-1.5 px-2.5">کد حرکت</th>
-                          <th className="py-1.5 px-2.5">تاریخ</th>
-                          <th className="py-1.5 px-2.5">وضعیت</th>
-                          <th className="py-1.5 px-2.5">توضیحات</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#e8e8e8] tabular-nums">
-                        {relatedDocs.map(d => {
+                content: (
+                  <FioriDataTable<InventoryDocument>
+                    data={relatedDocs}
+                    rowKey={d => d.id}
+                    emptyState={
+                      <EmptyState
+                        variant="NO_DATA"
+                        compact
+                        title="تراکنشی ثبت نشده است"
+                        description="تراکنشی برای این ردیف ثبت نشده است."
+                      />
+                    }
+                    columns={[
+                      {
+                        key: 'documentNumber',
+                        header: 'شماره سند',
+                        isMono: true,
+                        isLtrCode: true,
+                        cellClassName: 'text-[var(--fiori-brand)] font-semibold',
+                        render: d => d.documentNumber,
+                      },
+                      {
+                        key: 'mv',
+                        header: 'کد حرکت',
+                        isMono: true,
+                        cellClassName: 'font-bold',
+                        render: d => {
                           const mv = resolveSapMovementType(d.documentType, {
                             explicitMovementType: d.movementType,
                             totalQuantity: d.totalQuantity,
                             qmTarget: d.qmStatusTarget,
                           });
-                          return (
-                            <tr key={d.id}>
-                              <td className="px-2.5 font-mono text-[#007cc0]">{d.documentNumber}</td>
-                              <td className="px-2.5 font-mono font-bold">MvT {mv}</td>
-                              <td className="px-2.5 font-mono text-[#666666]">{d.documentDate}</td>
-                              <td className="px-2.5">{d.postingStatus}</td>
-                              <td className="px-2.5 text-[#666666]">{d.auditNote || d.adjustmentReason || '—'}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                          return `MvT ${mv}`;
+                        },
+                      },
+                      {
+                        key: 'documentDate',
+                        header: 'تاریخ',
+                        isMono: true,
+                        cellClassName: 'text-[var(--fiori-text-secondary)]',
+                        render: d => d.documentDate,
+                      },
+                      {
+                        key: 'postingStatus',
+                        header: 'وضعیت',
+                        render: d => (
+                          <FioriObjectStatus
+                            tone={d.postingStatus === 'REVERSED' ? 'negative' : 'positive'}
+                            size="sm"
+                            label={d.postingStatus === 'REVERSED' ? 'ابطال‌شده' : 'قطعی'}
+                          />
+                        ),
+                      },
+                      {
+                        key: 'notes',
+                        header: 'توضیحات',
+                        cellClassName: 'text-[var(--fiori-text-secondary)]',
+                        render: d => d.auditNote || d.adjustmentReason || '—',
+                      },
+                    ]}
+                  />
                 ),
               },
             ]}
@@ -2115,167 +2316,161 @@ export const StockInquiryView: React.FC<StockInquiryViewProps> = ({
       })()}
 
       {/* SAP QM Transfer Modal (322: Unrestricted->QI, 344: Unrestricted->Blocked, 321: Release->Unrestricted) with live onChange validation */}
-      {qmTargetBalance && (
-        <div
-          className="fixed inset-0 bg-[#333333]/45 flex items-center justify-center z-[60] p-4"
-          onClick={() => setQmTargetBalance(null)}
-        >
-          <div
-            className="bg-[#ffffff] border border-[#d9d9d9] rounded-md max-w-lg w-full p-4 text-right shadow-xl space-y-3"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3 border-b border-[#e8e8e8] pb-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded bg-[#fff4e5] border border-[#f5cba7] text-[#e9730c] flex items-center justify-center shrink-0">
-                  <ShieldAlert className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-[#333333]">
-                    ثبت سند انتقال وضعیت کیفی SAP QM (MvT {qmMovementCode})
-                  </h3>
-                  <p className="text-[11px] text-[#666666] mt-0.5">
-                    {qmTargetBalance.partName} · بچ:{' '}
-                    <span className="font-mono font-semibold text-[#333333]">
-                      {qmTargetBalance.lotNumber || qmTargetBalance.partCode}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setQmTargetBalance(null)}
-                className="px-2 py-1 rounded text-[#666666] hover:text-[#333333] hover:bg-[#f5f5f5] text-xs cursor-pointer"
-              >
-                ✕
-              </button>
+      <FioriDialog
+        isOpen={Boolean(qmTargetBalance)}
+        onClose={() => setQmTargetBalance(null)}
+        title={`ثبت سند انتقال وضعیت کیفی SAP QM (MvT ${qmMovementCode})`}
+        subtitle={
+          qmTargetBalance ? (
+            <>
+              {qmTargetBalance.partName} · بچ:{' '}
+              <span className="fiori-ltr-code font-mono font-semibold text-[var(--fiori-text-primary)]">
+                {qmTargetBalance.lotNumber || qmTargetBalance.partCode}
+              </span>
+            </>
+          ) : undefined
+        }
+        icon={<ShieldAlert className="w-4 h-4" />}
+        tone={qmMovementCode === '344' ? 'danger' : qmMovementCode === '322' ? 'warning' : 'brand'}
+        size="md"
+        disableClose={qmSubmitting}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setQmTargetBalance(null)}
+              disabled={qmSubmitting}
+              className="sap-btn-standard px-3.5 py-1.5 text-xs cursor-pointer disabled:opacity-50"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="stock-inquiry-qm-form"
+              disabled={qmSubmitting || Boolean(qmLiveQtyValidation) || qmReasonText.trim().length < 3}
+              className="sap-btn-emphasized px-4 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>{qmSubmitting ? 'در حال ثبت...' : `ثبت قطعی سند QM (${qmMovementCode})`}</span>
+            </button>
+          </>
+        }
+      >
+        {qmTargetBalance && (
+          <form id="stock-inquiry-qm-form" onSubmit={handleConfirmQmTransfer} className="space-y-3 text-xs">
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { code: '322', label: '۳۲۲ · ورود به قرنطینه (QI)' },
+                  { code: '344', label: '۳۴۴ · مسدودسازی (Blocked)' },
+                  { code: '321', label: '۳۲۱ · آزادسازی به آزاد' },
+                ] as const
+              ).map(opt => (
+                <button
+                  key={opt.code}
+                  type="button"
+                  onClick={() => {
+                    setQmMovementCode(opt.code);
+                    const maxForCode =
+                      opt.code === '321'
+                        ? Math.max(0, qmTargetBalance.qualityInspectionQty + qmTargetBalance.blockedQty)
+                        : Math.max(0, qmTargetBalance.unrestrictedQty - (qmTargetBalance.reservedQty || 0));
+                    setQmQuantityInput(maxForCode > 0 ? String(maxForCode) : '0');
+                    setQmSubmitError('');
+                  }}
+                  className={`py-1.5 px-2 rounded-[var(--fiori-radius-sm)] border text-[11px] font-semibold cursor-pointer transition ${
+                    qmMovementCode === opt.code
+                      ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)]'
+                      : 'bg-[var(--fiori-bg-subtle)] text-[var(--fiori-text-primary)] border-[var(--fiori-border-default)] hover:bg-[var(--fiori-bg-hover)]'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
 
-            <form onSubmit={handleConfirmQmTransfer} className="space-y-3 text-xs">
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    { code: '322', label: '۳۲۲ · ورود به قرنطینه (QI)' },
-                    { code: '344', label: '۳۴۴ · مسدودسازی (Blocked)' },
-                    { code: '321', label: '۳۲۱ · آزادسازی به آزاد' },
-                  ] as const
-                ).map(opt => (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-[var(--fiori-text-primary)]">
+                  مقدار انتقال ({qmTargetBalance.unit === 'KG' ? 'کیلوگرم' : 'عدد'})
+                </label>
+                <span className="text-[11px] font-mono text-[var(--fiori-brand)]">
+                  سقف مجاز: {formatNumber(qmCeilingQty)} {qmTargetBalance.unit === 'KG' ? 'kg' : 'عدد'}
+                </span>
+              </div>
+              <input
+                type="number"
+                step="any"
+                value={qmQuantityInput}
+                onChange={e => {
+                  setQmQuantityInput(e.target.value);
+                  setQmSubmitError('');
+                }}
+                className={`w-full rounded-[var(--fiori-radius-sm)] border px-3 py-1.5 font-mono text-xs focus:outline-none ${
+                  qmLiveQtyValidation
+                    ? 'border-[var(--fiori-negative)] bg-[var(--fiori-negative-bg)]/40 text-[var(--fiori-negative)]'
+                    : 'border-[var(--fiori-border-input)] bg-white text-[var(--fiori-text-primary)] focus:border-[var(--fiori-border-focus)]'
+                }`}
+              />
+              {qmLiveQtyValidation && (
+                <div className="mt-2">
+                  <FioriMessageStrip tone="error" compact>
+                    {qmLiveQtyValidation}
+                  </FioriMessageStrip>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">
+                انتخاب سریع علت کیفی:
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {STOCK_QC_HOLD_PRESETS.map(preset => (
                   <button
-                    key={opt.code}
+                    key={preset}
                     type="button"
                     onClick={() => {
-                      setQmMovementCode(opt.code);
-                      const maxForCode =
-                        opt.code === '321'
-                          ? Math.max(0, qmTargetBalance.qualityInspectionQty + qmTargetBalance.blockedQty)
-                          : Math.max(0, qmTargetBalance.unrestrictedQty - (qmTargetBalance.reservedQty || 0));
-                      setQmQuantityInput(maxForCode > 0 ? String(maxForCode) : '0');
+                      setQmReasonText(preset);
                       setQmSubmitError('');
                     }}
-                    className={`py-1.5 px-2 rounded border text-[11px] font-semibold cursor-pointer ${
-                      qmMovementCode === opt.code
-                        ? 'bg-[#007cc0] text-white border-[#007cc0]'
-                        : 'bg-[#f5f5f5] text-[#333333] border-[#d9d9d9]'
+                    className={`px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] border transition cursor-pointer ${
+                      qmReasonText === preset
+                        ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)] font-semibold'
+                        : 'bg-[var(--fiori-bg-subtle)] hover:bg-[var(--fiori-bg-hover)] text-[var(--fiori-text-primary)] border-[var(--fiori-border-default)]'
                     }`}
                   >
-                    {opt.label}
+                    {preset}
                   </button>
                 ))}
               </div>
+            </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-[#333333]">
-                    مقدار انتقال ({qmTargetBalance.unit === 'KG' ? 'کیلوگرم' : 'عدد'})
-                  </label>
-                  <span className="text-[11px] font-mono text-[#007cc0]">
-                    سقف مجاز: {formatNumber(qmCeilingQty)} {qmTargetBalance.unit === 'KG' ? 'kg' : 'عدد'}
-                  </span>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--fiori-text-primary)] mb-1">
+                علت ثبت سند کیفی (Audit Reason) <span className="text-[var(--fiori-negative)]">*</span>
+              </label>
+              <textarea
+                rows={2}
+                value={qmReasonText}
+                onChange={e => {
+                  setQmReasonText(e.target.value);
+                  setQmSubmitError('');
+                }}
+                placeholder="شماره گزارش عدم انطباق (NCR) یا نتیجه تست آزمایشگاه..."
+                className="w-full rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-input)] bg-white px-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
+              />
+              {qmSubmitError && !qmLiveQtyValidation && (
+                <div className="mt-2">
+                  <FioriMessageStrip tone="error" compact>
+                    {qmSubmitError}
+                  </FioriMessageStrip>
                 </div>
-                <input
-                  type="number"
-                  step="any"
-                  value={qmQuantityInput}
-                  onChange={e => {
-                    setQmQuantityInput(e.target.value);
-                    setQmSubmitError('');
-                  }}
-                  className={`w-full rounded border px-3 py-1.5 font-mono text-xs focus:outline-none ${
-                    qmLiveQtyValidation
-                      ? 'border-[#bb0000] bg-[#ffecec]/40 text-[#bb0000]'
-                      : 'border-[#bfbfbf] bg-white text-[#333333] focus:border-[#007cc0]'
-                  }`}
-                />
-                {qmLiveQtyValidation && (
-                  <p className="text-[11px] text-[#bb0000] font-semibold mt-1">{qmLiveQtyValidation}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[#333333] mb-1">
-                  انتخاب سریع علت کیفی:
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {STOCK_QC_HOLD_PRESETS.map(preset => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => {
-                        setQmReasonText(preset);
-                        setQmSubmitError('');
-                      }}
-                      className={`px-2 py-1 rounded text-[11px] border transition cursor-pointer ${
-                        qmReasonText === preset
-                          ? 'bg-[#007cc0] text-[#ffffff] border-[#007cc0] font-semibold'
-                          : 'bg-[#f5f5f5] hover:bg-[#e8e8e8] text-[#333333] border-[#d9d9d9]'
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#333333] mb-1">
-                  علت ثبت سند کیفی (Audit Reason) <span className="text-[#bb0000]">*</span>
-                </label>
-                <textarea
-                  rows={2}
-                  value={qmReasonText}
-                  onChange={e => {
-                    setQmReasonText(e.target.value);
-                    setQmSubmitError('');
-                  }}
-                  placeholder="شماره گزارش عدم انطباق (NCR) یا نتیجه تست آزمایشگاه..."
-                  className="w-full rounded border border-[#bfbfbf] bg-[#ffffff] px-3 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-                />
-                {qmSubmitError && !qmLiveQtyValidation && (
-                  <p className="text-[11px] text-[#bb0000] font-semibold mt-1">{qmSubmitError}</p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setQmTargetBalance(null)}
-                  disabled={qmSubmitting}
-                  className="sap-btn-standard px-3.5 py-1.5 text-xs cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  disabled={qmSubmitting || Boolean(qmLiveQtyValidation) || qmReasonText.trim().length < 3}
-                  className="sap-btn-emphasized px-4 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>{qmSubmitting ? 'در حال ثبت...' : `ثبت قطعی سند QM (${qmMovementCode})`}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              )}
+            </div>
+          </form>
+        )}
+      </FioriDialog>
     </div>
   );
 };

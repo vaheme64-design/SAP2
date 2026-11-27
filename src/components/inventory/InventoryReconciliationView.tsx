@@ -21,6 +21,15 @@ import {
 } from '../../types/inventory';
 import { formatNumber, formatWeightKg, toPersianDigits, formatDateTime } from '../../utils/formatters';
 import { MATERIAL_FAMILY_LABELS_FA, MaterialFamily } from '../../utils/materialClassification';
+import {
+  FioriDynamicPage,
+  FioriToolbar,
+  FioriDataTable,
+  FioriTableColumn,
+  FioriObjectStatus,
+  FioriMessageStrip,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 interface ReconciliationDiscrepancy {
   id: string;
@@ -403,63 +412,371 @@ export const InventoryReconciliationView: React.FC<InventoryReconciliationViewPr
     if (!report) {
       return {
         label: 'در حال بررسی...',
-        className: 'bg-slate-100 text-slate-700 border-slate-200',
+        tone: 'neutral' as const,
         Icon: RefreshCw,
       };
     }
     if (report.overallStatus === 'BALANCED') {
       return {
         label: 'متوازن و بدون مغایرت',
-        className: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        tone: 'positive' as const,
         Icon: CheckCircle2,
       };
     }
     if (report.overallStatus === 'WARNINGS') {
       return {
         label: `نیازمند بررسی (${toPersianDigits(report.summary.warningCount)} هشدار)`,
-        className: 'bg-amber-50 text-amber-800 border-amber-200',
+        tone: 'critical' as const,
         Icon: AlertTriangle,
       };
     }
     return {
       label: `مغایرت شناسایی شد (${toPersianDigits(report.summary.errorCount)} خطا)`,
-      className: 'bg-rose-50 text-rose-800 border-rose-200',
+      tone: 'negative' as const,
       Icon: AlertCircle,
     };
   }, [report]);
 
   const StatusIcon = statusMeta.Icon;
 
-  return (
-    <div className="space-y-4">
-      {/* Header Bar */}
-      <div className="sap-card p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <ShieldCheck className="w-5 h-5 text-[#0070F2]" />
-            <h2 className="text-sm font-bold text-[#1D2D3E]">
-              تطبیق چهارطرفه موجودی، انبارگردانی دوره‌ای و ردیابی مواد
-            </h2>
-            <span
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded border text-[11px] font-semibold ${statusMeta.className}`}
-            >
-              <StatusIcon className="w-3.5 h-3.5" />
-              {statusMeta.label}
-            </span>
-          </div>
-          <p className="text-xs text-[#556B82]">
-            کنترل هم‌زمان دفتر کل اسناد (Ledger)، تفکیک موجودی آزاد/رزرو/قرنطینه، تراز جرمی کلاف‌های ورق و حساب امانی قراردادهای ساپکو
-            {report?.generatedAt ? ` · آخرین بررسی: ${formatDateTime(report.generatedAt)}` : ''}
-          </p>
-        </div>
+  type FamilyRow = {
+    family: MaterialFamily;
+    rowCount: number;
+    physicalQty: number;
+    availableQty: number;
+    reservedQty: number;
+    qualityHoldQty: number;
+  };
 
-        <div className="flex items-center gap-2 shrink-0">
+  const materialFamilyRows: FamilyRow[] = useMemo(() => {
+    if (!report) return [];
+    return MATERIAL_FAMILIES_ORDER.map(fam => {
+      const row = report.summary.byMaterialFamily[fam];
+      if (!row) return null;
+      return {
+        family: fam,
+        rowCount: row.rowCount,
+        physicalQty: row.physicalQty,
+        availableQty: row.availableQty,
+        reservedQty: row.reservedQty,
+        qualityHoldQty: row.qualityHoldQty,
+      };
+    }).filter((r): r is FamilyRow => Boolean(r));
+  }, [report]);
+
+  const familyColumns: FioriTableColumn<FamilyRow>[] = [
+    {
+      key: 'family',
+      header: 'گروه کالا',
+      render: row => (
+        <span className="font-semibold text-[var(--fiori-text-primary)]">
+          {MATERIAL_FAMILY_LABELS_FA[row.family]}
+        </span>
+      ),
+    },
+    {
+      key: 'rowCount',
+      header: 'تعداد ردیف',
+      sortValue: row => row.rowCount,
+      render: row => (
+        <span className="font-mono text-[var(--fiori-text-secondary)] tabular-nums">
+          {toPersianDigits(row.rowCount)}
+        </span>
+      ),
+    },
+    {
+      key: 'physicalQty',
+      header: 'فیزیکی',
+      sortValue: row => row.physicalQty,
+      render: row => (
+        <span className="font-mono font-semibold text-[var(--fiori-text-primary)] tabular-nums">
+          {formatNumber(row.physicalQty)}
+        </span>
+      ),
+    },
+    {
+      key: 'availableQty',
+      header: 'قابل استفاده',
+      sortValue: row => row.availableQty,
+      render: row => (
+        <span className="font-mono text-[var(--fiori-positive)] font-semibold tabular-nums">
+          {formatNumber(row.availableQty)}
+        </span>
+      ),
+    },
+    {
+      key: 'reservedQty',
+      header: 'رزرو',
+      sortValue: row => row.reservedQty,
+      render: row => (
+        <span className="font-mono text-[var(--fiori-brand)] tabular-nums">
+          {formatNumber(row.reservedQty)}
+        </span>
+      ),
+    },
+    {
+      key: 'qualityHoldQty',
+      header: 'قرنطینه/مسدود',
+      sortValue: row => row.qualityHoldQty,
+      render: row => (
+        <span className="font-mono text-[var(--fiori-critical)] tabular-nums">
+          {formatNumber(row.qualityHoldQty)}
+        </span>
+      ),
+    },
+  ];
+
+  const discrepancyColumns: FioriTableColumn<ReconciliationDiscrepancy>[] = [
+    {
+      key: 'severity',
+      header: 'سطح',
+      sortValue: d => (d.severity === 'ERROR' ? 0 : 1),
+      render: d => (
+        <FioriObjectStatus
+          tone={d.severity === 'ERROR' ? 'negative' : d.severity === 'WARNING' ? 'critical' : 'info'}
+          label={d.severity === 'ERROR' ? 'خطا' : d.severity === 'WARNING' ? 'هشدار' : 'اطلاع'}
+        />
+      ),
+    },
+    {
+      key: 'entityCode',
+      header: 'کد / شناسه',
+      sortValue: d => d.entityCode,
+      render: d => (
+        <span className="font-mono font-semibold text-[var(--fiori-text-primary)] fiori-ltr-code">
+          {d.entityCode}
+        </span>
+      ),
+    },
+    {
+      key: 'expectedValue',
+      header: 'مقدار مورد انتظار',
+      sortValue: d => d.expectedValue,
+      render: d => (
+        <span className="font-mono tabular-nums">
+          {formatNumber(d.expectedValue)} {d.unit}
+        </span>
+      ),
+    },
+    {
+      key: 'actualValue',
+      header: 'مقدار ثبت‌شده',
+      sortValue: d => d.actualValue,
+      render: d => (
+        <span className="font-mono tabular-nums">
+          {formatNumber(d.actualValue)} {d.unit}
+        </span>
+      ),
+    },
+    {
+      key: 'variance',
+      header: 'اختلاف',
+      sortValue: d => d.variance,
+      render: d => (
+        <span className="font-mono font-semibold text-[var(--fiori-negative)] tabular-nums">
+          {d.variance >= 0 ? '+' : ''}
+          {formatNumber(d.variance)} {d.unit}
+        </span>
+      ),
+    },
+    {
+      key: 'messageFa',
+      header: 'توضیح',
+      render: d => <span className="text-[var(--fiori-text-primary)]">{d.messageFa}</span>,
+    },
+  ];
+
+  const contractColumns: FioriTableColumn<ContractStockSummaryRow>[] = [
+    {
+      key: 'contractNumber',
+      header: 'شماره قرارداد',
+      sortValue: row => row.contractNumber,
+      render: row => (
+        <div>
+          <div className="font-mono font-semibold text-[var(--fiori-text-primary)] fiori-ltr-code">
+            {row.contractNumber}
+          </div>
+          <div className="text-[10px] text-[var(--fiori-text-secondary)]">{row.title}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'ownership',
+      header: 'مشتری / مالکیت',
+      sortValue: row => row.customerName,
+      render: row => (
+        <div>
+          <div className="text-[var(--fiori-text-primary)]">{row.customerName}</div>
+          <div className="text-[10px] text-[var(--fiori-text-secondary)]">
+            {row.ownership === 'SAPCO_SUPPLIER_OWNED' ? 'امانی ساپکو' : 'ملکی شرکت'}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'totalReceivedKg',
+      header: 'دریافتی (kg)',
+      sortValue: row => row.totalReceivedKg,
+      render: row => <span className="font-mono tabular-nums">{formatWeightKg(row.totalReceivedKg)}</span>,
+    },
+    {
+      key: 'totalConsumedKg',
+      header: 'مصرفی (kg)',
+      sortValue: row => row.totalConsumedKg,
+      render: row => <span className="font-mono tabular-nums">{formatWeightKg(row.totalConsumedKg)}</span>,
+    },
+    {
+      key: 'ledgerClosingBalanceKg',
+      header: 'مانده دفتر امانی',
+      sortValue: row => row.ledgerClosingBalanceKg,
+      render: row => (
+        <span className="font-mono font-semibold text-[var(--fiori-text-primary)] tabular-nums">
+          {formatWeightKg(row.ledgerClosingBalanceKg)}
+        </span>
+      ),
+    },
+    {
+      key: 'warehouseStockKg',
+      header: 'موجودی انبار',
+      sortValue: row => row.warehouseStockKg,
+      render: row => (
+        <span className="font-mono font-semibold text-[var(--fiori-brand)] tabular-nums">
+          {formatWeightKg(row.warehouseStockKg)}
+        </span>
+      ),
+    },
+    {
+      key: 'split',
+      header: 'آزاد / رزرو / قرنطینه',
+      render: row => (
+        <span className="font-mono text-[11px] tabular-nums whitespace-nowrap">
+          <span className="text-[var(--fiori-positive)]">{formatNumber(row.availableStockKg)}</span> /{' '}
+          <span className="text-[var(--fiori-brand)]">{formatNumber(row.reservedStockKg)}</span> /{' '}
+          <span className="text-[var(--fiori-critical)]">{formatNumber(row.qualityHoldStockKg)}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'activeCoilsCount',
+      header: 'کلاف فعال',
+      sortValue: row => row.activeCoilsCount,
+      render: row => (
+        <span className="font-mono text-[11px] tabular-nums whitespace-nowrap">
+          {toPersianDigits(row.activeCoilsCount)} رول ({formatWeightKg(row.activeCoilsRemainingKg)})
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'وضعیت',
+      sortValue: row => row.status,
+      render: row => (
+        <FioriObjectStatus
+          tone={row.status === 'BALANCED' ? 'positive' : 'critical'}
+          label={
+            row.status === 'BALANCED'
+              ? 'متوازن'
+              : `اختلاف ${row.varianceKg >= 0 ? '+' : ''}${formatNumber(row.varianceKg)} kg`
+          }
+        />
+      ),
+    },
+  ];
+
+  const kpiStrip = report ? (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3 shadow-[var(--fiori-shadow-card)]">
+        <div className="text-[11px] text-[var(--fiori-text-secondary)]">موجودی فیزیکی کل</div>
+        <div className="text-sm font-bold text-[var(--fiori-text-primary)] mt-1 font-mono tabular-nums">
+          {formatWeightKg(report.summary.totalPhysicalKg)}
+        </div>
+        <div className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 tabular-nums">
+          {toPersianDigits(report.summary.totalStockRows)} ردیف موجودی
+        </div>
+      </div>
+
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3 shadow-[var(--fiori-shadow-card)]">
+        <div className="text-[11px] text-[var(--fiori-text-secondary)]">قابل استفاده (Available ATP)</div>
+        <div className="text-sm font-bold text-[var(--fiori-positive)] mt-1 font-mono tabular-nums">
+          {formatWeightKg(report.summary.totalAvailableKg)}
+        </div>
+        <div className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5">آزاد منهای رزرو فعال</div>
+      </div>
+
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3 shadow-[var(--fiori-shadow-card)]">
+        <div className="text-[11px] text-[var(--fiori-text-secondary)]">رزرو خطوط تولید</div>
+        <div className="text-sm font-bold text-[var(--fiori-brand)] mt-1 font-mono tabular-nums">
+          {formatWeightKg(report.summary.totalReservedKg)}
+        </div>
+        <div className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 tabular-nums">
+          {toPersianDigits(report.summary.activeReservationsCount)} رزرو فعال
+        </div>
+      </div>
+
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3 shadow-[var(--fiori-shadow-card)]">
+        <div className="text-[11px] text-[var(--fiori-text-secondary)]">قرنطینه و مسدود کیفی</div>
+        <div className="text-sm font-bold text-[var(--fiori-critical)] mt-1 font-mono tabular-nums">
+          {formatWeightKg(report.summary.totalQualityHoldKg)}
+        </div>
+        <div className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 tabular-nums">
+          QI: {formatWeightKg(report.summary.totalQualityInspectionKg)} · مسدود:{' '}
+          {formatWeightKg(report.summary.totalBlockedKg)}
+        </div>
+      </div>
+
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3 shadow-[var(--fiori-shadow-card)]">
+        <div className="text-[11px] text-[var(--fiori-text-secondary)]">مانده کلاف‌های ورق فعال</div>
+        <div className="text-sm font-bold text-[var(--fiori-text-primary)] mt-1 font-mono tabular-nums">
+          {formatWeightKg(report.summary.activeCoilsRemainingKg)}
+        </div>
+        <div className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 tabular-nums">
+          از مجموع {toPersianDigits(report.summary.totalPhysicalCoils)} کلاف
+        </div>
+      </div>
+
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3 shadow-[var(--fiori-shadow-card)]">
+        <div className="text-[11px] text-[var(--fiori-text-secondary)]">مغایرت‌ها و هشدارها</div>
+        <div
+          className={`text-sm font-bold mt-1 font-mono tabular-nums ${
+            report.summary.errorCount > 0
+              ? 'text-[var(--fiori-negative)]'
+              : report.summary.warningCount > 0
+              ? 'text-[var(--fiori-critical)]'
+              : 'text-[var(--fiori-positive)]'
+          }`}
+        >
+          {toPersianDigits(report.summary.errorCount)} خطا / {toPersianDigits(report.summary.warningCount)} هشدار
+        </div>
+        <div className="text-[10px] text-[var(--fiori-text-muted)] mt-0.5 tabular-nums">
+          {toPersianDigits(report.summary.activeContractsCount)} قرارداد فعال
+        </div>
+      </div>
+    </div>
+  ) : undefined;
+
+  return (
+    <FioriDynamicPage
+      title="تطبیق چهارطرفه موجودی، انبارگردانی دوره‌ای و ردیابی مواد"
+      subtitle={`کنترل هم‌زمان دفتر کل اسناد (Ledger)، تفکیک موجودی آزاد/رزرو/قرنطینه، تراز جرمی کلاف‌های ورق و حساب امانی قراردادهای ساپکو${
+        report?.generatedAt ? ` · آخرین بررسی: ${formatDateTime(report.generatedAt)}` : ''
+      }`}
+      status={
+        <FioriObjectStatus
+          tone={statusMeta.tone}
+          icon={<StatusIcon className="w-3.5 h-3.5" />}
+          label={statusMeta.label}
+        />
+      }
+      collapsibleFilters={false}
+      kpiStrip={kpiStrip}
+      headerActions={
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <button
             type="button"
             onClick={handleDownloadLedgerCsv}
             className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-[#0070F2]" />
+            <Download className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
             <span>خروجی اکسل کاردکس (CSV)</span>
           </button>
           <button
@@ -474,651 +791,450 @@ export const InventoryReconciliationView: React.FC<InventoryReconciliationViewPr
             <span>بروزرسانی تطبیق</span>
           </button>
         </div>
-      </div>
-
+      }
+    >
       {loadError && (
-        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{loadError}</span>
-        </div>
-      )}
-
-      {/* KPI Strip: Reliable Total / Available / Reserved / Quality-Hold / Coils / Discrepancies */}
-      {report && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="sap-card p-3">
-            <div className="text-[11px] text-[#556B82]">موجودی فیزیکی کل</div>
-            <div className="text-sm font-bold text-[#1D2D3E] mt-1 font-mono tabular-nums">
-              {formatWeightKg(report.summary.totalPhysicalKg)}
-            </div>
-            <div className="text-[10px] text-[#666666] mt-0.5">
-              {toPersianDigits(report.summary.totalStockRows)} ردیف موجودی
-            </div>
-          </div>
-
-          <div className="sap-card p-3 border-r-2 border-r-[#107e3e]">
-            <div className="text-[11px] text-[#556B82]">قابل استفاده (Available ATP)</div>
-            <div className="text-sm font-bold text-[#107e3e] mt-1 font-mono tabular-nums">
-              {formatWeightKg(report.summary.totalAvailableKg)}
-            </div>
-            <div className="text-[10px] text-[#666666] mt-0.5">آزاد منهای رزرو فعال</div>
-          </div>
-
-          <div className="sap-card p-3 border-r-2 border-r-[#0070F2]">
-            <div className="text-[11px] text-[#556B82]">رزرو خطوط تولید</div>
-            <div className="text-sm font-bold text-[#0070F2] mt-1 font-mono tabular-nums">
-              {formatWeightKg(report.summary.totalReservedKg)}
-            </div>
-            <div className="text-[10px] text-[#666666] mt-0.5">
-              {toPersianDigits(report.summary.activeReservationsCount)} رزرو فعال
-            </div>
-          </div>
-
-          <div className="sap-card p-3 border-r-2 border-r-[#E9730C]">
-            <div className="text-[11px] text-[#556B82]">قرنطینه و مسدود کیفی</div>
-            <div className="text-sm font-bold text-[#E9730C] mt-1 font-mono tabular-nums">
-              {formatWeightKg(report.summary.totalQualityHoldKg)}
-            </div>
-            <div className="text-[10px] text-[#666666] mt-0.5">
-              QI: {formatWeightKg(report.summary.totalQualityInspectionKg)} · مسدود:{' '}
-              {formatWeightKg(report.summary.totalBlockedKg)}
-            </div>
-          </div>
-
-          <div className="sap-card p-3">
-            <div className="text-[11px] text-[#556B82]">مانده کلاف‌های ورق فعال</div>
-            <div className="text-sm font-bold text-[#1D2D3E] mt-1 font-mono tabular-nums">
-              {formatWeightKg(report.summary.activeCoilsRemainingKg)}
-            </div>
-            <div className="text-[10px] text-[#666666] mt-0.5">
-              از مجموع {toPersianDigits(report.summary.totalPhysicalCoils)} کلاف
-            </div>
-          </div>
-
-          <div
-            className={`sap-card p-3 border-r-2 ${
-              report.summary.errorCount > 0
-                ? 'border-r-[#BB0000]'
-                : report.summary.warningCount > 0
-                ? 'border-r-[#E9730C]'
-                : 'border-r-[#107e3e]'
-            }`}
-          >
-            <div className="text-[11px] text-[#556B82]">مغایرت‌ها و هشدارها</div>
-            <div className="text-sm font-bold text-[#1D2D3E] mt-1 font-mono tabular-nums">
-              {toPersianDigits(report.summary.errorCount)} خطا / {toPersianDigits(report.summary.warningCount)} هشدار
-            </div>
-            <div className="text-[10px] text-[#666666] mt-0.5">
-              {toPersianDigits(report.summary.activeContractsCount)} قرارداد فعال
-            </div>
-          </div>
-        </div>
+        <FioriMessageStrip tone="error">
+          {loadError}
+        </FioriMessageStrip>
       )}
 
       {/* Material Family Breakdown & Automated 5-Check Audit */}
       {report && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* 5 Automated Integrity Checks */}
-          <div className="sap-card p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-[#e8e8e8] pb-2">
-              <h3 className="text-xs font-bold text-[#1D2D3E] flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-[#0070F2]" />
-                کنترل‌های خودکار یکپارچگی انبار
-              </h3>
-              <span className="text-[11px] text-[#556B82]">۵ کنترل اصلی دفتر کل</span>
-            </div>
-            <div className="space-y-2">
+          <div className="sap-card overflow-hidden">
+            <FioriToolbar
+              variant="section"
+              title="کنترل‌های خودکار یکپارچگی انبار"
+              subtitle="۵ کنترل اصلی دفتر کل"
+              startContent={<ShieldCheck className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />}
+            />
+            <div className="p-3.5 space-y-2">
               {report.checks.map(check => (
                 <div
                   key={check.key}
-                  className="p-2.5 rounded border border-[#e5e7eb] bg-[#fafafa] flex items-start justify-between gap-2.5"
+                  className="p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-subtle)] bg-[var(--fiori-bg-subtle)] flex items-start justify-between gap-2.5"
                 >
                   <div className="space-y-0.5">
-                    <div className="text-xs font-semibold text-[#1D2D3E]">{check.titleFa}</div>
-                    <div className="text-[11px] text-[#556B82]">{check.detailFa}</div>
+                    <div className="text-xs font-semibold text-[var(--fiori-text-primary)]">{check.titleFa}</div>
+                    <div className="text-[11px] text-[var(--fiori-text-secondary)]">{check.detailFa}</div>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-semibold shrink-0 border ${
+                  <FioriObjectStatus
+                    tone={
                       check.status === 'PASS'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        ? 'positive'
                         : check.status === 'WARNING'
-                        ? 'bg-amber-50 text-amber-800 border-amber-200'
-                        : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}
-                  >
-                    {check.status === 'PASS'
-                      ? 'متوازن'
-                      : check.status === 'WARNING'
-                      ? `هشدار (${toPersianDigits(check.issueCount)})`
-                      : `مغایرت (${toPersianDigits(check.issueCount)})`}
-                  </span>
+                        ? 'critical'
+                        : 'negative'
+                    }
+                    label={
+                      check.status === 'PASS'
+                        ? 'متوازن'
+                        : check.status === 'WARNING'
+                        ? `هشدار (${toPersianDigits(check.issueCount)})`
+                        : `مغایرت (${toPersianDigits(check.issueCount)})`
+                    }
+                  />
                 </div>
               ))}
             </div>
           </div>
 
           {/* Material Family Breakdown */}
-          <div className="sap-card p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-[#e8e8e8] pb-2">
-              <h3 className="text-xs font-bold text-[#1D2D3E] flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-[#0070F2]" />
-                تفکیک موجودی به تفکیک گروه کالا (ورق، پیچ‌ومهره، لاستیک، WIP، محصول)
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs sap-table-compact">
-                <thead className="bg-[#f5f5f5] text-[#333333] border-b border-[#d9d9d9]">
-                  <tr>
-                    <th className="py-1.5 px-2 font-semibold">گروه کالا</th>
-                    <th className="py-1.5 px-2 font-semibold">تعداد ردیف</th>
-                    <th className="py-1.5 px-2 font-semibold">فیزیکی</th>
-                    <th className="py-1.5 px-2 font-semibold">قابل استفاده</th>
-                    <th className="py-1.5 px-2 font-semibold">رزرو</th>
-                    <th className="py-1.5 px-2 font-semibold">قرنطینه/مسدود</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e8e8e8] bg-white tabular-nums">
-                  {MATERIAL_FAMILIES_ORDER.map(fam => {
-                    const row = report.summary.byMaterialFamily[fam];
-                    if (!row) return null;
-                    return (
-                      <tr key={fam} className="hover:bg-[#f8fafc]">
-                        <td className="py-1.5 px-2 font-semibold text-[#1D2D3E]">
-                          {MATERIAL_FAMILY_LABELS_FA[fam]}
-                        </td>
-                        <td className="py-1.5 px-2 font-mono text-[#556B82]">
-                          {toPersianDigits(row.rowCount)}
-                        </td>
-                        <td className="py-1.5 px-2 font-mono font-semibold text-[#1D2D3E]">
-                          {formatNumber(row.physicalQty)}
-                        </td>
-                        <td className="py-1.5 px-2 font-mono text-[#107e3e] font-semibold">
-                          {formatNumber(row.availableQty)}
-                        </td>
-                        <td className="py-1.5 px-2 font-mono text-[#0070F2]">
-                          {formatNumber(row.reservedQty)}
-                        </td>
-                        <td className="py-1.5 px-2 font-mono text-[#E9730C]">
-                          {formatNumber(row.qualityHoldQty)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <FioriDataTable<FamilyRow>
+            data={materialFamilyRows}
+            columns={familyColumns}
+            rowKey={row => row.family}
+            compact
+            toolbar={
+              <FioriToolbar
+                variant="table"
+                title="تفکیک موجودی به تفکیک گروه کالا"
+                subtitle="ورق، پیچ‌ومهره، لاستیک، WIP، محصول"
+                startContent={<Layers className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />}
+              />
+            }
+            emptyState={<EmptyState variant="NO_DATA" compact />}
+          />
         </div>
       )}
 
       {/* Discrepancy Table (when any discrepancy exists) */}
       {report && report.discrepancies.length > 0 && (
-        <div className="sap-card p-4 space-y-2.5 border border-amber-200">
-          <h3 className="text-xs font-bold text-[#1D2D3E] flex items-center gap-1.5">
-            <AlertTriangle className="w-4 h-4 text-[#E9730C]" />
-            فهرست مغایرت‌ها و هشدارهای نیازمند اقدام ({toPersianDigits(report.discrepancies.length)})
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs sap-table-compact">
-              <thead className="bg-[#fff8ec] text-[#333333] border-b border-amber-200">
-                <tr>
-                  <th className="py-1.5 px-2 font-semibold">سطح</th>
-                  <th className="py-1.5 px-2 font-semibold">کد / شناسه</th>
-                  <th className="py-1.5 px-2 font-semibold">مقدار مورد انتظار</th>
-                  <th className="py-1.5 px-2 font-semibold">مقدار ثبت‌شده</th>
-                  <th className="py-1.5 px-2 font-semibold">اختلاف</th>
-                  <th className="py-1.5 px-2 font-semibold">توضیح</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8e8e8] bg-white tabular-nums">
-                {report.discrepancies.map(d => (
-                  <tr key={d.id}>
-                    <td className="py-1.5 px-2 whitespace-nowrap">
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                          d.severity === 'ERROR'
-                            ? 'bg-rose-50 text-rose-700'
-                            : 'bg-amber-50 text-amber-800'
-                        }`}
-                      >
-                        {d.severity === 'ERROR' ? 'خطا' : 'هشدار'}
-                      </span>
-                    </td>
-                    <td className="py-1.5 px-2 font-mono font-semibold text-[#1D2D3E]">
-                      {d.entityCode}
-                    </td>
-                    <td className="py-1.5 px-2 font-mono">
-                      {formatNumber(d.expectedValue)} {d.unit}
-                    </td>
-                    <td className="py-1.5 px-2 font-mono">
-                      {formatNumber(d.actualValue)} {d.unit}
-                    </td>
-                    <td className="py-1.5 px-2 font-mono font-semibold text-rose-700">
-                      {d.variance >= 0 ? '+' : ''}
-                      {formatNumber(d.variance)} {d.unit}
-                    </td>
-                    <td className="py-1.5 px-2 text-[#333333]">{d.messageFa}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <FioriDataTable<ReconciliationDiscrepancy>
+          data={report.discrepancies}
+          columns={discrepancyColumns}
+          rowKey={d => d.id}
+          compact
+          toolbar={
+            <FioriToolbar
+              variant="table"
+              title="فهرست مغایرت‌ها و هشدارهای نیازمند اقدام"
+              count={report.discrepancies.length}
+              countLabel="مورد"
+              startContent={<AlertTriangle className="w-4 h-4 text-[var(--fiori-critical)] shrink-0" />}
+            />
+          }
+        />
       )}
 
       {/* Contract-Level SAPCO Consignment Reconciliation Table */}
       {report && report.contractSummaries.length > 0 && (
-        <div className="sap-card p-4 space-y-3">
-          <div className="flex items-center justify-between border-b border-[#e8e8e8] pb-2">
-            <h3 className="text-xs font-bold text-[#1D2D3E] flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-[#0070F2]" />
-              تطبیق موجودی به تفکیک قرارداد و حساب امانی ساپکو
-            </h3>
-            <span className="text-[11px] text-[#556B82]">
-              {toPersianDigits(report.contractSummaries.length)} قرارداد
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs sap-table-compact">
-              <thead className="bg-[#f5f5f5] text-[#333333] border-b border-[#d9d9d9]">
-                <tr>
-                  <th className="py-1.5 px-2 font-semibold">شماره قرارداد</th>
-                  <th className="py-1.5 px-2 font-semibold">مشتری / مالکیت</th>
-                  <th className="py-1.5 px-2 font-semibold">دریافتی (kg)</th>
-                  <th className="py-1.5 px-2 font-semibold">مصرفی (kg)</th>
-                  <th className="py-1.5 px-2 font-semibold">مانده دفتر امانی</th>
-                  <th className="py-1.5 px-2 font-semibold">موجودی انبار</th>
-                  <th className="py-1.5 px-2 font-semibold">آزاد / رزرو / قرنطینه</th>
-                  <th className="py-1.5 px-2 font-semibold">کلاف فعال</th>
-                  <th className="py-1.5 px-2 font-semibold">وضعیت</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8e8e8] bg-white tabular-nums">
-                {report.contractSummaries.map(row => (
-                  <tr key={row.contractId} className="hover:bg-[#f8fafc]">
-                    <td className="py-1.5 px-2">
-                      <div className="font-mono font-semibold text-[#1D2D3E]">{row.contractNumber}</div>
-                      <div className="text-[10px] text-[#666666]">{row.title}</div>
-                    </td>
-                    <td className="py-1.5 px-2 text-[#333333]">
-                      <div>{row.customerName}</div>
-                      <div className="text-[10px] text-[#556B82]">
-                        {row.ownership === 'SAPCO_SUPPLIER_OWNED' ? 'امانی ساپکو' : 'ملکی شرکت'}
-                      </div>
-                    </td>
-                    <td className="py-1.5 px-2 font-mono">{formatWeightKg(row.totalReceivedKg)}</td>
-                    <td className="py-1.5 px-2 font-mono">{formatWeightKg(row.totalConsumedKg)}</td>
-                    <td className="py-1.5 px-2 font-mono font-semibold text-[#1D2D3E]">
-                      {formatWeightKg(row.ledgerClosingBalanceKg)}
-                    </td>
-                    <td className="py-1.5 px-2 font-mono font-semibold text-[#0070F2]">
-                      {formatWeightKg(row.warehouseStockKg)}
-                    </td>
-                    <td className="py-1.5 px-2 font-mono text-[11px]">
-                      <span className="text-[#107e3e]">{formatNumber(row.availableStockKg)}</span> /{' '}
-                      <span className="text-[#0070F2]">{formatNumber(row.reservedStockKg)}</span> /{' '}
-                      <span className="text-[#E9730C]">{formatNumber(row.qualityHoldStockKg)}</span>
-                    </td>
-                    <td className="py-1.5 px-2 font-mono text-[11px]">
-                      {toPersianDigits(row.activeCoilsCount)} رول ({formatWeightKg(row.activeCoilsRemainingKg)})
-                    </td>
-                    <td className="py-1.5 px-2">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          row.status === 'BALANCED'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-amber-50 text-amber-800'
-                        }`}
-                      >
-                        {row.status === 'BALANCED'
-                          ? 'متوازن'
-                          : `اختلاف ${row.varianceKg >= 0 ? '+' : ''}${formatNumber(row.varianceKg)} kg`}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <FioriDataTable<ContractStockSummaryRow>
+          data={report.contractSummaries}
+          columns={contractColumns}
+          rowKey={row => row.contractId}
+          compact
+          toolbar={
+            <FioriToolbar
+              variant="table"
+              title="تطبیق موجودی به تفکیک قرارداد و حساب امانی ساپکو"
+              count={report.contractSummaries.length}
+              countLabel="قرارداد"
+              startContent={<FileText className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />}
+            />
+          }
+        />
       )}
 
       {/* Physical Cycle-Count Reconciliation Form + Traceability Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Section 2: Physical Cycle-Count Form */}
-        <form onSubmit={handleSubmitCycleCount} className="sap-card p-4 space-y-3">
-          <div className="border-b border-[#e8e8e8] pb-2 flex items-center justify-between">
-            <h3 className="text-xs font-bold text-[#1D2D3E] flex items-center gap-1.5">
-              <Scale className="w-4 h-4 text-[#0070F2]" />
-              ثبت شمارش فیزیکی و تعدیل انبارگردانی (کد حرکت ۷۰۱ / ۷۰۲)
-            </h3>
-            <span className="text-[10px] text-[#556B82]">تراکنشی و دارای Idempotency</span>
-          </div>
+        <form onSubmit={handleSubmitCycleCount} className="sap-card overflow-hidden">
+          <FioriToolbar
+            variant="section"
+            title="ثبت شمارش فیزیکی و تعدیل انبارگردانی (کد حرکت ۷۰۱ / ۷۰۲)"
+            subtitle="تراکنشی و دارای Idempotency"
+            startContent={<Scale className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />}
+          />
 
-          {countFeedback && (
-            <div
-              className={`p-2.5 rounded border text-xs flex items-center gap-2 ${
-                countFeedback.type === 'success'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : 'bg-rose-50 border-rose-200 text-rose-800'
-              }`}
-            >
-              {countFeedback.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 shrink-0" />
-              )}
-              <span>{countFeedback.message}</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-[#333333] mb-1">
-                انتخاب انبار
-              </label>
-              <select
-                value={countWarehouseId}
-                onChange={e => setCountWarehouseId(e.target.value)}
-                className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
+          <div className="p-4 space-y-3">
+            {countFeedback && (
+              <FioriMessageStrip
+                tone={countFeedback.type === 'success' ? 'success' : 'error'}
+                onClose={() => setCountFeedback(null)}
+                compact
               >
-                {warehouses.map(w => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} ({w.id})
+                {countFeedback.message}
+              </FioriMessageStrip>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">
+                  انتخاب انبار
+                </label>
+                <select
+                  value={countWarehouseId}
+                  onChange={e => setCountWarehouseId(e.target.value)}
+                  className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+                >
+                  {warehouses.map(w => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({w.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">
+                  کالا / بچ / کلاف در انبار
+                </label>
+                <select
+                  value={selectedBalanceId}
+                  onChange={e => handleSelectBalance(e.target.value)}
+                  className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+                >
+                  {warehouseBalances.length === 0 ? (
+                    <option value="">ردیفی در این انبار ثبت نشده است</option>
+                  ) : (
+                    warehouseBalances.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.partCode} — {b.partName}
+                        {b.lotNumber ? ` · بچ ${b.lotNumber}` : ''}
+                        {b.contractNumber ? ` · قرارداد ${b.contractNumber}` : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
+
+            {selectedBalance && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] text-[11px]">
+                <div>
+                  <div className="text-[var(--fiori-text-secondary)]">مانده دفتری (فیزیکی)</div>
+                  <div className="font-mono font-bold text-[var(--fiori-text-primary)] mt-0.5 tabular-nums">
+                    {formatNumber(bookPhysicalQty)} {selectedBalance.unit}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[var(--fiori-text-secondary)]">رزرو فعال</div>
+                  <div className="font-mono font-semibold text-[var(--fiori-brand)] mt-0.5 tabular-nums">
+                    {formatNumber(reservedQty)} {selectedBalance.unit}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[var(--fiori-text-secondary)]">قرنطینه / مسدود</div>
+                  <div className="font-mono font-semibold text-[var(--fiori-critical)] mt-0.5 tabular-nums">
+                    {formatNumber(qualityHoldQty)} {selectedBalance.unit}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[var(--fiori-text-secondary)]">حداقل مجاز شمارش</div>
+                  <div className="font-mono font-bold text-[var(--fiori-text-primary)] mt-0.5 tabular-nums">
+                    {formatNumber(protectedFloor)} {selectedBalance.unit}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">
+                  مقدار شمارش فیزیکی ({selectedPart?.unit || selectedBalance?.unit || 'واحد'})
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min={0}
+                  value={countedQty}
+                  onChange={e => setCountedQty(e.target.value)}
+                  placeholder="مقدار واقعی شمارش‌شده..."
+                  className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs font-mono text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">
+                  شماره صورتجلسه / مرجع (اختیاری)
+                </label>
+                <input
+                  type="text"
+                  value={countReference}
+                  onChange={e => setCountReference(e.target.value)}
+                  placeholder="مثلاً CC-1404-08-01"
+                  className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+                />
+              </div>
+            </div>
+
+            {selectedBalance && Number.isFinite(parsedCountedQty) && (
+              <FioriMessageStrip
+                tone={
+                  violatesFloor
+                    ? 'error'
+                    : computedVariance === 0
+                    ? 'info'
+                    : computedVariance > 0
+                    ? 'success'
+                    : 'warning'
+                }
+                compact
+              >
+                <div className="flex items-center justify-between gap-2 w-full">
+                  <span>
+                    {violatesFloor
+                      ? 'خطای سقف رزرو/قرنطینه: شمارش کمتر از حداقل محافظت‌شده است.'
+                      : computedVariance === 0
+                      ? 'اختلاف صفر است (بدون صدور سند تعدیل).'
+                      : computedVariance > 0
+                      ? 'سند مازاد انبارگردانی (MvT 701) صادر خواهد شد:'
+                      : 'سند کسری انبارگردانی (MvT 702) صادر خواهد شد:'}
+                  </span>
+                  <span className="font-mono font-bold tabular-nums shrink-0">
+                    {computedVariance >= 0 ? '+' : ''}
+                    {formatNumber(computedVariance)} {selectedBalance.unit}
+                  </span>
+                </div>
+              </FioriMessageStrip>
+            )}
+
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1">
+                شرح و علت تعدیل شمارش فیزیکی (الزامی)
+              </label>
+              <input
+                type="text"
+                value={countReason}
+                onChange={e => setCountReason(e.target.value)}
+                placeholder="شرح دقیق شمارش انبارگردانی، باسکول یا صورتجلسه کنترل..."
+                className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+                required
+              />
+            </div>
+
+            <div className="flex items-center justify-end pt-1">
+              <button
+                type="submit"
+                disabled={submittingCount || !selectedBalance || violatesFloor}
+                className="sap-btn-emphasized px-4 py-1.5 text-xs cursor-pointer disabled:opacity-50"
+              >
+                {submittingCount ? 'در حال ثبت در دفتر کل...' : 'ثبت نتیجه شمارش و تعدیل دفتر کل'}
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {/* Section 3: Material Traceability & Coil Genealogy */}
+        <div className="sap-card overflow-hidden">
+          <FioriToolbar
+            variant="section"
+            title="ردیابی زنجیره اسناد و شجره‌نامه کلاف (Traceability)"
+            startContent={<GitBranch className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />}
+          />
+
+          <div className="p-4 space-y-3">
+            {/* Search by document / MO / part / order */}
+            <form onSubmit={handleRunDocumentTrace} className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)] absolute right-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={traceQuery}
+                  onChange={e => setTraceQuery(e.target.value)}
+                  placeholder="شماره سند، دستور ساخت (MO)، سفارش مشتری یا کد کالا..."
+                  className="w-full pr-8 pl-2.5 py-1.5 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={traceLoading}
+                className="sap-btn-standard px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap"
+              >
+                جستجوی زنجیره اسناد
+              </button>
+            </form>
+
+            {/* Direct coil genealogy picker */}
+            <div className="flex items-center gap-2">
+              <ArrowLeftRight className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)] shrink-0" />
+              <select
+                value={selectedCoilForGenealogy}
+                onChange={e => handleLoadCoilGenealogy(e.target.value)}
+                className="flex-1 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+              >
+                <option value="">مشاهده شجره‌نامه کامل یک کلاف فیزیکی ورق...</option>
+                {coils.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.coilId} · {c.materialGrade} ({toPersianDigits(c.thicknessMm)}mm) · مانده{' '}
+                    {formatWeightKg(c.remainingWeightKg)}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold text-[#333333] mb-1">
-                کالا / بچ / کلاف در انبار
-              </label>
-              <select
-                value={selectedBalanceId}
-                onChange={e => handleSelectBalance(e.target.value)}
-                className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-              >
-                {warehouseBalances.length === 0 ? (
-                  <option value="">ردیفی در این انبار ثبت نشده است</option>
+            {traceError && (
+              <FioriMessageStrip tone="error" compact>
+                {traceError}
+              </FioriMessageStrip>
+            )}
+
+            {/* Coil Genealogy View */}
+            {coilGenealogy && (
+              <div className="p-3 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-info-border)] bg-[var(--fiori-info-bg)]/50 space-y-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="text-xs font-bold text-[var(--fiori-text-primary)]">
+                    شجره‌نامه کلاف <span className="fiori-ltr-code">{coilGenealogy.coil.coilId}</span> (
+                    {coilGenealogy.coil.materialGrade})
+                  </div>
+                  <FioriObjectStatus
+                    tone="info"
+                    label={`وضعیت چرخه: ${coilGenealogy.lifecycleStatus}`}
+                  />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] tabular-nums">
+                  <div className="bg-[var(--fiori-bg-surface)] p-2 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                    <div className="text-[var(--fiori-text-secondary)]">وزن اولیه</div>
+                    <div className="font-mono font-semibold">
+                      {formatWeightKg(coilGenealogy.metrics.originalWeightKg)}
+                    </div>
+                  </div>
+                  <div className="bg-[var(--fiori-bg-surface)] p-2 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                    <div className="text-[var(--fiori-text-secondary)]">جمع حواله</div>
+                    <div className="font-mono font-semibold text-[var(--fiori-brand)]">
+                      {formatWeightKg(coilGenealogy.metrics.totalIssuedKg)}
+                    </div>
+                  </div>
+                  <div className="bg-[var(--fiori-bg-surface)] p-2 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                    <div className="text-[var(--fiori-text-secondary)]">ته‌کلاف برگشتی</div>
+                    <div className="font-mono font-semibold text-[var(--fiori-positive)]">
+                      {formatWeightKg(coilGenealogy.metrics.totalReturnedKg)}
+                    </div>
+                  </div>
+                  <div className="bg-[var(--fiori-bg-surface)] p-2 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+                    <div className="text-[var(--fiori-text-secondary)]">مانده فعلی</div>
+                    <div className="font-mono font-bold text-[var(--fiori-text-primary)]">
+                      {formatWeightKg(coilGenealogy.metrics.remainingWeightKg)}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[11px] text-[var(--fiori-text-secondary)]">
+                  اسناد مرتبط ثبت‌شده ({toPersianDigits(coilGenealogy.relatedDocuments.length)} سند):
+                </div>
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {coilGenealogy.relatedDocuments.map(doc => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between bg-[var(--fiori-bg-surface)] px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] text-[11px]"
+                    >
+                      <span className="font-mono font-semibold text-[var(--fiori-text-primary)] fiori-ltr-code">
+                        {doc.documentNumber}
+                      </span>
+                      <span className="text-[var(--fiori-text-secondary)]">{doc.documentType}</span>
+                      <span className="font-mono text-[10px] text-[var(--fiori-text-muted)]">
+                        {formatDateTime(doc.documentDate)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Document Flow Timeline */}
+            {traceNodes && !coilGenealogy && (
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {traceNodes.length === 0 ? (
+                  <EmptyState
+                    variant="SEARCH_NO_MATCH"
+                    compact
+                    title="سندی با این عبارت در زنجیره ردیابی یافت نشد"
+                    description="شماره سند، کد کالا یا دستور ساخت دیگری را جستجو کنید."
+                  />
                 ) : (
-                  warehouseBalances.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.partCode} — {b.partName}
-                      {b.lotNumber ? ` · بچ ${b.lotNumber}` : ''}
-                      {b.contractNumber ? ` · قرارداد ${b.contractNumber}` : ''}
-                    </option>
+                  traceNodes.map((node, idx) => (
+                    <div
+                      key={`${node.docNumber}-${idx}`}
+                      className="p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-subtle)] bg-[var(--fiori-bg-subtle)] flex items-start justify-between gap-2 text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-semibold text-[var(--fiori-brand)] fiori-ltr-code">
+                            {node.docNumber}
+                          </span>
+                          <FioriObjectStatus tone="neutral" label={node.stageLabel} size="sm" />
+                          {node.movementType && (
+                            <span className="font-mono text-[10px] text-[var(--fiori-text-secondary)]">
+                              MvT {node.movementType}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-[var(--fiori-text-primary)]">{node.title}</div>
+                      </div>
+                      <span className="font-mono text-[10px] text-[var(--fiori-text-muted)] whitespace-nowrap">
+                        {node.dateFa}
+                      </span>
+                    </div>
                   ))
                 )}
-              </select>
-            </div>
+              </div>
+            )}
           </div>
-
-          {selectedBalance && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded bg-[#f5f8fb] border border-[#dce6f2] text-[11px]">
-              <div>
-                <div className="text-[#556B82]">مانده دفتری (فیزیکی)</div>
-                <div className="font-mono font-bold text-[#1D2D3E] mt-0.5">
-                  {formatNumber(bookPhysicalQty)} {selectedBalance.unit}
-                </div>
-              </div>
-              <div>
-                <div className="text-[#556B82]">رزرو فعال</div>
-                <div className="font-mono font-semibold text-[#0070F2] mt-0.5">
-                  {formatNumber(reservedQty)} {selectedBalance.unit}
-                </div>
-              </div>
-              <div>
-                <div className="text-[#556B82]">قرنطینه / مسدود</div>
-                <div className="font-mono font-semibold text-[#E9730C] mt-0.5">
-                  {formatNumber(qualityHoldQty)} {selectedBalance.unit}
-                </div>
-              </div>
-              <div>
-                <div className="text-[#556B82]">حداقل مجاز شمارش</div>
-                <div className="font-mono font-bold text-[#1D2D3E] mt-0.5">
-                  {formatNumber(protectedFloor)} {selectedBalance.unit}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-[#333333] mb-1">
-                مقدار شمارش فیزیکی ({selectedPart?.unit || selectedBalance?.unit || 'واحد'})
-              </label>
-              <input
-                type="number"
-                step="any"
-                min={0}
-                value={countedQty}
-                onChange={e => setCountedQty(e.target.value)}
-                placeholder="مقدار واقعی شمارش‌شده..."
-                className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs font-mono text-[#1D2D3E] focus:outline-none focus:border-[#007cc0]"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-[#333333] mb-1">
-                شماره صورتجلسه / مرجع (اختیاری)
-              </label>
-              <input
-                type="text"
-                value={countReference}
-                onChange={e => setCountReference(e.target.value)}
-                placeholder="مثلاً CC-1404-08-01"
-                className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs text-[#1D2D3E] focus:outline-none focus:border-[#007cc0]"
-              />
-            </div>
-          </div>
-
-          {selectedBalance && Number.isFinite(parsedCountedQty) && (
-            <div
-              className={`p-2.5 rounded border text-xs flex items-center justify-between ${
-                violatesFloor
-                  ? 'bg-rose-50 border-rose-200 text-rose-800'
-                  : computedVariance === 0
-                  ? 'bg-slate-50 border-slate-200 text-slate-700'
-                  : computedVariance > 0
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : 'bg-amber-50 border-amber-200 text-amber-800'
-              }`}
-            >
-              <span>
-                {violatesFloor
-                  ? 'خطای سقف رزرو/قرنطینه: شمارش کمتر از حداقل محافظت‌شده است.'
-                  : computedVariance === 0
-                  ? 'اختلاف صفر است (بدون صدور سند تعدیل).'
-                  : computedVariance > 0
-                  ? 'سند مازاد انبارگردانی (MvT 701) صادر خواهد شد:'
-                  : 'سند کسری انبارگردانی (MvT 702) صادر خواهد شد:'}
-              </span>
-              <span className="font-mono font-bold">
-                {computedVariance >= 0 ? '+' : ''}
-                {formatNumber(computedVariance)} {selectedBalance.unit}
-              </span>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-[11px] font-semibold text-[#333333] mb-1">
-              شرح و علت تعدیل شمارش فیزیکی (الزامی)
-            </label>
-            <input
-              type="text"
-              value={countReason}
-              onChange={e => setCountReason(e.target.value)}
-              placeholder="شرح دقیق شمارش انبارگردانی، باسکول یا صورتجلسه کنترل..."
-              className="w-full bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs text-[#1D2D3E] focus:outline-none focus:border-[#007cc0]"
-              required
-            />
-          </div>
-
-          <div className="flex items-center justify-end pt-1">
-            <button
-              type="submit"
-              disabled={submittingCount || !selectedBalance || violatesFloor}
-              className="sap-btn-emphasized px-4 py-1.5 text-xs cursor-pointer disabled:opacity-50"
-            >
-              {submittingCount ? 'در حال ثبت در دفتر کل...' : 'ثبت نتیجه شمارش و تعدیل دفتر کل'}
-            </button>
-          </div>
-        </form>
-
-        {/* Section 3: Material Traceability & Coil Genealogy */}
-        <div className="sap-card p-4 space-y-3">
-          <div className="border-b border-[#e8e8e8] pb-2 flex items-center justify-between">
-            <h3 className="text-xs font-bold text-[#1D2D3E] flex items-center gap-1.5">
-              <GitBranch className="w-4 h-4 text-[#0070F2]" />
-              ردیابی زنجیره اسناد و شجره‌نامه کلاف (Traceability)
-            </h3>
-          </div>
-
-          {/* Search by document / MO / part / order */}
-          <form onSubmit={handleRunDocumentTrace} className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 text-[#666666] absolute right-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={traceQuery}
-                onChange={e => setTraceQuery(e.target.value)}
-                placeholder="شماره سند، دستور ساخت (MO)، سفارش مشتری یا کد کالا..."
-                className="w-full pr-8 pl-2.5 py-1.5 bg-white border border-[#bfbfbf] rounded text-xs text-[#1D2D3E] focus:outline-none focus:border-[#007cc0]"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={traceLoading}
-              className="sap-btn-standard px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap"
-            >
-              جستجوی زنجیره اسناد
-            </button>
-          </form>
-
-          {/* Direct coil genealogy picker */}
-          <div className="flex items-center gap-2">
-            <ArrowLeftRight className="w-3.5 h-3.5 text-[#556B82] shrink-0" />
-            <select
-              value={selectedCoilForGenealogy}
-              onChange={e => handleLoadCoilGenealogy(e.target.value)}
-              className="flex-1 bg-white border border-[#bfbfbf] rounded px-2.5 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-            >
-              <option value="">مشاهده شجره‌نامه کامل یک کلاف فیزیکی ورق...</option>
-              {coils.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.coilId} · {c.materialGrade} ({toPersianDigits(c.thicknessMm)}mm) · مانده{' '}
-                  {formatWeightKg(c.remainingWeightKg)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {traceError && (
-            <div className="p-2 rounded bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-              {traceError}
-            </div>
-          )}
-
-          {/* Coil Genealogy View */}
-          {coilGenealogy && (
-            <div className="p-3 rounded border border-[#dce6f2] bg-[#f8fbff] space-y-2.5">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="text-xs font-bold text-[#1D2D3E]">
-                  شجره‌نامه کلاف {coilGenealogy.coil.coilId} ({coilGenealogy.coil.materialGrade})
-                </div>
-                <span className="px-2 py-0.5 rounded bg-white border border-[#dce6f2] text-[10px] font-semibold text-[#0070F2]">
-                  وضعیت چرخه: {coilGenealogy.lifecycleStatus}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] tabular-nums">
-                <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-                  <div className="text-[#556B82]">وزن اولیه</div>
-                  <div className="font-mono font-semibold">
-                    {formatWeightKg(coilGenealogy.metrics.originalWeightKg)}
-                  </div>
-                </div>
-                <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-                  <div className="text-[#556B82]">جمع حواله</div>
-                  <div className="font-mono font-semibold text-[#0070F2]">
-                    {formatWeightKg(coilGenealogy.metrics.totalIssuedKg)}
-                  </div>
-                </div>
-                <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-                  <div className="text-[#556B82]">ته‌کلاف برگشتی</div>
-                  <div className="font-mono font-semibold text-[#107e3e]">
-                    {formatWeightKg(coilGenealogy.metrics.totalReturnedKg)}
-                  </div>
-                </div>
-                <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-                  <div className="text-[#556B82]">مانده فعلی</div>
-                  <div className="font-mono font-bold text-[#1D2D3E]">
-                    {formatWeightKg(coilGenealogy.metrics.remainingWeightKg)}
-                  </div>
-                </div>
-              </div>
-              <div className="text-[11px] text-[#556B82]">
-                اسناد مرتبط ثبت‌شده ({toPersianDigits(coilGenealogy.relatedDocuments.length)} سند):
-              </div>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                {coilGenealogy.relatedDocuments.map(doc => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded border border-[#e5e7eb] text-[11px]"
-                  >
-                    <span className="font-mono font-semibold text-[#1D2D3E]">
-                      {doc.documentNumber}
-                    </span>
-                    <span className="text-[#556B82]">{doc.documentType}</span>
-                    <span className="font-mono text-[10px] text-[#666666]">
-                      {formatDateTime(doc.documentDate)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Document Flow Timeline */}
-          {traceNodes && !coilGenealogy && (
-            <div className="space-y-1.5 max-h-64 overflow-y-auto">
-              {traceNodes.length === 0 ? (
-                <div className="text-center py-6 text-xs text-[#666666]">
-                  سندی با این عبارت در زنجیره ردیابی یافت نشد.
-                </div>
-              ) : (
-                traceNodes.map((node, idx) => (
-                  <div
-                    key={`${node.docNumber}-${idx}`}
-                    className="p-2.5 rounded border border-[#e5e7eb] bg-[#fafafa] flex items-start justify-between gap-2 text-xs"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono font-semibold text-[#0070F2]">
-                          {node.docNumber}
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded bg-white border border-[#d9d9d9] text-[10px] text-[#333333]">
-                          {node.stageLabel}
-                        </span>
-                        {node.movementType && (
-                          <span className="font-mono text-[10px] text-[#556B82]">
-                            MvT {node.movementType}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-[#333333]">{node.title}</div>
-                    </div>
-                    <span className="font-mono text-[10px] text-[#666666] whitespace-nowrap">
-                      {node.dateFa}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
         </div>
       </div>
-    </div>
+    </FioriDynamicPage>
   );
 };

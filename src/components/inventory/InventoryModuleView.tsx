@@ -55,6 +55,13 @@ import { ReturnFromProductionModal } from './ReturnFromProductionModal';
 import { MaterialIssueModal } from './MaterialIssueModal';
 import { InventoryModuleSkeleton } from '../ui/Skeleton';
 import { FioriAnalyticalListPage, AlpVisualKpiItem } from '../fiori/FioriAnalyticalListPage';
+import {
+  FioriMessageStrip,
+  FioriDataTable,
+  FioriTableColumn,
+  FioriObjectStatus,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 import { QualityUsageDecisionView } from '../quality/QualityUsageDecisionView';
 import { InventoryReconciliationView } from './InventoryReconciliationView';
 import { useErpRouter } from '../../context/RouterContext';
@@ -554,41 +561,37 @@ export const InventoryModuleView: React.FC<InventoryModuleViewProps> = ({
     <div className="space-y-4">
       {/* Top Compact SAP Critical Alert Banner */}
       {reorderAlerts.length > 0 && activeSubTab !== 'ALERTS' && (
-        <div className="bg-[#FFF4E5] border border-[#F5CBA7] rounded-lg px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5 text-xs">
-            <span className="p-1.5 rounded bg-[#FFE4C4] text-[#E9730C] shrink-0">
-              <BellRing className="w-3.5 h-3.5" />
-            </span>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-[#1D2D3E]">
-                هشدار کسری و نقطه سفارش:
-              </span>
-              <span className="text-[#556B82]">
-                هم‌اکنون{' '}
-                <strong className="font-semibold text-[#B45309] underline underline-offset-4">
-                  {toPersianDigits(reorderAlerts.length)} قلم کالا و ورق
-                </strong>{' '}
-                پایین‌تر از حداقل موجودی اطمینان قرار دارند
-              </span>
-              {criticalAlertsCount > 0 && (
-                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[#FFF0F0] text-[#BB0000] border border-[#F5B7B1]">
-                  {toPersianDigits(criticalAlertsCount)} مورد بحرانی
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+        <FioriMessageStrip
+          tone="warning"
+          icon={<BellRing className="w-4 h-4 shrink-0" />}
+          title="هشدار کسری و نقطه سفارش"
+          actions={
             <button
               type="button"
               onClick={() => handleSelectSubTab('ALERTS')}
-              className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
+              className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap"
             >
               <span>مشاهده و مدیریت کسری‌ها</span>
-              <ArrowLeft className="w-3.5 h-3.5 text-[#0064D9]" />
+              <ArrowLeft className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
             </button>
+          }
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>
+              هم‌اکنون{' '}
+              <strong className="font-semibold text-[var(--fiori-critical)] underline underline-offset-4">
+                {toPersianDigits(reorderAlerts.length)} قلم کالا و ورق
+              </strong>{' '}
+              پایین‌تر از حداقل موجودی اطمینان قرار دارند.
+            </span>
+            {criticalAlertsCount > 0 && (
+              <FioriObjectStatus
+                tone="negative"
+                label={`${toPersianDigits(criticalAlertsCount)} مورد بحرانی`}
+              />
+            )}
           </div>
-        </div>
+        </FioriMessageStrip>
       )}
 
       {/* Clean SAP HANA Fiori IconTabBar & Primary Operations Bar */}
@@ -714,28 +717,12 @@ export const InventoryModuleView: React.FC<InventoryModuleViewProps> = ({
 
       {/* Toast Notification */}
       {notification && (
-        <div
-          className={`p-3.5 rounded-xl border flex items-center justify-between text-xs transition-all ${
-            notification.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-rose-50 border-rose-200 text-rose-800'
-          }`}
+        <FioriMessageStrip
+          tone={notification.type === 'success' ? 'success' : 'error'}
+          onClose={() => setNotification(null)}
         >
-          <div className="flex items-center gap-2">
-            {notification.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            )}
-            <span className="font-medium">{notification.message}</span>
-          </div>
-          <button
-            onClick={() => setNotification(null)}
-            className="text-xs opacity-70 hover:opacity-100 cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
+          <span className="font-medium">{notification.message}</span>
+        </FioriMessageStrip>
       )}
 
       {/* DEDICATED ALP PAGE: Reorder Point Alerts & Material Shortages (ALERTS Sub-Tab) */}
@@ -831,102 +818,138 @@ export const InventoryModuleView: React.FC<InventoryModuleViewProps> = ({
             </>
           }
         >
-          {filteredReorderAlerts.length === 0 ? (
-            <div className="text-center py-10 text-xs text-[#666666] flex flex-col items-center gap-2">
-              <CheckCircle2 className="w-7 h-7 text-[#107e3e]" />
-              <span className="font-semibold text-[#333333]">
-                هیچ کالایی با فیلترهای انتخابی پایین‌تر از نقطه سفارش قرار ندارد.
-              </span>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs sap-table-compact">
-                <thead className="bg-[#f5f5f5] text-[#333333] border-b border-[#d9d9d9]">
-                  <tr>
-                    <th className="py-1.5 px-2.5 font-semibold">وضعیت</th>
-                    <th className="py-1.5 px-2.5 font-semibold">کد و نام کالا / ورق</th>
-                    <th className="py-1.5 px-2.5 font-semibold">گروه و مشخصات فنی</th>
-                    <th className="py-1.5 px-2.5 font-semibold">موجودی آزاد فعلی</th>
-                    <th className="py-1.5 px-2.5 font-semibold">نقطه سفارش</th>
-                    <th className="py-1.5 px-2.5 font-semibold">مقدار کسری</th>
-                    <th className="py-1.5 px-2.5 font-semibold w-40">پوشش اطمینان</th>
-                    <th className="py-1.5 px-2.5 font-semibold text-left">عملیات ۱۰۱</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e8e8e8] bg-white tabular-nums">
-                  {filteredReorderAlerts.map(item => {
-                    const isKg = item.part.unit === 'KG';
-                    const formatVal = (val: number) =>
-                      isKg ? formatWeightKg(val) : `${formatNumber(val)} عدد`;
-
-                    return (
-                      <tr key={item.part.id} className="hover:bg-[#e5f3fa]/50 transition-colors">
-                        <td className="px-2.5 whitespace-nowrap">
-                          <span className={`font-semibold text-[11px] ${item.severity === 'CRITICAL' ? 'text-[#bb0000]' : 'text-[#e9730c]'}`}>
-                            {item.severity === 'CRITICAL' ? 'بحرانی' : 'نیاز به شارژ'}
-                          </span>
-                        </td>
-
-                        <td className="px-2.5">
-                          <span className="font-semibold text-[#333333]">{item.part.name}</span>
-                          <span className="text-[11px] text-[#666666] font-mono mr-2">
-                            {item.part.code}
-                            {item.part.sapcoCode ? ` · ${item.part.sapcoCode}` : ''}
-                          </span>
-                        </td>
-
-                        <td className="px-2.5 whitespace-nowrap text-[#666666]">
-                          <span>{categoryLabels[item.part.category]}</span>
-                          {(item.part.materialGrade || item.part.thicknessMm) && (
-                            <span className="text-[11px] mr-1.5 font-mono">
-                              {item.part.materialGrade || ''}
-                              {item.part.thicknessMm ? ` · ${toPersianDigits(item.part.thicknessMm)}mm` : ''}
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="px-2.5 whitespace-nowrap font-mono font-semibold text-[#333333]">
-                          {formatVal(item.currentStock)}
-                        </td>
-
-                        <td className="px-2.5 whitespace-nowrap font-mono text-[#666666]">
-                          {formatVal(item.reorderPoint)}
-                        </td>
-
-                        <td className="px-2.5 whitespace-nowrap font-mono font-semibold text-[#bb0000]">
-                          {formatVal(item.shortageAmount)}
-                        </td>
-
-                        <td className="px-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-[#e8e8e8] rounded overflow-hidden">
-                              <div
-                                className={item.severity === 'CRITICAL' ? 'h-full bg-[#bb0000]' : 'h-full bg-[#e9730c]'}
-                                style={{ width: `${Math.max(4, item.coveragePercent)}%` }}
-                              />
-                            </div>
-                            <span className="font-mono text-[11px] text-[#333333] w-8 text-left">
-                              {toPersianDigits(item.coveragePercent)}٪
-                            </span>
-                          </div>
-                        </td>
-
-                        <td className="px-2.5 whitespace-nowrap text-left">
-                          <button
-                            type="button"
-                            onClick={() => setIsReceiptOpen(true)}
-                            className="sap-btn-standard px-2.5 py-1 text-[11px] text-[#107e3e] border-[#107e3e]/40 hover:bg-[#eef8f2] cursor-pointer whitespace-nowrap"
-                          >
-                            ثبت رسید جبرانی (۱۰۱)
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <FioriDataTable<ReorderAlertItem>
+            data={filteredReorderAlerts}
+            rowKey={item => item.part.id}
+            compact
+            emptyState={
+              <EmptyState
+                variant="CUSTOM"
+                compact
+                icon={CheckCircle2}
+                title="هیچ کالایی با فیلترهای انتخابی پایین‌تر از نقطه سفارش قرار ندارد"
+                description="تمام اقلام مطابق فیلترهای فعال دارای پوشش موجودی آزاد مناسب هستند."
+              />
+            }
+            columns={[
+              {
+                key: 'severity',
+                header: 'وضعیت',
+                sortValue: item => (item.severity === 'CRITICAL' ? 0 : 1),
+                render: item => (
+                  <FioriObjectStatus
+                    tone={item.severity === 'CRITICAL' ? 'negative' : 'critical'}
+                    label={item.severity === 'CRITICAL' ? 'بحرانی' : 'نیاز به شارژ'}
+                  />
+                ),
+              },
+              {
+                key: 'part',
+                header: 'کد و نام کالا / ورق',
+                sortValue: item => item.part.name,
+                render: item => (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span className="font-semibold text-[var(--fiori-text-primary)]">{item.part.name}</span>
+                    <span className="text-[11px] text-[var(--fiori-text-secondary)] font-mono fiori-ltr-code">
+                      {item.part.code}
+                      {item.part.sapcoCode ? ` · ${item.part.sapcoCode}` : ''}
+                    </span>
+                  </div>
+                ),
+              },
+              {
+                key: 'specs',
+                header: 'گروه و مشخصات فنی',
+                render: item => (
+                  <span className="text-[var(--fiori-text-secondary)] whitespace-nowrap">
+                    <span>{categoryLabels[item.part.category]}</span>
+                    {(item.part.materialGrade || item.part.thicknessMm) && (
+                      <span className="text-[11px] mr-1.5 font-mono fiori-ltr-code">
+                        {item.part.materialGrade || ''}
+                        {item.part.thicknessMm ? ` · ${toPersianDigits(item.part.thicknessMm)}mm` : ''}
+                      </span>
+                    )}
+                  </span>
+                ),
+              },
+              {
+                key: 'currentStock',
+                header: 'موجودی آزاد فعلی',
+                sortValue: item => item.currentStock,
+                render: item => {
+                  const isKg = item.part.unit === 'KG';
+                  return (
+                    <span className="font-mono font-semibold text-[var(--fiori-text-primary)] tabular-nums whitespace-nowrap">
+                      {isKg ? formatWeightKg(item.currentStock) : `${formatNumber(item.currentStock)} عدد`}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: 'reorderPoint',
+                header: 'نقطه سفارش',
+                sortValue: item => item.reorderPoint,
+                render: item => {
+                  const isKg = item.part.unit === 'KG';
+                  return (
+                    <span className="font-mono text-[var(--fiori-text-secondary)] tabular-nums whitespace-nowrap">
+                      {isKg ? formatWeightKg(item.reorderPoint) : `${formatNumber(item.reorderPoint)} عدد`}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: 'shortageAmount',
+                header: 'مقدار کسری',
+                sortValue: item => item.shortageAmount,
+                render: item => {
+                  const isKg = item.part.unit === 'KG';
+                  return (
+                    <span className="font-mono font-semibold text-[var(--fiori-negative)] tabular-nums whitespace-nowrap">
+                      {isKg ? formatWeightKg(item.shortageAmount) : `${formatNumber(item.shortageAmount)} عدد`}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: 'coveragePercent',
+                header: 'پوشش اطمینان',
+                width: 'w-40',
+                sortValue: item => item.coveragePercent,
+                render: item => (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-[var(--fiori-border-subtle)] rounded-[var(--fiori-radius-sm)] overflow-hidden">
+                      <div
+                        className={
+                          item.severity === 'CRITICAL'
+                            ? 'h-full bg-[var(--fiori-negative)] rounded-[var(--fiori-radius-sm)]'
+                            : 'h-full bg-[var(--fiori-critical)] rounded-[var(--fiori-radius-sm)]'
+                        }
+                        style={{ width: `${Math.max(4, item.coveragePercent)}%` }}
+                      />
+                    </div>
+                    <span className="font-mono text-[11px] text-[var(--fiori-text-primary)] w-8 text-left tabular-nums">
+                      {toPersianDigits(item.coveragePercent)}٪
+                    </span>
+                  </div>
+                ),
+              },
+              {
+                key: 'actions',
+                header: 'عملیات ۱۰۱',
+                align: 'left',
+                render: () => (
+                  <button
+                    type="button"
+                    onClick={() => setIsReceiptOpen(true)}
+                    className="sap-btn-standard px-2.5 py-1 text-[11px] text-[var(--fiori-positive)] border-[var(--fiori-positive-border)] hover:bg-[var(--fiori-positive-bg)] cursor-pointer whitespace-nowrap"
+                  >
+                    ثبت رسید جبرانی (۱۰۱)
+                  </button>
+                ),
+              },
+            ] as FioriTableColumn<ReorderAlertItem>[]}
+          />
         </FioriAnalyticalListPage>
       )}
 

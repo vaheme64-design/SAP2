@@ -11,6 +11,7 @@ import { PhysicalCoil } from '../../types/inventory';
 import { formatNumber, toPersianDigits } from '../../utils/formatters';
 import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
 import { useErpRouter } from '../../context/RouterContext';
+import { FioriToolbar, FioriObjectStatus } from '../fiori/ui';
 
 export interface ChildSlitNode {
   id: string;
@@ -688,74 +689,69 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
   };
 
   return (
-    <div className="sap-card p-4 space-y-4 text-right" dir="rtl">
+    <div className="sap-card overflow-hidden text-right" dir="rtl">
       {/* Header & Parent Coil Selector */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[#e8e8e8] pb-3">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf5] flex items-center justify-center shrink-0">
-            <GitBranch className="w-4 h-4" />
+      <FioriToolbar
+        variant="section"
+        title="شجره‌نامه برش کلاف (Coil Slitting Genealogy)"
+        subtitle="مشاهده و ویرایش کشویی (با آیکون مداد) برش رول مادر (Parent) به نوارها و شیت‌های فرعی (Child)، ته‌کلاف و دستورات تولید (MO)"
+        startContent={
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="w-8 h-8 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-info-border)] flex items-center justify-center">
+              <GitBranch className="w-4 h-4" />
+            </span>
+            <FioriObjectStatus tone="critical" label="ردیابی شماره ذوب (Heat Traceability)" />
           </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-semibold text-[#333333]">
-                شجره‌نامه برش کلاف (Coil Slitting Genealogy: Parent ➔ Child Strips & Sheets)
-              </h3>
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#fff4e5] text-[#e9730c] border border-[#f5cba7]">
-                ردیابی شماره ذوب (Heat Traceability)
-              </span>
-            </div>
-            <p className="text-xs text-[#666666] mt-0.5">
-              مشاهده و ویرایش کشویی (با آیکون مداد) برش رول مادر (Parent) به نوارها و شیت‌های فرعی (Child)، ته‌کلاف و دستورات تولید (MO).
-            </p>
-          </div>
-        </div>
-
-        {/* Parent Coil Selector Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs text-[#666666] font-medium ml-1">انتخاب رول مادر:</span>
-          {slittingTrees.map(tree => {
-            const isSelected = tree.parentId === activeTree.parentId;
-            return (
-              <button
-                key={tree.parentId}
-                type="button"
-                onClick={() => setSelectedTreeId(tree.parentId)}
-                className={`px-3 py-1 rounded text-xs font-mono font-semibold transition cursor-pointer flex items-center gap-1.5 border ${
-                  isSelected
-                    ? 'bg-[#007cc0] text-white border-[#007cc0]'
-                    : 'bg-[#f5f5f5] hover:bg-[#e5f3fa] text-[#333333] border-[#d9d9d9]'
-                }`}
-              >
-                <span>{tree.parentCoilCode}</span>
-                <span
-                  className={`text-[10px] px-1.5 rounded ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-white text-[#666666] border border-[#d9d9d9]'
+        }
+        endContent={
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-[var(--fiori-text-secondary)] font-medium ml-1">انتخاب رول مادر:</span>
+            {slittingTrees.map(tree => {
+              const isSelected = tree.parentId === activeTree.parentId;
+              return (
+                <button
+                  key={tree.parentId}
+                  type="button"
+                  onClick={() => setSelectedTreeId(tree.parentId)}
+                  className={`px-3 py-1 rounded-[var(--fiori-radius-sm)] text-xs font-mono font-semibold transition cursor-pointer flex items-center gap-1.5 border ${
+                    isSelected
+                      ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)]'
+                      : 'bg-[var(--fiori-bg-subtle)] hover:bg-[var(--fiori-info-bg)] text-[var(--fiori-text-primary)] border-[var(--fiori-border-default)]'
                   }`}
                 >
-                  {tree.materialGrade}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                  <span className="fiori-ltr-code">{tree.parentCoilCode}</span>
+                  <span
+                    className={`text-[10px] px-1.5 rounded-[var(--fiori-radius-sm)] ${
+                      isSelected
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-secondary)] border border-[var(--fiori-border-default)]'
+                    }`}
+                  >
+                    {tree.materialGrade}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        }
+      />
 
       {/* Visual Tree Layout: Parent Coil (Right) ➔ Slitting Operation ➔ Child Strips/Sheets (Left) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch pt-1">
+      <div className="p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         {/* 1. Parent Coil Card (رول مادر) with Pencil Drawer Edit */}
-        <div className="lg:col-span-4 bg-[#f7f7f7] text-[#333333] rounded-md p-4 flex flex-col justify-between relative overflow-hidden border border-[#d9d9d9] border-t-4 border-t-[#007cc0]">
+        <div className="lg:col-span-4 bg-[var(--fiori-bg-subtle)] text-[var(--fiori-text-primary)] rounded-[var(--fiori-radius-md)] p-4 flex flex-col justify-between relative overflow-hidden border border-[var(--fiori-border-default)]">
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf5]">
-                رول مادر (Parent Master Coil)
-              </span>
+            <div className="flex items-center justify-between gap-2">
+              <FioriObjectStatus tone="info" label="رول مادر (Parent Master Coil)" />
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-[#666666]">{activeTree.coilPackNumber}</span>
+                <span className="font-mono text-xs text-[var(--fiori-text-secondary)] fiori-ltr-code">
+                  {activeTree.coilPackNumber}
+                </span>
                 <button
                   type="button"
                   onClick={handleEditParentCoil}
                   title="ویرایش مشخصات رول مادر در کشو"
-                  className="p-1.5 rounded bg-white hover:bg-[#e5f3fa] text-[#666666] hover:text-[#007cc0] border border-[#d9d9d9] transition cursor-pointer"
+                  className="p-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-info-bg)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-brand)] border border-[var(--fiori-border-default)] transition cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                 </button>
@@ -766,19 +762,19 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
               <button
                 type="button"
                 onClick={() => router.traceDocument(activeTree.parentCoilCode, 'COILS')}
-                className="sap-doc-link text-base font-bold font-mono tracking-tight"
+                className="sap-doc-link text-base font-bold font-mono tracking-tight fiori-ltr-code cursor-pointer"
                 title="مشاهده پرونده رول مادر"
               >
                 {activeTree.parentCoilCode}
               </button>
-              <div className="text-xs text-[#666666] mt-0.5">{activeTree.supplierName}</div>
+              <div className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">{activeTree.supplierName}</div>
               {activeTree.contractNumber && (
-                <div className="text-[11px] text-[#666666] mt-0.5">
+                <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-0.5">
                   قرارداد:{' '}
                   <button
                     type="button"
                     onClick={() => router.traceDocument(activeTree.contractNumber, 'CONTRACTS')}
-                    className="sap-doc-link text-[11px]"
+                    className="sap-doc-link text-[11px] fiori-ltr-code cursor-pointer"
                   >
                     {activeTree.contractNumber}
                   </button>
@@ -787,15 +783,17 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
             </div>
 
             {/* Heat Number Highlight Box */}
-            <div className="p-2.5 rounded bg-white border border-[#d9d9d9] flex items-center justify-between">
+            <div className="p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-[#e9730c] shrink-0" />
+                <Flame className="w-4 h-4 text-[var(--fiori-critical)] shrink-0" />
                 <div>
-                  <span className="text-[10px] text-[#666666] block">شماره ذوب فولاد (Heat Number)</span>
+                  <span className="text-[10px] text-[var(--fiori-text-secondary)] block">
+                    شماره ذوب فولاد (Heat Number)
+                  </span>
                   <button
                     type="button"
                     onClick={() => router.traceDocument(activeTree.heatNumber, 'WIP_TRACEABILITY')}
-                    className="sap-doc-link font-mono text-xs font-bold"
+                    className="sap-doc-link font-mono text-xs font-bold fiori-ltr-code cursor-pointer"
                     title="رهگیری شماره ذوب در تولید"
                   >
                     {activeTree.heatNumber}
@@ -803,24 +801,24 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
                 </div>
               </div>
               <div className="text-left">
-                <span className="text-[10px] text-[#666666] block">گرید و ضخامت</span>
-                <span className="font-mono text-xs font-semibold text-[#333333]">
+                <span className="text-[10px] text-[var(--fiori-text-secondary)] block">گرید و ضخامت</span>
+                <span className="font-mono text-xs font-semibold text-[var(--fiori-text-primary)] tabular-nums">
                   {activeTree.materialGrade} | {toPersianDigits(activeTree.thicknessMm)}mm
                 </span>
               </div>
             </div>
 
             {/* Parent Specs Grid */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded bg-white border border-[#d9d9d9]">
-                <span className="text-[10px] text-[#666666] block">وزن اولیه رول مادر</span>
-                <span className="font-mono font-bold text-[#107e3e] text-sm mt-0.5 block">
+            <div className="grid grid-cols-2 gap-2 text-xs tabular-nums">
+              <div className="p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)]">
+                <span className="text-[10px] text-[var(--fiori-text-secondary)] block">وزن اولیه رول مادر</span>
+                <span className="font-mono font-bold text-[var(--fiori-positive)] text-sm mt-0.5 block">
                   {formatNumber(activeTree.originalWeightKg)} kg
                 </span>
               </div>
-              <div className="p-2.5 rounded bg-white border border-[#d9d9d9]">
-                <span className="text-[10px] text-[#666666] block">عرض اولیه کلاف</span>
-                <span className="font-mono font-bold text-[#333333] text-sm mt-0.5 block">
+              <div className="p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)]">
+                <span className="text-[10px] text-[var(--fiori-text-secondary)] block">عرض اولیه کلاف</span>
+                <span className="font-mono font-bold text-[var(--fiori-text-primary)] text-sm mt-0.5 block">
                   {formatNumber(activeTree.originalWidthMm)} mm
                 </span>
               </div>
@@ -828,10 +826,10 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
           </div>
 
           {/* Mass Balance Bar inside Parent Card */}
-          <div className="mt-4 pt-3 border-t border-[#d9d9d9] space-y-2">
+          <div className="mt-4 pt-3 border-t border-[var(--fiori-border-default)] space-y-2">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-[#666666]">موازنه جرم برش کلاف:</span>
-              <span className="font-mono text-[#107e3e] font-semibold">
+              <span className="text-[var(--fiori-text-secondary)]">موازنه جرم برش کلاف:</span>
+              <span className="font-mono text-[var(--fiori-positive)] font-semibold tabular-nums">
                 راندمان برش:{' '}
                 {toPersianDigits(
                   Math.min(
@@ -842,24 +840,24 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
                 ٪
               </span>
             </div>
-            <div className="w-full h-2.5 bg-[#e8e8e8] rounded-full overflow-hidden flex">
+            <div className="w-full h-2 bg-[var(--fiori-border-subtle)] rounded-[var(--fiori-radius-sm)] overflow-hidden flex">
               <div
-                className="bg-[#107e3e] h-full"
+                className="bg-[var(--fiori-positive)] h-full"
                 style={{ width: `${(totalSlitWeight / Math.max(1, activeTree.originalWeightKg)) * 100}%` }}
                 title={`نوار و شیت فرعی: ${totalSlitWeight} kg`}
               />
               <div
-                className="bg-[#e9730c] h-full"
+                className="bg-[var(--fiori-critical)] h-full"
                 style={{ width: `${(remnantWeight / Math.max(1, activeTree.originalWeightKg)) * 100}%` }}
                 title={`ته‌کلاف: ${remnantWeight} kg`}
               />
               <div
-                className="bg-[#bb0000] h-full"
+                className="bg-[var(--fiori-negative)] h-full"
                 style={{ width: `${(scrapWeight / Math.max(1, activeTree.originalWeightKg)) * 100}%` }}
                 title={`پرت برش: ${scrapWeight} kg`}
               />
             </div>
-            <div className="flex items-center justify-between text-[10px] text-[#666666] font-mono">
+            <div className="flex items-center justify-between text-[10px] text-[var(--fiori-text-secondary)] font-mono tabular-nums">
               <span>نوار/شیت: {formatNumber(totalSlitWeight)}kg</span>
               <span>ته‌کلاف: {formatNumber(remnantWeight)}kg</span>
               <span>پرت: {formatNumber(scrapWeight)}kg</span>
@@ -869,64 +867,67 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
 
         {/* 2. Child Strips & Sheets Tree Branches (نوارها و شیت‌های فرعی - Child Nodes) */}
         <div className="lg:col-span-8 flex flex-col justify-between space-y-3">
-          <div className="bg-[#f7f7f7] border border-[#d9d9d9] rounded px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <Scissors className="w-4 h-4 text-[#007cc0]" />
-              <span className="font-semibold text-[#333333]">ایستگاه برش: {activeTree.slittingMachine}</span>
-              <span className="text-[#bfbfbf]">|</span>
-              <span className="text-[#666666]">تاریخ برش: {activeTree.slittingDate}</span>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-[11px] font-semibold text-[#007cc0] bg-[#e5f3fa] border border-[#b3ddf5] px-2 py-0.5 rounded">
-                {toPersianDigits(visibleChildren.length)} خروجی فرعی (Child) از ذوب {activeTree.heatNumber}
-              </span>
-              {totalSlitWeight > 0 && (
-                <button
-                  type="button"
-                  onClick={handleReverseSlitting}
-                  title="ابطال عملیات برش و بازگرداندن وزن نوارهای فرعی به رول مادر"
-                  className="px-2.5 py-1 rounded bg-[#ffebee] hover:bg-[#bb0000] text-[#bb0000] hover:text-white border border-[#f5c2c7] hover:border-[#bb0000] text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>ابطال برش (Reverse Slitting)</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleAddChildNode}
-                className="sap-btn-emphasized px-2.5 py-1 text-[11px] flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3 h-3" />
-                <span>افزودن نوار/شیت فرعی</span>
-              </button>
-            </div>
+          <div className="border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] overflow-hidden">
+            <FioriToolbar
+              variant="section"
+              title={`ایستگاه برش: ${activeTree.slittingMachine}`}
+              subtitle={`تاریخ برش: ${activeTree.slittingDate}`}
+              startContent={<Scissors className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />}
+              endContent={
+                <div className="flex items-center gap-2 flex-wrap">
+                  <FioriObjectStatus
+                    tone="info"
+                    label={`${toPersianDigits(visibleChildren.length)} خروجی فرعی (Child) از ذوب ${activeTree.heatNumber}`}
+                  />
+                  {totalSlitWeight > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleReverseSlitting}
+                      title="ابطال عملیات برش و بازگرداندن وزن نوارهای فرعی به رول مادر"
+                      className="px-2.5 py-1 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-negative-bg)] hover:bg-[var(--fiori-negative)] text-[var(--fiori-negative)] hover:text-white border border-[var(--fiori-negative-border)] hover:border-[var(--fiori-negative)] text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>ابطال برش (Reverse Slitting)</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleAddChildNode}
+                    className="sap-btn-emphasized px-2.5 py-1 text-[11px] flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>افزودن نوار/شیت فرعی</span>
+                  </button>
+                </div>
+              }
+            />
           </div>
 
           {/* Vertical Connected Tree of Child Outputs */}
           <div className="relative pr-5 space-y-2">
             {/* Vertical Connector Line */}
-            <div className="absolute right-2 top-3 bottom-3 w-0.5 bg-[#d9d9d9] rounded-full" />
+            <div className="absolute right-2 top-3 bottom-3 w-0.5 bg-[var(--fiori-border-default)] rounded-full" />
 
             {visibleChildren.map(child => {
               const isStripOrSheet = child.type === 'SLIT_STRIP' || child.type === 'BLANK_SHEET';
               const isRemnant = child.type === 'REMNANT_COIL';
 
               const dotColor = isStripOrSheet
-                ? 'bg-[#107e3e] ring-[#eef7f1]'
+                ? 'bg-[var(--fiori-positive)] ring-[var(--fiori-positive-bg)]'
                 : isRemnant
-                ? 'bg-[#e9730c] ring-[#fff4e5]'
-                : 'bg-[#bb0000] ring-[#ffebee]';
+                ? 'bg-[var(--fiori-critical)] ring-[var(--fiori-critical-bg)]'
+                : 'bg-[var(--fiori-negative)] ring-[var(--fiori-negative-bg)]';
 
               const cardBorder = isStripOrSheet
-                ? 'border-[#d9d9d9] hover:border-[#007cc0] bg-white'
+                ? 'border-[var(--fiori-border-default)] hover:border-[var(--fiori-brand)] bg-[var(--fiori-bg-surface)]'
                 : isRemnant
-                ? 'border-[#f5cba7] bg-[#fff4e5]/40'
-                : 'border-[#f5c2c7] bg-[#ffebee]/40';
+                ? 'border-[var(--fiori-critical-border)] bg-[var(--fiori-critical-bg)]/40'
+                : 'border-[var(--fiori-negative-border)] bg-[var(--fiori-negative-bg)]/40';
 
               return (
                 <div
                   key={child.id}
-                  className={`relative rounded border p-2.5 transition-all ${cardBorder}`}
+                  className={`relative rounded-[var(--fiori-radius-sm)] border p-2.5 transition-all ${cardBorder}`}
                 >
                   {/* Tree Branch Node Circle */}
                   <span
@@ -936,35 +937,31 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-[#333333] bg-[#f5f5f5] px-2 py-0.5 rounded border border-[#d9d9d9]">
+                        <span className="font-mono text-xs font-bold text-[var(--fiori-text-primary)] bg-[var(--fiori-bg-subtle)] px-2 py-0.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] fiori-ltr-code">
                           {child.childCode}
                         </span>
-                        <span
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
-                            isStripOrSheet
-                              ? 'bg-[#eef7f1] text-[#107e3e] border-[#bce0c8]'
-                              : isRemnant
-                              ? 'bg-[#fff4e5] text-[#e9730c] border-[#f5cba7]'
-                              : 'bg-[#ffebee] text-[#bb0000] border-[#f5c2c7]'
-                          }`}
-                        >
-                          {child.typeLabel}
+                        <FioriObjectStatus
+                          tone={isStripOrSheet ? 'positive' : isRemnant ? 'critical' : 'negative'}
+                          label={child.typeLabel}
+                          size="sm"
+                        />
+                        <span className="text-xs font-semibold text-[var(--fiori-text-primary)]">
+                          {child.dimensionsLabel}
                         </span>
-                        <span className="text-xs font-semibold text-[#333333]">{child.dimensionsLabel}</span>
-                        <span className="text-[10px] font-mono text-[#666666] bg-[#f5f5f5] px-1.5 py-0.5 rounded">
-                          ذوب ارث‌برده: {activeTree.heatNumber}
+                        <span className="text-[10px] font-mono text-[var(--fiori-text-secondary)] bg-[var(--fiori-bg-subtle)] px-1.5 py-0.5 rounded-[var(--fiori-radius-sm)]">
+                          ذوب ارث‌برده: <span className="fiori-ltr-code">{activeTree.heatNumber}</span>
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-3 flex-wrap text-[11px] text-[#666666]">
+                      <div className="flex items-center gap-3 flex-wrap text-[11px] text-[var(--fiori-text-secondary)]">
                         <span>
-                          محل استقرار: <strong className="text-[#333333]">{child.warehouseLocation}</strong>
+                          محل استقرار: <strong className="text-[var(--fiori-text-primary)]">{child.warehouseLocation}</strong>
                         </span>
                         {child.targetPartName && (
                           <>
-                            <span className="text-[#bfbfbf]">•</span>
+                            <span className="text-[var(--fiori-text-muted)]">•</span>
                             <span>
-                              قطعه هدف: <strong className="text-[#333333]">{child.targetPartName}</strong>
+                              قطعه هدف: <strong className="text-[var(--fiori-text-primary)]">{child.targetPartName}</strong>
                             </span>
                           </>
                         )}
@@ -974,12 +971,12 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
                     {/* Right-side Metrics, Linked MO Badge, Pencil Edit & Soft Delete */}
                     <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
                       {child.assignedMoNumber && (
-                        <div className="px-2 py-0.5 rounded bg-[#e5f3fa] border border-[#b3ddf5] text-left">
-                          <span className="text-[9px] text-[#666666] block">دستور تولید متصل</span>
+                        <div className="px-2 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] text-left">
+                          <span className="text-[9px] text-[var(--fiori-text-secondary)] block">دستور تولید متصل</span>
                           <button
                             type="button"
                             onClick={() => router.traceDocument(child.assignedMoNumber!, 'WIP_TRACEABILITY')}
-                            className="sap-doc-link font-mono text-xs font-bold"
+                            className="sap-doc-link font-mono text-xs font-bold fiori-ltr-code cursor-pointer"
                             title="رهگیری این دستور تولید"
                           >
                             {child.assignedMoNumber}
@@ -988,17 +985,17 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
                       )}
 
                       {child.sheetCount && (
-                        <div className="text-left px-2 py-0.5 rounded bg-[#f7f7f7] border border-[#d9d9d9]">
-                          <span className="text-[9px] text-[#666666] block">تعداد شیت/بلنک</span>
-                          <span className="font-mono text-xs font-semibold text-[#333333]">
+                        <div className="text-left px-2 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)]">
+                          <span className="text-[9px] text-[var(--fiori-text-secondary)] block">تعداد شیت/بلنک</span>
+                          <span className="font-mono text-xs font-semibold text-[var(--fiori-text-primary)] tabular-nums">
                             {formatNumber(child.sheetCount)} برگ
                           </span>
                         </div>
                       )}
 
                       <div className="text-left min-w-[75px]">
-                        <span className="text-[10px] text-[#666666] block">وزن فرعی</span>
-                        <span className="font-mono text-sm font-bold text-[#333333]">
+                        <span className="text-[10px] text-[var(--fiori-text-secondary)] block">وزن فرعی</span>
+                        <span className="font-mono text-sm font-bold text-[var(--fiori-text-primary)] tabular-nums">
                           {formatNumber(child.weightKg)} <span className="text-[10px] font-normal">kg</span>
                         </span>
                       </div>
@@ -1007,7 +1004,7 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
                         type="button"
                         onClick={() => handleEditChildNode(child)}
                         title="ویرایش در کشو (Edit)"
-                        className="p-1.5 rounded bg-white hover:bg-[#e5f3fa] text-[#666666] hover:text-[#007cc0] border border-[#d9d9d9] transition cursor-pointer"
+                        className="p-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-info-bg)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-brand)] border border-[var(--fiori-border-default)] transition cursor-pointer"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
@@ -1016,7 +1013,7 @@ export const CoilSlittingGenealogyPanel: React.FC<CoilSlittingGenealogyPanelProp
                         type="button"
                         onClick={() => handleReverseChildNode(child)}
                         title="ابطال خروجی برش (Reversal)"
-                        className="p-1.5 rounded bg-white hover:bg-[#bb0000] text-[#666666] hover:text-white border border-[#d9d9d9] transition cursor-pointer"
+                        className="p-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-negative)] text-[var(--fiori-text-secondary)] hover:text-white border border-[var(--fiori-border-default)] transition cursor-pointer"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                       </button>

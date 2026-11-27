@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Navbar } from './components/Navbar';
+import { FioriAppShell } from './components/fiori/shell';
 import { TabKey, SubModuleNavParams, MachineSubTabKey } from './components/Sidebar';
 import { FioriLaunchpadView } from './components/fiori/FioriLaunchpadView';
 import { TransactionsVouchersView } from './components/TransactionsVouchersView';
@@ -1017,40 +1017,6 @@ function AppContent() {
     }
   });
 
-  // SAP S/4HANA Fiori layout: full-width Shell Bar spanning across the top above the side navigation and canvas.
-  const isSidebarFullHeight = false;
-
-  const navbarElement = (
-    <Navbar
-      activeTab={activeTab}
-      layoutTemplate={layoutTemplate}
-      colorTheme={colorTheme}
-      currentUser={currentUser}
-      parts={parts}
-      coilsCount={coils.length}
-      reorderAlertsCount={reorderAlertsCount}
-      criticalAlertsCount={criticalAlertsCount}
-      onRoleChange={handleRoleChange}
-      onSelectUser={handleSelectUser}
-      onNavigate={handleDeepNavigate}
-      onOpenTemplateModal={() => setIsTemplateModalOpen(true)}
-      onQuickTemplateChange={handleSelectTemplate}
-      onOpenAiAssistant={() => setIsAiModalOpen(true)}
-      onSeedDemo={handleSeedDemo}
-      onCleanDemo={handleCleanDemo}
-      onOpenErpModal={() => setIsErpModalOpen(true)}
-      onOpenHelpModal={() => setIsHelpModalOpen(true)}
-      loading={loading}
-      cloudSyncCheck={cloudSyncCheck}
-      autoCheckCloudUpdates={autoCheckCloudUpdates}
-      cloudSyncBusy={cloudSyncBusy}
-      onToggleAutoCloudCheck={handleToggleAutoCloudCheck}
-      onCheckCloudUpdates={handleCheckCloudUpdates}
-      onCloudPull={handleCloudPull}
-      onCloudPush={() => handleCloudPush()}
-    />
-  );
-
   const remoteAlertKey = cloudSyncCheck?.cloudManifest?.contentHash || 'legacy';
   const showCloudUpdateBanner =
     cloudSyncCheck &&
@@ -1058,7 +1024,7 @@ function AppContent() {
     dismissedRemoteHash !== remoteAlertKey;
 
   const mainContentElement = (
-    <main className="flex-1 px-4 py-3 md:px-5 md:py-3.5 overflow-y-auto max-w-[1440px] mx-auto w-full space-y-2.5">
+    <>
       {/* Git-Style Online Database Update Alert Bar */}
       {showCloudUpdateBanner && cloudSyncCheck && (
         <div
@@ -1466,15 +1432,38 @@ function AppContent() {
               onRefreshData={loadAllData}
             />
           )}
-    </main>
+    </>
   );
 
   return (
-    <div className="min-h-screen bg-[#f0f0f0] text-[#333333] flex flex-col font-sans selection:bg-[#007cc0] selection:text-white">
-      {navbarElement}
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
+      <FioriAppShell
+        currentUser={currentUser}
+        parts={parts}
+        partsCount={parts.length}
+        coilsCount={coils.length}
+        plansCount={plans.length}
+        reorderAlertsCount={reorderAlertsCount}
+        loading={loading}
+        onRoleChange={handleRoleChange}
+        onSelectUser={handleSelectUser}
+        onLegacyNavigate={handleDeepNavigate}
+        onOpenTemplateModal={() => setIsTemplateModalOpen(true)}
+        onOpenAiAssistant={() => setIsAiModalOpen(true)}
+        onSeedDemo={handleSeedDemo}
+        onCleanDemo={handleCleanDemo}
+        onOpenErpModal={() => setIsErpModalOpen(true)}
+        onOpenHelpModal={() => setIsHelpModalOpen(true)}
+        cloudSyncCheck={cloudSyncCheck}
+        autoCheckCloudUpdates={autoCheckCloudUpdates}
+        cloudSyncBusy={cloudSyncBusy}
+        onToggleAutoCloudCheck={handleToggleAutoCloudCheck}
+        onCheckCloudUpdates={handleCheckCloudUpdates}
+        onCloudPull={handleCloudPull}
+        onCloudPush={() => handleCloudPush()}
+      >
         {mainContentElement}
-      </div>
+      </FioriAppShell>
 
       {/* Offline Mode Indicator for Factory Floor Operations */}
       <OfflineIndicator />
@@ -1546,7 +1535,7 @@ function AppContent() {
         initialQty={wizardLaunchParams?.quantity}
         autoEvaluate={wizardLaunchParams?.autoEvaluate}
       />
-    </div>
+    </>
   );
 }
 

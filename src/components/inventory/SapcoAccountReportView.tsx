@@ -1,19 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import {
-  ScrollText,
   Search,
-  Filter,
   Download,
-  Building2,
   RefreshCw,
-  Scale,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowDownRight,
-  ArrowUpLeft,
-  Calendar,
   Layers,
-  FileCheck,
 } from 'lucide-react';
 import {
   SapcoContract,
@@ -23,10 +13,18 @@ import {
   formatNumber,
   formatWeightKg,
   toPersianDigits,
-  formatDateTime,
   exportToCsv,
 } from '../../utils/formatters';
 import { useErpRouter } from '../../context/RouterContext';
+import {
+  FioriDynamicPage,
+  FioriToolbar,
+  FioriDataTable,
+  FioriTableColumn,
+  FioriObjectStatus,
+  FioriStatusTone,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 interface SapcoAccountReportViewProps {
   contracts: SapcoContract[];
@@ -56,39 +54,50 @@ export const SapcoAccountReportView: React.FC<SapcoAccountReportViewProps> = ({
   const totalConsumedKg = contracts.reduce((sum, c) => sum + c.totalConsumedKg, 0);
   const totalClosingBalanceKg = contracts.reduce((sum, c) => sum + c.closingBalanceKg, 0);
 
-  const operationLabels: Record<string, { label: string; color: string; sign: string }> = {
-    OPENING: { label: 'موجودی اول دوره', color: 'bg-[#f5f5f5] text-[#333333] border-[#d9d9d9]', sign: '' },
-    RECEIPT: { label: 'ورود رول ساپکو', color: 'bg-[#ebf7ef] text-[#107e3e] border-[#a9dfbf]', sign: '+' },
-    CONSUMPTION: { label: 'مصرف در خط پرس', color: 'bg-[#fff4e5] text-[#e9730c] border-[#f9d6a7]', sign: '-' },
-    RETURN: { label: 'برگشت به ساپکو', color: 'bg-[#ffecec] text-[#bb0000] border-[#f5b7b1]', sign: '-' },
-    ADJUSTMENT: { label: 'تعدیل حسابرسی', color: 'bg-[#e5f3fa] text-[#007cc0] border-[#b3ddf2]', sign: '±' },
+  const operationLabels: Record<string, { label: string; tone: FioriStatusTone; sign: string }> = {
+    OPENING: { label: 'موجودی اول دوره', tone: 'neutral', sign: '' },
+    RECEIPT: { label: 'ورود رول ساپکو', tone: 'positive', sign: '+' },
+    CONSUMPTION: { label: 'مصرف در خط پرس', tone: 'critical', sign: '-' },
+    RETURN: { label: 'برگشت به ساپکو', tone: 'negative', sign: '-' },
+    ADJUSTMENT: { label: 'تعدیل حسابرسی', tone: 'info', sign: '±' },
   };
 
   const filteredLedger = useMemo(() => {
-    return ledger.filter(item => {
-      if (selectedContractId !== 'ALL' && item.contractId !== selectedContractId) {
-        return false;
-      }
-      if (selectedOperationFilter !== 'ALL' && item.operationType !== selectedOperationFilter) {
-        return false;
-      }
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase();
-        const matchesDoc = item.documentNumber.toLowerCase().includes(q);
-        const matchesWaybill = item.waybillNumber ? item.waybillNumber.toLowerCase().includes(q) : false;
-        const matchesLot = item.lotNumber ? item.lotNumber.toLowerCase().includes(q) : false;
-        const matchesHeat = item.heatNumber ? item.heatNumber.toLowerCase().includes(q) : false;
-        const matchesNotes = item.notes ? item.notes.toLowerCase().includes(q) : false;
-        if (!matchesDoc && !matchesWaybill && !matchesLot && !matchesHeat && !matchesNotes) {
+    return ledger
+      .filter(item => {
+        if (selectedContractId !== 'ALL' && item.contractId !== selectedContractId) {
           return false;
         }
-      }
-      return true;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        if (selectedOperationFilter !== 'ALL' && item.operationType !== selectedOperationFilter) {
+          return false;
+        }
+        if (searchTerm.trim()) {
+          const q = searchTerm.toLowerCase();
+          const matchesDoc = item.documentNumber.toLowerCase().includes(q);
+          const matchesWaybill = item.waybillNumber ? item.waybillNumber.toLowerCase().includes(q) : false;
+          const matchesLot = item.lotNumber ? item.lotNumber.toLowerCase().includes(q) : false;
+          const matchesHeat = item.heatNumber ? item.heatNumber.toLowerCase().includes(q) : false;
+          const matchesNotes = item.notes ? item.notes.toLowerCase().includes(q) : false;
+          if (!matchesDoc && !matchesWaybill && !matchesLot && !matchesHeat && !matchesNotes) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [ledger, selectedContractId, selectedOperationFilter, searchTerm]);
 
-  const totalPages = Math.ceil(filteredLedger.length / pageSize) || 1;
   const pagedLedger = filteredLedger.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const hasFilters =
+    selectedContractId !== 'ALL' || selectedOperationFilter !== 'ALL' || Boolean(searchTerm.trim());
+
+  const resetFilters = () => {
+    setSelectedContractId('ALL');
+    setSelectedOperationFilter('ALL');
+    setSearchTerm('');
+    setCurrentPage(1);
+  };
 
   const handleExportCsv = () => {
     const headers = [
@@ -120,101 +129,244 @@ export const SapcoAccountReportView: React.FC<SapcoAccountReportViewProps> = ({
     exportToCsv(`حسابداری_و_کاردکس_سهمیه_ساپکو_${Date.now()}`, headers, rows);
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Header and Controls */}
-      <div className="sap-card p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold text-[#333333] flex items-center gap-2">
-            <ScrollText className="w-5 h-5 text-[#007cc0]" />
-            حسابداری سهمیه ورق و کلاف‌های امانی ساپکو (SAPCO Consignment)
-          </h2>
-          <p className="text-xs text-[#666666] mt-1 leading-relaxed">
-            ردیابی مستقل موجودی امانی ساپکو از موجودی ملکی کارخانه بر حسب کیلوگرم، تطبیق بارنامه‌های ورودی و موازنه مصارف خطوط پرس
-          </p>
-        </div>
+  const ledgerColumns: FioriTableColumn<SapcoContractLedgerEntry>[] = [
+    {
+      key: 'rowIndex',
+      header: 'ردیف',
+      render: (_row, idx) => (
+        <span className="text-[var(--fiori-text-secondary)] font-mono tabular-nums">
+          {toPersianDigits((currentPage - 1) * pageSize + idx + 1)}
+        </span>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'تاریخ',
+      render: row => <span className="font-mono text-[var(--fiori-text-secondary)] tabular-nums">{row.date}</span>,
+    },
+    {
+      key: 'documentNumber',
+      header: 'شماره سند کاردکس',
+      render: row => (
+        <button
+          type="button"
+          onClick={() => traceDocument(row.documentNumber, 'INVENTORY_LEDGER')}
+          className="sap-doc-link font-mono font-bold fiori-ltr-code cursor-pointer"
+        >
+          {row.documentNumber}
+        </button>
+      ),
+    },
+    {
+      key: 'operationType',
+      header: 'نوع عملیات',
+      render: row => {
+        const op = operationLabels[row.operationType] || {
+          label: row.operationType,
+          tone: 'neutral' as const,
+          sign: '',
+        };
+        return <FioriObjectStatus tone={op.tone} label={op.label} />;
+      },
+    },
+    {
+      key: 'contractNumber',
+      header: 'قرارداد',
+      render: row => (
+        <button
+          type="button"
+          onClick={() => traceDocument(row.contractNumber, 'CONTRACTS')}
+          className="sap-doc-link font-mono font-medium fiori-ltr-code cursor-pointer"
+        >
+          {row.contractNumber}
+        </button>
+      ),
+    },
+    {
+      key: 'waybillNumber',
+      header: 'شماره بارنامه ساپکو',
+      render: row => (
+        <span className="font-mono text-[var(--fiori-text-primary)] fiori-ltr-code">
+          {row.waybillNumber || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'lotNumber',
+      header: 'شماره رول / لوت',
+      render: row =>
+        row.lotNumber ? (
+          <button
+            type="button"
+            onClick={() => traceDocument(row.lotNumber!, 'COILS')}
+            className="sap-doc-link font-mono fiori-ltr-code cursor-pointer"
+          >
+            {row.lotNumber}
+          </button>
+        ) : (
+          <span className="font-mono text-[var(--fiori-text-muted)]">-</span>
+        ),
+    },
+    {
+      key: 'heatNumber',
+      header: 'شماره ذوب',
+      render: row => (
+        <span className="font-mono text-[var(--fiori-text-secondary)] fiori-ltr-code">
+          {row.heatNumber || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'weightKgSigned',
+      header: 'وزن گردش (کیلوگرم)',
+      align: 'left',
+      render: row => {
+        const isPositive = row.weightKgSigned > 0;
+        return (
+          <span
+            className={`font-mono font-bold tabular-nums ${
+              isPositive ? 'text-[var(--fiori-positive)]' : 'text-[var(--fiori-text-primary)]'
+            }`}
+          >
+            {isPositive ? `+${formatNumber(row.weightKgSigned)}` : formatNumber(row.weightKgSigned)}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'runningBalanceKg',
+      header: 'مانده جاری (کیلوگرم)',
+      align: 'left',
+      render: row => (
+        <span className="font-mono font-bold text-[var(--fiori-text-primary)] tabular-nums whitespace-nowrap">
+          {formatWeightKg(row.runningBalanceKg)}
+        </span>
+      ),
+    },
+    {
+      key: 'notes',
+      header: 'توضیحات',
+      render: row => (
+        <span
+          className="text-[var(--fiori-text-secondary)] text-[11px] max-w-[200px] block truncate"
+          title={row.notes}
+        >
+          {row.notes || '-'}
+        </span>
+      ),
+    },
+  ];
 
+  const kpiStrip = (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3.5 shadow-[var(--fiori-shadow-card)]">
+        <span className="text-[11px] font-medium text-[var(--fiori-text-secondary)]">
+          کل سهمیه تخصیصی قراردادها
+        </span>
+        <div className="text-lg font-bold text-[var(--fiori-text-primary)] mt-1 font-mono tabular-nums">
+          {formatWeightKg(totalAllocatedKg)}
+        </div>
+        <span className="text-[10px] text-[var(--fiori-text-muted)] block mt-1">
+          بر اساس تفاهم‌نامه‌های ساپکو
+        </span>
+      </div>
+
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3.5 shadow-[var(--fiori-shadow-card)]">
+        <span className="text-[11px] font-medium text-[var(--fiori-text-secondary)]">
+          مجموع دریافتی کلاف (تحویل کارخانه)
+        </span>
+        <div className="text-lg font-bold text-[var(--fiori-text-primary)] mt-1 font-mono tabular-nums">
+          {formatWeightKg(totalReceivedKg)}
+        </div>
+        <span className="text-[10px] text-[var(--fiori-positive)] block mt-1 font-medium tabular-nums">
+          {totalAllocatedKg > 0 ? toPersianDigits(Math.round((totalReceivedKg / totalAllocatedKg) * 100)) : 0}٪ کل سهمیه
+        </span>
+      </div>
+
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3.5 shadow-[var(--fiori-shadow-card)]">
+        <span className="text-[11px] font-medium text-[var(--fiori-text-secondary)]">
+          مجموع مصرف و برش خطوط پرس
+        </span>
+        <div className="text-lg font-bold text-[var(--fiori-text-primary)] mt-1 font-mono tabular-nums">
+          {formatWeightKg(totalConsumedKg)}
+        </div>
+        <span className="text-[10px] text-[var(--fiori-text-muted)] block mt-1 font-medium tabular-nums">
+          {totalReceivedKg > 0 ? toPersianDigits(Math.round((totalConsumedKg / totalReceivedKg) * 100)) : 0}٪ دریافتی
+        </span>
+      </div>
+
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3.5 shadow-[var(--fiori-shadow-card)]">
+        <span className="text-[11px] font-medium text-[var(--fiori-text-secondary)]">
+          موجودی کلاف در انبار (مانده پایان دوره)
+        </span>
+        <div className="text-lg font-bold text-[var(--fiori-brand)] mt-1 font-mono tabular-nums">
+          {formatWeightKg(totalClosingBalanceKg)}
+        </div>
+        <span className="text-[10px] text-[var(--fiori-text-muted)] block mt-1">
+          فیزیکی موجود در انبار شماره ۱
+        </span>
+      </div>
+    </div>
+  );
+
+  return (
+    <FioriDynamicPage
+      title="حسابداری سهمیه ورق و کلاف‌های امانی ساپکو (SAPCO Consignment)"
+      subtitle="ردیابی مستقل موجودی امانی ساپکو از موجودی ملکی کارخانه بر حسب کیلوگرم، تطبیق بارنامه‌های ورودی و موازنه مصارف خطوط پرس"
+      collapsibleFilters={false}
+      kpiStrip={kpiStrip}
+      headerActions={
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={onRefresh}
             disabled={loading}
-            className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs"
+            className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>به‌روزرسانی حساب‌ها</span>
           </button>
           <button
+            type="button"
             onClick={handleExportCsv}
-            className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs"
+            className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>گزارش جامع اکسل</span>
           </button>
         </div>
-      </div>
-
-      {/* 4 Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="sap-card p-4">
-          <span className="text-[11px] font-medium text-[#666666]">کل سهمیه تخصیصی قراردادها</span>
-          <div className="text-lg font-bold text-[#333333] mt-1 font-mono">
-            {formatWeightKg(totalAllocatedKg)}
-          </div>
-          <span className="text-[10px] text-[#666666] block mt-1">بر اساس تفاهم‌نامه‌های ساپکو</span>
-        </div>
-
-        <div className="sap-card p-4">
-          <span className="text-[11px] font-medium text-[#666666]">مجموع دریافتی کلاف (تحویل کارخانه)</span>
-          <div className="text-lg font-bold text-[#333333] mt-1 font-mono">
-            {formatWeightKg(totalReceivedKg)}
-          </div>
-          <span className="text-[10px] text-[#107e3e] block mt-1 font-medium">
-            {totalAllocatedKg > 0 ? toPersianDigits(Math.round((totalReceivedKg / totalAllocatedKg) * 100)) : 0}٪ کل سهمیه
-          </span>
-        </div>
-
-        <div className="sap-card p-4">
-          <span className="text-[11px] font-medium text-[#666666]">مجموع مصرف و برش خطوط پرس</span>
-          <div className="text-lg font-bold text-[#333333] mt-1 font-mono">
-            {formatWeightKg(totalConsumedKg)}
-          </div>
-          <span className="text-[10px] text-[#666666] block mt-1 font-medium">
-            {totalReceivedKg > 0 ? toPersianDigits(Math.round((totalConsumedKg / totalReceivedKg) * 100)) : 0}٪ دریافتی
-          </span>
-        </div>
-
-        <div className="sap-card p-4">
-          <span className="text-[11px] font-medium text-[#666666]">موجودی کلاف در انبار (مانده پایان دوره)</span>
-          <div className="text-lg font-bold text-[#007cc0] mt-1 font-mono">
-            {formatWeightKg(totalClosingBalanceKg)}
-          </div>
-          <span className="text-[10px] text-[#666666] block mt-1">فیزیکی موجود در انبار شماره ۱</span>
-        </div>
-      </div>
-
+      }
+    >
       {/* Contracts Progress Cards */}
       <div className="space-y-3">
-        <h3 className="text-xs font-bold text-[#333333] flex items-center gap-2">
-          <Layers className="w-4 h-4 text-[#007cc0]" />
-          <span>وضعیت تفکیکی سهمیه قراردادهای فعال ساپکو</span>
-        </h3>
+        <FioriToolbar
+          variant="section"
+          title="وضعیت تفکیکی سهمیه قراردادهای فعال ساپکو"
+          count={contracts.length}
+          countLabel="قرارداد"
+          startContent={<Layers className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           {contracts.map(contract => {
-            const consumedPercent = contract.allocatedWeightKg > 0
-              ? Math.min(100, Math.round((contract.totalConsumedKg / contract.allocatedWeightKg) * 100))
-              : 0;
+            const consumedPercent =
+              contract.allocatedWeightKg > 0
+                ? Math.min(100, Math.round((contract.totalConsumedKg / contract.allocatedWeightKg) * 100))
+                : 0;
 
             const isSelected = selectedContractId === contract.id;
 
             return (
               <div
                 key={contract.id}
-                onClick={() => setSelectedContractId(isSelected ? 'ALL' : contract.id)}
+                onClick={() => {
+                  setSelectedContractId(isSelected ? 'ALL' : contract.id);
+                  setCurrentPage(1);
+                }}
                 className={`sap-card p-4 transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-[#e5f3fa]/60 border-[#007cc0] ring-1 ring-[#007cc0]'
-                    : 'hover:border-[#007cc0]'
+                    ? 'bg-[var(--fiori-brand-bg)] border-[var(--fiori-brand)] ring-1 ring-[var(--fiori-brand)]'
+                    : 'hover:border-[var(--fiori-brand)]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -225,52 +377,62 @@ export const SapcoAccountReportView: React.FC<SapcoAccountReportViewProps> = ({
                         e.stopPropagation();
                         traceDocument(contract.contractNumber, 'CONTRACTS');
                       }}
-                      className="sap-doc-link text-xs"
+                      className="sap-doc-link text-xs fiori-ltr-code cursor-pointer"
                     >
                       {contract.contractNumber}
                     </button>
-                    <h4 className="text-xs font-semibold text-[#333333] mt-0.5">{contract.title}</h4>
+                    <h4 className="text-xs font-semibold text-[var(--fiori-text-primary)] mt-0.5">
+                      {contract.title}
+                    </h4>
                   </div>
-                  <span className="px-2 py-0.5 rounded-sm text-[10px] font-medium bg-[#f5f5f5] text-[#333333] border border-[#d9d9d9]">
-                    گرید {contract.materialGrade}
-                  </span>
+                  <FioriObjectStatus tone="neutral" label={`گرید ${contract.materialGrade || '—'}`} />
                 </div>
 
                 {/* Progress Bar */}
                 <div className="mt-3.5 space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#666666]">درصد مصرف سهمیه:</span>
-                    <span className="font-mono font-bold text-[#007cc0]">{toPersianDigits(consumedPercent)}٪</span>
+                    <span className="text-[var(--fiori-text-secondary)]">درصد مصرف سهمیه:</span>
+                    <span className="font-mono font-bold text-[var(--fiori-brand)] tabular-nums">
+                      {toPersianDigits(consumedPercent)}٪
+                    </span>
                   </div>
-                  <div className="h-1.5 w-full bg-[#e8e8e8] rounded-sm overflow-hidden">
+                  <div className="h-1.5 w-full bg-[var(--fiori-border-subtle)] rounded-[var(--fiori-radius-sm)] overflow-hidden">
                     <div
-                      className="h-full bg-[#007cc0] transition-all duration-500"
+                      className="h-full bg-[var(--fiori-brand)] transition-all duration-500 rounded-[var(--fiori-radius-sm)]"
                       style={{ width: `${consumedPercent}%` }}
                     />
                   </div>
                 </div>
 
                 {/* Breakdown details */}
-                <div className="mt-3 pt-2.5 border-t border-[#e8e8e8] grid grid-cols-2 gap-2 text-[11px]">
+                <div className="mt-3 pt-2.5 border-t border-[var(--fiori-border-subtle)] grid grid-cols-2 gap-2 text-[11px] tabular-nums">
                   <div>
-                    <span className="text-[#666666] block">سهمیه کل:</span>
-                    <span className="font-mono font-semibold text-[#333333]">{formatWeightKg(contract.allocatedWeightKg)}</span>
+                    <span className="text-[var(--fiori-text-secondary)] block">سهمیه کل:</span>
+                    <span className="font-mono font-semibold text-[var(--fiori-text-primary)]">
+                      {formatWeightKg(contract.allocatedWeightKg)}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[#666666] block">دریافتی کارخانه:</span>
-                    <span className="font-mono font-semibold text-[#333333]">{formatWeightKg(contract.totalReceivedKg)}</span>
+                    <span className="text-[var(--fiori-text-secondary)] block">دریافتی کارخانه:</span>
+                    <span className="font-mono font-semibold text-[var(--fiori-text-primary)]">
+                      {formatWeightKg(contract.totalReceivedKg)}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[#666666] block">مصرف شده:</span>
-                    <span className="font-mono font-semibold text-[#333333]">{formatWeightKg(contract.totalConsumedKg)}</span>
+                    <span className="text-[var(--fiori-text-secondary)] block">مصرف شده:</span>
+                    <span className="font-mono font-semibold text-[var(--fiori-text-primary)]">
+                      {formatWeightKg(contract.totalConsumedKg)}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[#666666] block">مانده در انبار:</span>
-                    <span className="font-mono font-bold text-[#007cc0]">{formatWeightKg(contract.closingBalanceKg)}</span>
+                    <span className="text-[var(--fiori-text-secondary)] block">مانده در انبار:</span>
+                    <span className="font-mono font-bold text-[var(--fiori-brand)]">
+                      {formatWeightKg(contract.closingBalanceKg)}
+                    </span>
                   </div>
                 </div>
 
-                <div className="mt-2 text-[10px] text-[#666666] flex flex-wrap items-center gap-1">
+                <div className="mt-2 text-[10px] text-[var(--fiori-text-secondary)] flex flex-wrap items-center gap-1">
                   <span>قطعات مجاز:</span>
                   {contract.associatedPartCodes.map(pc => (
                     <button
@@ -280,7 +442,7 @@ export const SapcoAccountReportView: React.FC<SapcoAccountReportViewProps> = ({
                         e.stopPropagation();
                         traceDocument(pc, 'INVENTORY_LEDGER');
                       }}
-                      className="sap-doc-link text-[10px]"
+                      className="sap-doc-link text-[10px] fiori-ltr-code cursor-pointer"
                     >
                       {pc}
                     </button>
@@ -298,31 +460,42 @@ export const SapcoAccountReportView: React.FC<SapcoAccountReportViewProps> = ({
         <div className="sap-card p-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
             <div className="relative min-w-[240px] flex-1">
-              <Search className="w-4 h-4 text-[#666666] absolute right-3 top-2" />
+              <Search className="w-4 h-4 text-[var(--fiori-text-secondary)] absolute right-3 top-2" />
               <input
                 type="text"
                 value={searchTerm}
-                onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                onChange={e => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
                 placeholder="جستجوی بارنامه ساپکو، شماره سند، لوت یا شماره ذوب..."
-                className="w-full bg-[#ffffff] border border-[#bfbfbf] rounded-sm pr-9 pl-3 py-1.5 text-xs text-[#333333] placeholder-[#666666] focus:outline-none focus:border-[#007cc0] transition-colors"
+                className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] pr-9 pl-3 py-1.5 text-xs text-[var(--fiori-text-primary)] placeholder-[var(--fiori-text-muted)] focus:outline-none focus:border-[var(--fiori-brand)] transition-colors"
               />
             </div>
 
             <select
               value={selectedContractId}
-              onChange={e => { setSelectedContractId(e.target.value); setCurrentPage(1); }}
-              className="bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0] transition-colors"
+              onChange={e => {
+                setSelectedContractId(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)] transition-colors"
             >
               <option value="ALL">همه قراردادهای ساپکو</option>
               {contracts.map(c => (
-                <option key={c.id} value={c.id}>{c.contractNumber} - {c.title}</option>
+                <option key={c.id} value={c.id}>
+                  {c.contractNumber} - {c.title}
+                </option>
               ))}
             </select>
 
             <select
               value={selectedOperationFilter}
-              onChange={e => { setSelectedOperationFilter(e.target.value); setCurrentPage(1); }}
-              className="bg-[#ffffff] border border-[#bfbfbf] rounded-sm px-3 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0] transition-colors"
+              onChange={e => {
+                setSelectedOperationFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)] transition-colors"
             >
               <option value="ALL">همه انواع تراکنش‌ها</option>
               <option value="OPENING">موجودی اول دوره</option>
@@ -333,144 +506,52 @@ export const SapcoAccountReportView: React.FC<SapcoAccountReportViewProps> = ({
             </select>
           </div>
 
-          <div className="text-xs text-[#666666]">
-            ردیف‌های گردش: <span className="font-bold text-[#333333] font-mono">{toPersianDigits(filteredLedger.length)}</span>
+          <div className="text-xs text-[var(--fiori-text-secondary)] tabular-nums">
+            ردیف‌های گردش:{' '}
+            <span className="font-bold text-[var(--fiori-text-primary)] font-mono">
+              {toPersianDigits(filteredLedger.length)}
+            </span>
           </div>
         </div>
 
-        {/* Ledger Table */}
-        <div className="sap-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs sap-table-compact">
-              <thead>
-                <tr className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333] font-semibold select-none">
-                  <th>ردیف</th>
-                  <th>تاریخ</th>
-                  <th>شماره سند کاردکس</th>
-                  <th>نوع عملیات</th>
-                  <th>قرارداد</th>
-                  <th>شماره بارنامه ساپکو</th>
-                  <th>شماره رول / لوت</th>
-                  <th>شماره ذوب</th>
-                  <th className="text-left">وزن گردش (کیلوگرم)</th>
-                  <th className="text-left">مانده جاری (کیلوگرم)</th>
-                  <th>توضیحات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8e8e8]">
-                {pagedLedger.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="py-8 text-center text-[#666666]">
-                      هیچ رکوردی در کاردکس سهمیه ساپکو یافت نشد.
-                    </td>
-                  </tr>
-                ) : (
-                  pagedLedger.map((row, idx) => {
-                    const op = operationLabels[row.operationType] || { label: row.operationType, color: 'bg-[#f5f5f5] text-[#333333] border-[#d9d9d9]', sign: '' };
-                    const isPositive = row.weightKgSigned > 0;
-
-                    return (
-                      <tr key={row.id || idx} className="hover:bg-[#e5f3fa] transition-colors">
-                        <td className="text-[#666666] font-mono">
-                          {toPersianDigits((currentPage - 1) * pageSize + idx + 1)}
-                        </td>
-                        <td className="font-mono text-[#666666]">{row.date}</td>
-                        <td className="font-mono font-bold">
-                          <button
-                            type="button"
-                            onClick={() => traceDocument(row.documentNumber, 'INVENTORY_LEDGER')}
-                            className="sap-doc-link"
-                          >
-                            {row.documentNumber}
-                          </button>
-                        </td>
-                        <td>
-                          <span className={`px-2 py-0.5 rounded-sm text-[10px] font-semibold border ${op.color}`}>
-                            {op.label}
-                          </span>
-                        </td>
-                        <td className="font-mono font-medium">
-                          <button
-                            type="button"
-                            onClick={() => traceDocument(row.contractNumber, 'CONTRACTS')}
-                            className="sap-doc-link"
-                          >
-                            {row.contractNumber}
-                          </button>
-                        </td>
-                        <td className="font-mono text-[#333333]">{row.waybillNumber || '-'}</td>
-                        <td className="font-mono">
-                          {row.lotNumber ? (
-                            <button
-                              type="button"
-                              onClick={() => traceDocument(row.lotNumber!, 'COILS')}
-                              className="sap-doc-link"
-                            >
-                              {row.lotNumber}
-                            </button>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                        <td className="font-mono text-[#666666]">{row.heatNumber || '-'}</td>
-                        <td className="font-mono font-bold text-left">
-                          <span className={isPositive ? 'text-[#107e3e]' : 'text-[#333333]'}>
-                            {isPositive ? `+${formatNumber(row.weightKgSigned)}` : formatNumber(row.weightKgSigned)}
-                          </span>
-                        </td>
-                        <td className="font-mono font-bold text-[#333333] text-left">
-                          {formatWeightKg(row.runningBalanceKg)}
-                        </td>
-                        <td className="text-[#666666] text-[11px] max-w-[200px] truncate" title={row.notes}>
-                          {row.notes || '-'}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="p-3 bg-[#ffffff] border-t border-[#d9d9d9] flex items-center justify-between text-xs text-[#666666]">
-              <div>
-                نمایش صفحه {toPersianDigits(currentPage)} از {toPersianDigits(totalPages)}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="sap-btn-standard px-2.5 py-1 disabled:opacity-40"
-                >
-                  قبلی
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).slice(0, 7).map(pageNum => (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`w-7 h-7 rounded-sm font-mono font-medium transition-colors cursor-pointer border ${
-                      currentPage === pageNum
-                        ? 'bg-[#007cc0] text-white border-[#007cc0] font-bold'
-                        : 'bg-[#ffffff] hover:bg-[#e5f3fa] text-[#333333] border-[#d9d9d9]'
-                    }`}
-                  >
-                    {toPersianDigits(pageNum)}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="sap-btn-standard px-2.5 py-1 disabled:opacity-40"
-                >
-                  بعدی
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Ledger FioriDataTable */}
+        <FioriDataTable<SapcoContractLedgerEntry>
+          data={pagedLedger}
+          columns={ledgerColumns}
+          rowKey={(row, idx) => row.id || `${row.documentNumber}-${idx}`}
+          loading={loading && ledger.length === 0}
+          compact
+          toolbar={
+            <FioriToolbar
+              variant="table"
+              title="دفتر کاردکس گردش حساب امانی ساپکو"
+              count={filteredLedger.length}
+              countLabel="تراکنش"
+            />
+          }
+          emptyState={
+            <EmptyState
+              variant={hasFilters ? 'FILTER_NO_MATCH' : 'NO_DATA'}
+              compact
+              title="هیچ رکوردی در کاردکس سهمیه ساپکو یافت نشد"
+              description={
+                hasFilters
+                  ? 'فیلترهای قرارداد، نوع تراکنش یا جستجو را پاک کنید.'
+                  : 'هنوز هیچ گردش کاردکس امانی ساپکو ثبت نشده است.'
+              }
+              actionLabel={hasFilters ? 'پاک‌کردن فیلترها' : undefined}
+              onAction={hasFilters ? resetFilters : undefined}
+            />
+          }
+          pagination={{
+            currentPage,
+            pageSize,
+            totalItems: filteredLedger.length,
+            onPageChange: setCurrentPage,
+          }}
+        />
       </div>
-    </div>
+    </FioriDynamicPage>
   );
 };
+
