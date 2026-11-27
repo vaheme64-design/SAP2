@@ -48,8 +48,9 @@ export const DynamicSelect: React.FC<DynamicSelectProps> = ({
     onChange(selectedVal, foundItem);
   };
 
-  const handleSaveNewItem = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveNewItem = async (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (!newTitle.trim() || isSubmittingNew) return;
 
     try {
@@ -103,20 +104,36 @@ export const DynamicSelect: React.FC<DynamicSelectProps> = ({
         </div>
       )}
 
-      {/* Main Select Input or Inline Add Form */}
+      {/* Main Select Input or Inline Add Controls (role="group" avoids nested <form> inside parent forms) */}
       {isAddingNew ? (
-        <form onSubmit={handleSaveNewItem} className="flex items-center gap-1.5 animate-in fade-in duration-150">
+        <div
+          role="group"
+          aria-label="افزودن گزینه جدید"
+          className="flex items-center gap-1.5 animate-in fade-in duration-150"
+        >
           <input
             type="text"
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                void handleSaveNewItem();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsAddingNew(false);
+              }
+            }}
             placeholder="عنوان گزینه جدید را بنویسید..."
             autoFocus
             disabled={isSubmittingNew}
             className="flex-1 bg-white border border-[#007cc0] rounded px-3 py-1.5 text-xs text-[#333333] focus:outline-none"
           />
           <button
-            type="submit"
+            type="button"
+            onClick={e => void handleSaveNewItem(e)}
             disabled={!newTitle.trim() || isSubmittingNew}
             className="sap-btn-emphasized px-3 py-1.5 text-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
           >
@@ -136,7 +153,7 @@ export const DynamicSelect: React.FC<DynamicSelectProps> = ({
           >
             انصراف
           </button>
-        </form>
+        </div>
       ) : (
         <div className="relative">
           <select

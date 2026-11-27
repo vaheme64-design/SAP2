@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Printer } from 'lucide-react';
 import { FioriDocumentFlowPanel } from './FioriDocumentFlowPanel';
+import { FioriObjectStatus } from './ui/FioriObjectStatus';
 
 export interface ObjectPageKpi {
   label: string;
@@ -49,23 +50,25 @@ export const FioriObjectPage: React.FC<FioriObjectPageProps> = ({
 }) => {
   const [activeTabId, setActiveTabId] = useState<string>(tabs[0]?.id || 'overview');
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const statusColor =
-    statusTone === 'positive'
-      ? 'text-[#107e3e]'
-      : statusTone === 'negative'
-      ? 'text-[#bb0000]'
-      : statusTone === 'critical'
-      ? 'text-[#e9730c]'
-      : 'text-[#007cc0]';
-
   const kpiColor = (tone?: ObjectPageKpi['tone']) => {
-    if (tone === 'positive') return 'text-[#107e3e]';
-    if (tone === 'negative') return 'text-[#bb0000]';
-    if (tone === 'critical') return 'text-[#e9730c]';
-    if (tone === 'brand') return 'text-[#007cc0]';
-    return 'text-[#333333]';
+    if (tone === 'positive') return 'text-[var(--fiori-positive)]';
+    if (tone === 'negative') return 'text-[var(--fiori-negative)]';
+    if (tone === 'critical') return 'text-[var(--fiori-critical)]';
+    if (tone === 'brand') return 'text-[var(--fiori-brand)]';
+    return 'text-[var(--fiori-text-primary)]';
   };
 
   const effectiveTabs: ObjectPageTab[] = [
@@ -90,32 +93,42 @@ export const FioriObjectPage: React.FC<FioriObjectPageProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-2 sm:p-4"
+      className="fixed inset-0 z-50 bg-[#1d2d3e]/45 backdrop-blur-[1px] flex items-center justify-center p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
+      dir="rtl"
       onClick={onClose}
     >
       <div
-        className="bg-[#f0f0f0] border border-[#bfbfbf] rounded-md shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden"
+        className="bg-[var(--fiori-bg-canvas)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-lg)] shadow-[var(--fiori-shadow-dialog)] w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* SAP Object Page Sticky Header */}
         <div className="fiori-object-header shrink-0 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#666666]">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--fiori-text-secondary)]">
                 <span>{objectTypeLabel}</span>
                 <span>·</span>
-                <span className="font-mono font-semibold text-[#007cc0]">{objectId}</span>
+                <span className="fiori-ltr-code font-mono font-semibold text-[var(--fiori-brand)]">
+                  {objectId}
+                </span>
                 {statusText && (
-                  <>
-                    <span>·</span>
-                    <span className={`font-semibold ${statusColor}`}>{statusText}</span>
-                  </>
+                  <FioriObjectStatus
+                    tone={statusTone}
+                    label={statusText}
+                    variant="badge"
+                    size="sm"
+                    icon
+                  />
                 )}
               </div>
-              <h3 className="text-base font-semibold text-[#333333] mt-0.5 truncate">{title}</h3>
-              {subtitle && <p className="text-xs text-[#666666] mt-0.5">{subtitle}</p>}
+              <h3 className="text-base font-semibold text-[var(--fiori-text-primary)] mt-1 truncate">
+                {title}
+              </h3>
+              {subtitle && (
+                <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">{subtitle}</p>
+              )}
             </div>
 
             {/* Header Actions (Never includes Delete on transactional records) */}
