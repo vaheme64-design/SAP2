@@ -291,7 +291,7 @@ export function FioriDataTable<T>({
 
       {/* Pagination Footer */}
       {pagination && pagination.totalItems > 0 && (
-        <div className="px-3.5 py-2 bg-[var(--fiori-bg-subtle)] border-t border-[var(--fiori-border-default)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--fiori-text-secondary)]">
+        <div className="no-print px-3.5 py-2 bg-[var(--fiori-bg-subtle)] border-t border-[var(--fiori-border-default)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--fiori-text-secondary)]">
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-mono tabular-nums">
               نمایش {toPersianDigits(startItem)} تا {toPersianDigits(endItem)} از{' '}

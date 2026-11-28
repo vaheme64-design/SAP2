@@ -415,8 +415,20 @@ export function getBacklogColumns(traceDocument: TraceFn): FioriTableColumn<Prod
       align: 'center',
       render: r => (
         <FioriObjectStatus
-          tone={r.urgencyLevel === 'CRITICAL' ? 'negative' : 'critical'}
-          label={r.urgencyLevel === 'CRITICAL' ? 'بحرانی' : 'اولویت بالا'}
+          tone={
+            r.urgencyLevel === 'CRITICAL'
+              ? 'negative'
+              : r.urgencyLevel === 'HIGH'
+              ? 'critical'
+              : 'neutral'
+          }
+          label={
+            r.urgencyLevel === 'CRITICAL'
+              ? 'بحرانی'
+              : r.urgencyLevel === 'HIGH'
+              ? 'اولویت بالا'
+              : 'متوسط'
+          }
         />
       ),
     },
@@ -1453,9 +1465,11 @@ export function getReconciliationColumns(traceDocument: TraceFn): FioriTableColu
       sortValue: r => r.varianceQuantity,
       cellClassName: r =>
         `font-semibold ${
-          r.varianceQuantity === 0
+          r.reconciliationStatus === 'BALANCED' && r.varianceQuantity === 0
             ? 'text-[var(--fiori-positive)]'
-            : 'text-[var(--fiori-negative)]'
+            : r.reconciliationStatus === 'DEFICIT' || r.varianceQuantity < 0
+            ? 'text-[var(--fiori-negative)]'
+            : 'text-[var(--fiori-critical)]'
         }`,
       render: r => formatNumber(r.varianceQuantity),
     },

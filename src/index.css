@@ -422,6 +422,35 @@
     font-weight: bold !important;
   }
 
+  /* Keep sortable table header labels and document-code links readable in print
+     without exposing unrelated action buttons */
+  table thead th button:not(.no-print) {
+    display: inline !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: #000000 !important;
+    font: inherit !important;
+    text-decoration: none !important;
+  }
+
+  table thead th button:not(.no-print) svg {
+    display: none !important;
+  }
+
+  button.sap-doc-link:not(.no-print),
+  .sap-doc-link:not(.no-print) {
+    display: inline-block !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: none !important;
+    padding: 0 !important;
+    color: #000000 !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+  }
+
   /* Prevent page breaks inside cards, tables and signature rows */
   .printable-card,
   tr,
