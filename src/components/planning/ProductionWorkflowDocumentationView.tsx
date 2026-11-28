@@ -1,32 +1,104 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  FileText,
   GitBranch,
   Layers,
-  ArrowRight,
   CheckCircle2,
-  Package,
-  Calendar,
-  Clock,
   Printer,
-  Download,
   ShieldCheck,
-  RotateCcw,
-  Zap,
-  Cpu,
-  Boxes,
-  Truck,
   Database,
-  Search,
   ExternalLink,
 } from 'lucide-react';
-import { exportToCsv } from '../../utils/csvExport';
 import { useErpRouter, RouteNavigateParams } from '../../context/RouterContext';
+import {
+  FioriDynamicPage,
+  FioriDataTable,
+  FioriTableColumn,
+  FioriToolbar,
+  FioriObjectStatus,
+} from '../fiori/ui';
+
+interface SapPpMappingRow {
+  step: string;
+  operationTitle: string;
+  tcode: string;
+  kpimsEquivalent: string;
+  dbEntities: string;
+  linkLabel: string;
+  navParams: RouteNavigateParams;
+}
+
+const SAP_PP_MAPPING_ROWS: SapPpMappingRow[] = [
+  {
+    step: '۰۱',
+    operationTitle: 'دریافت و تحلیل تقاضای ساپکو',
+    tcode: 'VA01 / MD61 (PIR)',
+    kpimsEquivalent: 'ماژول ثبت سفارش مشتری و پیش‌بینی تقاضای ساپکو بر اساس کد قرارداد',
+    dbEntities: 'CustomerOrder (SO-1404-...)',
+    linkLabel: 'قراردادها ←',
+    navParams: { tab: 'contracts' },
+  },
+  {
+    step: '۰۲',
+    operationTitle: 'انفجار درخت محصول (BOM)',
+    tcode: 'CS01 / CS03 (BOM Explosion)',
+    kpimsEquivalent: 'ساختار سلسله‌مراتبی بازگشتی (Recursive Tree) قطعات اصلی و زیرمجموعه‌ها',
+    dbEntities: 'ProductStructure / BOM Nodes',
+    linkLabel: 'درخت BOM ←',
+    navParams: { tab: 'master_data', masterSubSection: 'BOM' },
+  },
+  {
+    step: '۰۳',
+    operationTitle: 'محاسبه نیاز خالص مواد (MRP)',
+    tcode: 'MD01N / MD04 (Stock/Req)',
+    kpimsEquivalent: 'موازنه موجودی فیزیکی و امانی رول ورق و پیش‌بینی کسری بر حسب کیلوگرم',
+    dbEntities: 'NetRequirements / PlannedOrder',
+    linkLabel: 'موتور MRP ←',
+    navParams: { tab: 'planning', planningSubTab: 'mrp' },
+  },
+  {
+    step: '۰۴',
+    operationTitle: 'زمان‌بندی پله‌ای عملیات (Routing)',
+    tcode: 'CA01 / CM01 (Capacity CRP)',
+    kpimsEquivalent: 'ماتریس زمان‌بندی روزهای مختلف هر OP (برش، بلنک، خم، جوش) و قالب‌های مشترک',
+    dbEntities: 'ScheduledOpStep (OP10..OP50)',
+    linkLabel: 'گانت ظرفیت ←',
+    navParams: { tab: 'planning', planningSubTab: 'capacity_planning' },
+  },
+  {
+    step: '۰۵',
+    operationTitle: 'صدور حواله ورق به خط تولید',
+    tcode: 'MIGO 261 (Goods Issue)',
+    kpimsEquivalent: 'تخصیص کلاف ورق از انبار به مرحله اول (OP10) همراه با ثبت وزن و لات‌نامبر',
+    dbEntities: 'ISSUE_RAW_MATERIAL',
+    linkLabel: 'انبار رول ←',
+    navParams: { tab: 'inventory', inventorySubTab: 'COILS' },
+  },
+  {
+    step: '۰۶',
+    operationTitle: 'ثبت کارکرد خط و رهگیری WIP',
+    tcode: 'CO11N (Order Confirmation)',
+    kpimsEquivalent: 'محاسبه برخط بافر بین مراحل، انتقال مانده کار روزانه به روز بعد (Roll-Forward)',
+    dbEntities: 'wipBufferAfterOp / ROLLED_FORWARD',
+    linkLabel: 'رهگیری WIP ←',
+    navParams: { tab: 'wip', wipSubTab: 'ORDERS' },
+  },
+  {
+    step: '۰۷',
+    operationTitle: 'رسید خودکار انبار محصول نهایی',
+    tcode: 'MIGO 101 (Auto Goods Receipt)',
+    kpimsEquivalent: 'با تکمیل آخرین مرحله (Final OP)، سند رسید انبار به صورت اتوماتیک صادر می‌شود',
+    dbEntities: 'RECEIPT_FINISHED_GOODS (RCV-FG-...)',
+    linkLabel: 'اسناد انبار ←',
+    navParams: { tab: 'inventory', inventorySubTab: 'MOVEMENT' },
+  },
+];
 
 export const ProductionWorkflowDocumentationView: React.FC = () => {
   const { navigate } = useErpRouter();
   const [selectedPhaseId, setSelectedPhaseId] = useState<string>('PHASE-BOM');
-  const [activeStandardTab, setActiveStandardTab] = useState<'WORKFLOW' | 'SAP_PP_COMPARISON' | 'DOCUMENTATION_SPEC'>('WORKFLOW');
+  const [activeStandardTab, setActiveStandardTab] = useState<
+    'WORKFLOW' | 'SAP_PP_COMPARISON' | 'DOCUMENTATION_SPEC'
+  >('WORKFLOW');
 
   // -------------------------------------------------------------
   // Workflow Steps (Global Standard: SAP PP / APICS CPIM / IATF 16949)
@@ -44,7 +116,6 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
         'ثبت و صحه‌گذاری تقاضای قطعات خودرویی در بازه‌های هفتگی و روزانه. بررسی اعتبارات مالی، شماره قرارداد مرتبط و تعیین تاریخ تحویل تعهدشده (Confirmed Due Date).',
       outputs: 'سفارش مشتری تاییدشده (Customer Order / Demand Schedule)',
       kpi: 'دقت پیش‌بینی تقاضا (Forecast Accuracy > 95%)، درصد سفارشات ثبت‌شده به موقع',
-      color: 'blue',
       navLabel: 'باز کردن سفارشات و قراردادهای ساپکو',
       navParams: { tab: 'contracts' } as RouteNavigateParams,
     },
@@ -60,7 +131,6 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
         'شکستن قطعات نهایی (مانند براکت ضدسرقت موتور) به زیرمجموعه‌ها (صفحه اصلی و مکمل) و محاسبه نیاز خالص رول ورق (DC01A ضخامت ۲ عرض ۱۱۴۰) با کسر موجودی آزاد انبار و کلاف‌های در راه (Scheduled Receipts).',
       outputs: 'پیشنهادات برنامه تولید (Planned Orders) و درخواست خرید/تخصیص ورق (Purchase Requisition)',
       kpi: 'نرخ پرتی مجاز مهندسی (Scrap Allowance < 2%)، تراز دقیق متریال بدون کسری خط',
-      color: 'indigo',
       navLabel: 'اجرای MRP و بررسی BOM',
       navParams: { tab: 'planning', planningSubTab: 'mrp' } as RouteNavigateParams,
     },
@@ -76,7 +146,6 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
         'زمان‌بندی دقیق هر مرحله کاری (OP10 تا OP50) روی پرس‌های ۱۶۰، ۲۵۰ و ۴۰۰ تن. امکان اجرای چند مرحله امروز و مراحل تکمیلی در روزهای آتی. تولید همزمان قالب‌های مشترک چپ و راست (Seat Back LH/RH).',
       outputs: 'دستور کار کارگاهی مصوب (Manufacturing Order - MO) و برگه توزیع کار روزانه خط (Dispatch Sheet)',
       kpi: 'نرخ بهره‌برداری ظرفیت (Capacity Utilization > 85%)، انطباق با برنامه (Adherence)',
-      color: 'amber',
       navLabel: 'تایید پیشنهاد برنامه و گانت ظرفیت',
       navParams: { tab: 'planning', planningSubTab: 'recommendations' } as RouteNavigateParams,
     },
@@ -92,7 +161,6 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
         'تحویل رول ورق استاندارد از انبار مواد به پای قیچی گیوتین ۶ متری (OP10). ثبت اتوماتیک سند خروج ورق (`ISSUE_RAW_MATERIAL`) و اختصاص متریال به بچ تولید جهت ردیابی کامل کیفیت (Traceability).',
       outputs: 'نوارها و شیت‌های برش‌خورده اولیه آماده ورود به ایستگاه بلنک‌زنی',
       kpi: 'زمان تحویل کلاف به خط (Lead Time < 15 min)، مغایرت صفر در وزن تحویلی',
-      color: 'orange',
       navLabel: 'ثبت حواله رول ورق و کلاف‌ها',
       navParams: { tab: 'inventory', inventorySubTab: 'COILS' } as RouteNavigateParams,
     },
@@ -108,7 +176,6 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
         'ردیابی برخط تعداد قطعات سالم، ضایعات و موجودی نیمه‌ساخته در هر عملیات (WIP Buffer After OP). در صورت عدم تحقق تیراژ روزانه، محاسبه مانده کار و انتقال اتوماتیک آن به برنامه روز بعد (Roll-Forward).',
       outputs: 'کارت‌های ردیابی نیمه‌ساخته (WIP Cards)، داده‌های محاسبه OEE و لاگ تعمیرات اضطراری PM',
       kpi: 'شاخص OEE بالای ۷۰٪، نرخ ضایعات زیر ۱.۸٪، میانگین زمان توقف تعویض قالب زیر ۳۵ دقیقه',
-      color: 'rose',
       navLabel: 'کارتابل دستور کار و رهگیری WIP',
       navParams: { tab: 'wip', wipSubTab: 'ORDERS' } as RouteNavigateParams,
     },
@@ -124,7 +191,6 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
         'با تایید تکمیل مرحله آخر، سیستم به صورت خودکار سند رسمی رسید انبار محصول (`RECEIPT_FINISHED_GOODS`) را با شماره پیگیری یکتا صادر، بارکد پالت را چاپ و موجودی انبار محصول نهایی (`WH-FINISHED`) را افزایش می‌دهد.',
       outputs: 'محصول نهایی آماده تحویل، پالت لیبل‌خورده ساپکو و سند قطعی رسید انبار',
       kpi: 'تحویل به موقع به خودروساز (OTIF > 98%)، رسید ۱۰۰٪ اتوماتیک بدون نیاز به ثبت دستی مجدد',
-      color: 'emerald',
       navLabel: 'کارتابل کنترل کیفیت و رسید محصول',
       navParams: { tab: 'inventory', inventorySubTab: 'QUALITY_QM' } as RouteNavigateParams,
     },
@@ -132,7 +198,61 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
 
   const selectedPhase = workflowPhases.find(p => p.id === selectedPhaseId) || workflowPhases[1];
 
-  // Print Isolated Architecture Documentation (A4 Landscape)
+  const comparisonColumns = useMemo<FioriTableColumn<SapPpMappingRow>[]>(
+    () => [
+      {
+        key: 'step',
+        header: 'گام فرآیند',
+        isMono: true,
+        cellClassName: 'font-semibold',
+        render: r => r.step,
+      },
+      {
+        key: 'operationTitle',
+        header: 'عنوان عملیات در صنعت',
+        cellClassName: 'font-semibold text-[var(--fiori-text-primary)]',
+        render: r => r.operationTitle,
+      },
+      {
+        key: 'tcode',
+        header: 'کد ترانزکشن در SAP PP',
+        isMono: true,
+        isLtrCode: true,
+        cellClassName: 'text-[var(--fiori-brand)] font-semibold',
+        render: r => r.tcode,
+      },
+      {
+        key: 'kpimsEquivalent',
+        header: 'عملکرد معادل در سیستم کوثر',
+        render: r => r.kpimsEquivalent,
+      },
+      {
+        key: 'dbEntities',
+        header: 'اسناد و کدهای پایگاه داده',
+        isMono: true,
+        isLtrCode: true,
+        cellClassName: 'text-[11px] text-[var(--fiori-text-secondary)]',
+        render: r => r.dbEntities,
+      },
+      {
+        key: 'link',
+        header: 'لینک مستقیم',
+        align: 'center',
+        render: r => (
+          <button
+            type="button"
+            onClick={() => navigate(r.navParams)}
+            className="sap-doc-link text-[11px] cursor-pointer"
+          >
+            {r.linkLabel}
+          </button>
+        ),
+      },
+    ],
+    [navigate]
+  );
+
+  // Print Isolated Architecture Documentation (A4 Portrait)
   const handlePrintDoc = () => {
     const existing = document.getElementById('workflow-doc-print-frame') as HTMLIFrameElement | null;
     if (existing) existing.remove();
@@ -207,44 +327,27 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 text-right font-sans" dir="rtl">
-      {/* ==================================================================== */}
-      {/* HEADER                                                               */}
-      {/* ==================================================================== */}
-      <div className="sap-card p-4 space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[#e8e8e8] pb-3">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-sm bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2] flex items-center justify-center shrink-0">
-              <GitBranch className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-[#333333]">
-                  مستند فنی و نمودار جریان کار (Workflow) سیستم برنامه‌ریزی تولید بر اساس استانداردهای جهانی (SAP PP / MES)
-                </h2>
-                <span className="px-2 py-0.5 rounded-sm text-[11px] font-bold bg-[#e5f3fa] text-[#007cc0] border border-[#b3ddf2]">
-                  انطباق کامل با الگوهای SAP PP، Odoo MRP و IATF 16949
-                </span>
-              </div>
-              <p className="text-xs text-[#666666] mt-0.5">
-                توصیف چرخه کامل بسته تولید در صنایع قطعه‌سازی خودرو: از دریافت سفارش مشتری ← انفجار مواد درختی (BOM) ← زمان‌بندی پله‌ای عملیات (Routing) ← رهگیری برخط موجودی نیمه‌ساخته (WIP) ← صدور خودکار رسید محصول نهایی در انبار.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrintDoc}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>چاپ رسمی مستند فنی (A4)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* View Mode Tabs */}
+    <FioriDynamicPage
+      title="مستند فنی و نمودار جریان کار (Workflow) سیستم برنامه‌ریزی تولید بر اساس استانداردهای جهانی (SAP PP / MES)"
+      subtitle="توصیف چرخه کامل بسته تولید در صنایع قطعه‌سازی خودرو: از دریافت سفارش مشتری ← انفجار مواد درختی (BOM) ← زمان‌بندی پله‌ای عملیات (Routing) ← رهگیری برخط موجودی نیمه‌ساخته (WIP) ← صدور خودکار رسید محصول نهایی در انبار."
+      status={
+        <FioriObjectStatus
+          tone="info"
+          label="انطباق کامل با الگوهای SAP PP، Odoo MRP و IATF 16949"
+        />
+      }
+      collapsibleFilters={false}
+      headerActions={
+        <button
+          type="button"
+          onClick={handlePrintDoc}
+          className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          <span>چاپ رسمی مستند فنی (A4)</span>
+        </button>
+      }
+      filterBar={
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
           {[
             { id: 'WORKFLOW' as const, label: '۱. دیاگرام تعاملی ۶ مرحله‌ای جریان کار (Interactive Flow)' },
@@ -255,29 +358,27 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
               key={tab.id}
               type="button"
               onClick={() => setActiveStandardTab(tab.id)}
-              className={`p-2.5 rounded-sm border text-center font-bold transition cursor-pointer ${
+              className={`p-2.5 rounded-[var(--fiori-radius-sm)] border text-center font-semibold transition cursor-pointer ${
                 activeStandardTab === tab.id
-                  ? 'bg-[#007cc0] text-white border-[#007cc0]'
-                  : 'bg-[#f5f5f5] text-[#333333] border-[#d9d9d9] hover:bg-[#e8e8e8]'
+                  ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)]'
+                  : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-primary)] border-[var(--fiori-border-default)] hover:bg-[var(--fiori-bg-hover)]'
               }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
-      </div>
-
-      {/* ==================================================================== */}
-      {/* TAB 1: INTERACTIVE 6-STEP WORKFLOW DIAGRAM                            */}
-      {/* ==================================================================== */}
+      }
+    >
+      {/* TAB 1: INTERACTIVE 6-STEP WORKFLOW DIAGRAM */}
       {activeStandardTab === 'WORKFLOW' && (
         <div className="space-y-4">
-          {/* Visual Step-by-Step Pipeline (Horizontal cards with arrows) */}
-          <div className="sap-card p-4 space-y-3">
-            <h3 className="text-sm font-bold text-[#333333] flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#007cc0]" />
-              <span>دیاگرام جریان داده و اسناد در زنجیره بسته برنامه‌ریزی و اجرای تولید</span>
-            </h3>
+          <div className="fiori-surface-card p-4 space-y-3">
+            <FioriToolbar
+              variant="section"
+              title="دیاگرام جریان داده و اسناد در زنجیره بسته برنامه‌ریزی و اجرای تولید"
+              startContent={<Layers className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5 items-stretch">
               {workflowPhases.map(phase => {
@@ -287,27 +388,31 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
                     key={phase.id}
                     type="button"
                     onClick={() => setSelectedPhaseId(phase.id)}
-                    className={`p-3 rounded-sm border text-right transition-all flex flex-col justify-between cursor-pointer ${
+                    className={`p-3 rounded-[var(--fiori-radius-sm)] border text-right transition-all flex flex-col justify-between cursor-pointer ${
                       isSelected
-                        ? 'bg-[#e5f3fa] text-[#333333] border-[#007cc0] ring-1 ring-[#007cc0]'
-                        : 'bg-[#f7f7f7] hover:bg-[#f0f0f0] text-[#333333] border-[#d9d9d9]'
+                        ? 'bg-[var(--fiori-brand-bg)] text-[var(--fiori-text-primary)] border-[var(--fiori-brand)] ring-1 ring-[var(--fiori-brand)]'
+                        : 'bg-[var(--fiori-bg-subtle)] hover:bg-[var(--fiori-bg-hover)] text-[var(--fiori-text-primary)] border-[var(--fiori-border-default)]'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span
-                          className={`font-mono font-bold text-xs px-1.5 py-0.5 rounded-sm ${
-                            isSelected ? 'bg-[#007cc0] text-white' : 'bg-[#e8e8e8] text-[#333333]'
+                          className={`font-mono font-semibold text-xs px-1.5 py-0.5 rounded-[var(--fiori-radius-sm)] ${
+                            isSelected
+                              ? 'bg-[var(--fiori-brand)] text-white'
+                              : 'bg-[var(--fiori-neutral-bg)] text-[var(--fiori-text-primary)]'
                           }`}
                         >
                           گام {phase.stepNumber}
                         </span>
-                        <span className="text-[10px] font-mono text-[#666666]">{phase.code}</span>
+                        <span className="text-[10px] font-mono fiori-ltr-code text-[var(--fiori-text-secondary)]">
+                          {phase.code}
+                        </span>
                       </div>
-                      <div className="font-bold text-xs leading-snug">{phase.title}</div>
+                      <div className="font-semibold text-xs leading-snug">{phase.title}</div>
                     </div>
 
-                    <div className="mt-3 pt-2 border-t border-[#d9d9d9] text-[10px] text-[#666666] font-mono">
+                    <div className="mt-3 pt-2 border-t border-[var(--fiori-border-subtle)] text-[10px] text-[var(--fiori-text-secondary)] font-mono">
                       {phase.sapEquivalent.split('/')[0]}
                     </div>
                   </button>
@@ -316,58 +421,70 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
             </div>
           </div>
 
-          {/* Deep-Dive Inspection Card for the Selected Phase */}
-          <div className="sap-card p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8e8e8] pb-3">
+          {/* Deep-Dive Inspection Card */}
+          <div className="fiori-surface-card p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--fiori-border-subtle)] pb-3">
               <div>
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-sm bg-[#007cc0] text-white ml-2">
-                  گام {selectedPhase.stepNumber} • {selectedPhase.code}
-                </span>
-                <h3 className="text-base font-bold text-[#333333] inline-block mt-1">{selectedPhase.title}</h3>
-                <div className="text-xs font-mono text-[#007cc0] font-bold mt-1">
-                  معادل استاندارد در SAP: {selectedPhase.sapEquivalent}
+                <div className="flex flex-wrap items-center gap-2">
+                  <FioriObjectStatus
+                    tone="brand"
+                    label={`گام ${selectedPhase.stepNumber} • ${selectedPhase.code}`}
+                  />
+                  <h3 className="text-base font-semibold text-[var(--fiori-text-primary)]">
+                    {selectedPhase.title}
+                  </h3>
+                </div>
+                <div className="text-xs font-mono text-[var(--fiori-brand)] font-semibold mt-1">
+                  معادل استاندارد در SAP:{' '}
+                  <span className="fiori-ltr-code">{selectedPhase.sapEquivalent}</span>
                 </div>
               </div>
 
-              <div className="text-xs text-[#333333] bg-[#f5f5f5] border border-[#d9d9d9] px-3 py-1.5 rounded-sm">
+              <div className="text-xs text-[var(--fiori-text-primary)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] px-3 py-1.5 rounded-[var(--fiori-radius-sm)]">
                 <strong>واحد سازمانی مجری:</strong> {selectedPhase.actor}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              {/* Inputs */}
-              <div className="p-3.5 rounded-sm border border-[#b3ddf2] bg-[#e5f3fa]/50 space-y-1.5">
-                <span className="font-bold text-[#007cc0] flex items-center gap-1.5">
-                  <Database className="w-4 h-4 text-[#007cc0]" />
+              <div className="p-3.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-info-border)] bg-[var(--fiori-info-bg)]/60 space-y-1.5">
+                <span className="font-semibold text-[var(--fiori-brand)] flex items-center gap-1.5">
+                  <Database className="w-4 h-4 text-[var(--fiori-brand)]" />
                   <span>ورودی‌های فرآیند (Process Inputs):</span>
                 </span>
-                <p className="text-[#333333] leading-relaxed">{selectedPhase.inputs}</p>
+                <p className="text-[var(--fiori-text-primary)] leading-relaxed">
+                  {selectedPhase.inputs}
+                </p>
               </div>
 
-              {/* Outputs */}
-              <div className="p-3.5 rounded-sm border border-[#a9dfbf] bg-[#ebf7ef]/60 space-y-1.5">
-                <span className="font-bold text-[#107e3e] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#107e3e]" />
+              <div className="p-3.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-positive-border)] bg-[var(--fiori-positive-bg)]/70 space-y-1.5">
+                <span className="font-semibold text-[var(--fiori-positive)] flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-[var(--fiori-positive)]" />
                   <span>خروجی‌های فرآیند (Process Deliverables / Outputs):</span>
                 </span>
-                <p className="text-[#333333] leading-relaxed">{selectedPhase.outputs}</p>
+                <p className="text-[var(--fiori-text-primary)] leading-relaxed">
+                  {selectedPhase.outputs}
+                </p>
               </div>
             </div>
 
-            {/* Core Description */}
-            <div className="p-3.5 rounded-sm border border-[#d9d9d9] bg-[#f7f7f7] space-y-1.5 text-xs">
-              <span className="font-bold text-[#333333] block">شرح تفصیلی عملیات و منطق محاسباتی:</span>
-              <p className="text-[#333333] leading-relaxed text-sm">{selectedPhase.processDescription}</p>
+            <div className="p-3.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)] space-y-1.5 text-xs">
+              <span className="font-semibold text-[var(--fiori-text-primary)] block">
+                شرح تفصیلی عملیات و منطق محاسباتی:
+              </span>
+              <p className="text-[var(--fiori-text-primary)] leading-relaxed text-sm">
+                {selectedPhase.processDescription}
+              </p>
             </div>
 
-            {/* KPIs & Direct Deep-Link */}
-            <div className="p-3 rounded-sm border border-[#f9d6a7] bg-[#fff4e5] flex items-center justify-between text-xs text-[#333333] flex-wrap gap-2">
+            <div className="p-3 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-critical-border)] bg-[var(--fiori-critical-bg)] flex items-center justify-between text-xs text-[var(--fiori-text-primary)] flex-wrap gap-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-[#e9730c] flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#e9730c]" />
+                <span className="font-semibold text-[var(--fiori-critical)] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[var(--fiori-critical)]" />
                   <span>شاخص‌های کلیدی عملکرد این گام (KPIs):</span>
                 </span>
-                <span className="font-mono font-bold text-[#333333]">{selectedPhase.kpi}</span>
+                <span className="font-mono font-semibold text-[var(--fiori-text-primary)]">
+                  {selectedPhase.kpi}
+                </span>
               </div>
               <button
                 type="button"
@@ -382,115 +499,40 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
         </div>
       )}
 
-      {/* ==================================================================== */}
-      {/* TAB 2: SAP PP / ERP TRANSFORMATION COMPARISON TABLE                  */}
-      {/* ==================================================================== */}
+      {/* TAB 2: SAP PP / ERP TRANSFORMATION COMPARISON TABLE */}
       {activeStandardTab === 'SAP_PP_COMPARISON' && (
-        <div className="sap-card p-4 space-y-4">
-          <div className="border-b border-[#e8e8e8] pb-3">
-            <h3 className="text-sm font-bold text-[#333333]">
-              جدول تطبیقی فرآیندهای برنامه‌ریزی تولید کوثر با کدهای ترانزکشن و استانداردهای SAP S/4HANA PP
-            </h3>
-            <p className="text-xs text-[#666666] mt-0.5">
-              نگاشت دقیق اجزای نرم‌افزار به ماژول‌های Production Planning (PP)، Material Requirements Planning (MRP) و Shop Floor Control (SFC)
-            </p>
-          </div>
-
-          <div className="overflow-x-auto border border-[#d9d9d9] rounded-sm">
-            <table className="sap-table-compact w-full text-right text-xs">
-              <thead className="bg-[#f5f5f5]">
-                <tr>
-                  <th>گام فرآیند</th>
-                  <th>عنوان عملیات در صنعت</th>
-                  <th className="font-mono">کد ترانزکشن در SAP PP</th>
-                  <th>عملکرد معادل در سیستم کوثر</th>
-                  <th>اسناد و کدهای پایگاه داده</th>
-                  <th className="text-center">لینک مستقیم</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8e8e8]">
-                <tr className="hover:bg-[#f5f5f5]">
-                  <td className="font-mono font-bold">۰۱</td>
-                  <td className="font-bold text-[#333333]">دریافت و تحلیل تقاضای ساپکو</td>
-                  <td className="font-mono text-[#007cc0] font-bold">VA01 / MD61 (PIR)</td>
-                  <td className="text-[#333333]">ماژول ثبت سفارش مشتری و پیش‌بینی تقاضای ساپکو بر اساس کد قرارداد</td>
-                  <td className="font-mono text-[11px] text-[#666666]">CustomerOrder (SO-1404-...)</td>
-                  <td className="text-center"><button type="button" onClick={() => navigate({ tab: 'contracts' })} className="sap-doc-link text-[11px] cursor-pointer">قراردادها ←</button></td>
-                </tr>
-                <tr className="hover:bg-[#f5f5f5]">
-                  <td className="font-mono font-bold">۰۲</td>
-                  <td className="font-bold text-[#333333]">انفجار درخت محصول (BOM)</td>
-                  <td className="font-mono text-[#007cc0] font-bold">CS01 / CS03 (BOM Explosion)</td>
-                  <td className="text-[#333333]">ساختار سلسله‌مراتبی بازگشتی (Recursive Tree) قطعات اصلی و زیرمجموعه‌ها</td>
-                  <td className="font-mono text-[11px] text-[#666666]">ProductStructure / BOM Nodes</td>
-                  <td className="text-center"><button type="button" onClick={() => navigate({ tab: 'master_data', masterSubSection: 'BOM' })} className="sap-doc-link text-[11px] cursor-pointer">درخت BOM ←</button></td>
-                </tr>
-                <tr className="hover:bg-[#f5f5f5]">
-                  <td className="font-mono font-bold">۰۳</td>
-                  <td className="font-bold text-[#333333]">محاسبه نیاز خالص مواد (MRP)</td>
-                  <td className="font-mono text-[#007cc0] font-bold">MD01N / MD04 (Stock/Req)</td>
-                  <td className="text-[#333333]">موازنه موجودی فیزیکی و امانی رول ورق و پیش‌بینی کسری بر حسب کیلوگرم</td>
-                  <td className="font-mono text-[11px] text-[#666666]">NetRequirements / PlannedOrder</td>
-                  <td className="text-center"><button type="button" onClick={() => navigate({ tab: 'planning', planningSubTab: 'mrp' })} className="sap-doc-link text-[11px] cursor-pointer">موتور MRP ←</button></td>
-                </tr>
-                <tr className="hover:bg-[#f5f5f5]">
-                  <td className="font-mono font-bold">۰۴</td>
-                  <td className="font-bold text-[#333333]">زمان‌بندی پله‌ای عملیات (Routing)</td>
-                  <td className="font-mono text-[#007cc0] font-bold">CA01 / CM01 (Capacity CRP)</td>
-                  <td className="text-[#333333]">ماتریس زمان‌بندی روزهای مختلف هر OP (برش، بلنک، خم، جوش) و قالب‌های مشترک</td>
-                  <td className="font-mono text-[11px] text-[#666666]">ScheduledOpStep (OP10..OP50)</td>
-                  <td className="text-center"><button type="button" onClick={() => navigate({ tab: 'planning', planningSubTab: 'capacity_planning' })} className="sap-doc-link text-[11px] cursor-pointer">گانت ظرفیت ←</button></td>
-                </tr>
-                <tr className="hover:bg-[#f5f5f5]">
-                  <td className="font-mono font-bold">۰۵</td>
-                  <td className="font-bold text-[#333333]">صدور حواله ورق به خط تولید</td>
-                  <td className="font-mono text-[#007cc0] font-bold">MIGO 261 (Goods Issue)</td>
-                  <td className="text-[#333333]">تخصیص کلاف ورق از انبار به مرحله اول (OP10) همراه با ثبت وزن و لات‌نامبر</td>
-                  <td className="font-mono text-[11px] text-[#666666]">ISSUE_RAW_MATERIAL</td>
-                  <td className="text-center"><button type="button" onClick={() => navigate({ tab: 'inventory', inventorySubTab: 'COILS' })} className="sap-doc-link text-[11px] cursor-pointer">انبار رول ←</button></td>
-                </tr>
-                <tr className="hover:bg-[#f5f5f5]">
-                  <td className="font-mono font-bold">۰۶</td>
-                  <td className="font-bold text-[#333333]">ثبت کارکرد خط و رهگیری WIP</td>
-                  <td className="font-mono text-[#007cc0] font-bold">CO11N (Order Confirmation)</td>
-                  <td className="text-[#333333]">محاسبه برخط بافر بین مراحل، انتقال مانده کار روزانه به روز بعد (Roll-Forward)</td>
-                  <td className="font-mono text-[11px] text-[#666666]">wipBufferAfterOp / ROLLED_FORWARD</td>
-                  <td className="text-center"><button type="button" onClick={() => navigate({ tab: 'wip', wipSubTab: 'ORDERS' })} className="sap-doc-link text-[11px] cursor-pointer">رهگیری WIP ←</button></td>
-                </tr>
-                <tr className="hover:bg-[#f5f5f5]">
-                  <td className="font-mono font-bold">۰۷</td>
-                  <td className="font-bold text-[#333333]">رسید خودکار انبار محصول نهایی</td>
-                  <td className="font-mono text-[#007cc0] font-bold">MIGO 101 (Auto Goods Receipt)</td>
-                  <td className="text-[#333333]">با تکمیل آخرین مرحله (Final OP)، سند رسید انبار به صورت اتوماتیک صادر می‌شود</td>
-                  <td className="font-mono text-[11px] text-[#666666]">RECEIPT_FINISHED_GOODS (RCV-FG-...)</td>
-                  <td className="text-center"><button type="button" onClick={() => navigate({ tab: 'inventory', inventorySubTab: 'MOVEMENT' })} className="sap-doc-link text-[11px] cursor-pointer">اسناد انبار ←</button></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <FioriDataTable
+          toolbar={
+            <FioriToolbar
+              variant="table"
+              title="جدول تطبیقی فرآیندهای برنامه‌ریزی تولید کوثر با کدهای ترانزکشن و استانداردهای SAP S/4HANA PP"
+              subtitle="نگاشت دقیق اجزای نرم‌افزار به ماژول‌های Production Planning (PP)، Material Requirements Planning (MRP) و Shop Floor Control (SFC)"
+              count={SAP_PP_MAPPING_ROWS.length}
+              countLabel="گام"
+              startContent={<GitBranch className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />}
+            />
+          }
+          columns={comparisonColumns}
+          data={SAP_PP_MAPPING_ROWS}
+          rowKey={r => r.step}
+        />
       )}
 
-      {/* ==================================================================== */}
-      {/* TAB 3: STANDARD OPERATING PROCEDURE (SOP) & CHECKLIST                */}
-      {/* ==================================================================== */}
+      {/* TAB 3: STANDARD OPERATING PROCEDURE (SOP) & CHECKLIST */}
       {activeStandardTab === 'DOCUMENTATION_SPEC' && (
-        <div className="sap-card p-5 space-y-4 text-xs">
-          <div className="border-b border-[#e8e8e8] pb-3">
-            <h3 className="text-sm font-bold text-[#333333]">
-              دستورالعمل استاندارد کاری (Standard Operating Procedure - SOP): مدیریت فرآیند برنامه‌ریزی و اجرای تولید
-            </h3>
-            <p className="text-[#666666] mt-0.5">
-              چک‌لیست الزامی تضمین کیفیت IATF 16949 جهت جلوگیری از ایجاد گلوگاه‌های خط و کاهش پرتی مواد اولیه
-            </p>
-          </div>
+        <div className="fiori-surface-card p-5 space-y-4 text-xs">
+          <FioriToolbar
+            variant="section"
+            title="دستورالعمل استاندارد کاری (Standard Operating Procedure - SOP): مدیریت فرآیند برنامه‌ریزی و اجرای تولید"
+            subtitle="چک‌لیست الزامی تضمین کیفیت IATF 16949 جهت جلوگیری از ایجاد گلوگاه‌های خط و کاهش پرتی مواد اولیه"
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 leading-relaxed text-[#333333]">
-            <div className="p-4 rounded-sm border border-[#d9d9d9] bg-[#f7f7f7] space-y-2">
-              <span className="font-bold text-[#333333] block text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 leading-relaxed text-[var(--fiori-text-primary)]">
+            <div className="p-4 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)] space-y-2">
+              <span className="font-semibold text-[var(--fiori-text-primary)] block text-sm">
                 ۱. قوانین انفجار مواد (BOM) و موازنه کلاف ساپکو:
               </span>
-              <ul className="list-disc list-inside space-y-1 text-[#666666]">
+              <ul className="list-disc list-inside space-y-1 text-[var(--fiori-text-secondary)]">
                 <li>ثبت ضریب مصرف استاندارد قطعه بر حسب کیلوگرم به ازای هر ضرب با در نظر گرفتن پرتی اسکلت بلنک.</li>
                 <li>تطابق گرید متریال (DC01A, DC04, ST12, ST37) با شناسنامه فنی نقشه ساپکو.</li>
                 <li>اولویت تخصیص کلاف‌های امانی با موعد سررسید قرارداد نزدیک‌تر جهت جلوگیری از دیرکرد سهمیه.</li>
@@ -498,11 +540,11 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
               </ul>
             </div>
 
-            <div className="p-4 rounded-sm border border-[#d9d9d9] bg-[#f7f7f7] space-y-2">
-              <span className="font-bold text-[#333333] block text-sm">
+            <div className="p-4 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)] space-y-2">
+              <span className="font-semibold text-[var(--fiori-text-primary)] block text-sm">
                 ۲. قوانین زمان‌بندی عملیات و مانده کار (Roll-Forward):
               </span>
-              <ul className="list-disc list-inside space-y-1 text-[#666666]">
+              <ul className="list-disc list-inside space-y-1 text-[var(--fiori-text-secondary)]">
                 <li>عدم زمان‌بندی مرحله بعدی قبل از تکمیل تیراژ بافر حداقل در مرحله قبلی (Buffer Min Limit).</li>
                 <li>در صورت توقف اضطراری بیش از ۶۰ دقیقه، انتقال خودکار باقیمانده کار به شیفت یا روز بعدی.</li>
                 <li>تطابق برنامه روزانه خط با تقویم سرویس و نگهداری پیشگیرانه (PM) ماشین‌آلات.</li>
@@ -512,6 +554,6 @@ export const ProductionWorkflowDocumentationView: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </FioriDynamicPage>
   );
 };

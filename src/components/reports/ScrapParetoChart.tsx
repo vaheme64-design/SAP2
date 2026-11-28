@@ -14,6 +14,11 @@ import {
 import { formatNumber, toPersianDigits } from '../../utils/formatters';
 import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
 import { usePersistedOpen } from '../../hooks/usePersistedCollapse';
+import {
+  FioriMessageStrip,
+  FioriObjectStatus,
+  FioriToolbar,
+} from '../fiori/ui';
 
 export interface ParetoCauseItem {
   id: string;
@@ -127,7 +132,6 @@ export const ScrapParetoChart: React.FC = () => {
   const [mode, setMode] = useState<'SCRAP' | 'DOWNTIME'>('SCRAP');
   const [isDetailsExpanded, , toggleDetailsExpanded] = usePersistedOpen('report_scrap_pareto_open', false);
 
-  // Dynamic State (Persisted in localStorage, Zero Hardcoded Read-Only Arrays)
   const [scrapCauses, setScrapCauses] = useState<ParetoCauseItem[]>(() => {
     try {
       const saved = localStorage.getItem('kpims_pareto_scrap_v1');
@@ -192,7 +196,6 @@ export const ScrapParetoChart: React.FC = () => {
   const totalSum = computedRows[0]?.total || 0;
   const topTwoCumulative = computedRows[1]?.cumulativePercent || computedRows[0]?.cumulativePercent || 0;
 
-  // Slide-over Drawer Edit via Pencil Icon
   const handleEditCause = (item: ParetoCauseItem) => {
     openQuickEditDrawer({
       title: `ویرایش علت ${mode === 'SCRAP' ? 'ضایعات' : 'توقف'}: ${item.title}`,
@@ -250,7 +253,6 @@ export const ScrapParetoChart: React.FC = () => {
     });
   };
 
-  // Add New Cause via Slide-Over Drawer
   const handleAddNewCause = () => {
     const newId = `${mode === 'SCRAP' ? 'SCR' : 'DT-P'}-${Math.floor(10 + Math.random() * 89)}`;
     openQuickEditDrawer({
@@ -303,7 +305,6 @@ export const ScrapParetoChart: React.FC = () => {
     });
   };
 
-  // Soft Delete Cause (Protected by ConfirmDialog + Gmail-style Undo)
   const handleDeleteCause = (item: ParetoCauseItem) => {
     requestConfirm({
       title: `حذف منطقی ردیف پارتو (${item.id})`,
@@ -355,208 +356,201 @@ export const ScrapParetoChart: React.FC = () => {
   };
 
   return (
-    <div className="sap-card p-4 space-y-3.5 text-right" dir="rtl">
-      {/* Header & Mode Switcher */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[#e8e8e8] pb-3">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-sm bg-[#ffebee] text-[#bb0000] border border-[#bb0000]/25 flex items-center justify-center shrink-0">
-            <BarChart3 className="w-4 h-4" />
+    <div className="fiori-surface-card p-4 space-y-3 text-right" dir="rtl">
+      <FioriToolbar
+        variant="section"
+        title="نمودار پارتو ضایعات و توقفات خط (Scrap & Downtime Pareto — تحلیل ۸۰/۲۰)"
+        subtitle="رتبه‌بندی نزولی علل ضایعات و توقفات؛ برای ویرایش مقادیر یا اقدام اصلاحی هر ردیف از آیکون مداد استفاده کنید."
+        count={computedRows.length}
+        countLabel="علت"
+        startContent={
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-[var(--fiori-negative)] shrink-0" />
+            <FioriObjectStatus tone="negative" label="استاندارد IATF 16949" size="sm" />
           </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-bold text-[#333333]">
-                نمودار پارتو ضایعات و توقفات خط (Scrap & Downtime Pareto — تحلیل ۸۰/۲۰)
-              </h3>
-              <span className="px-2 py-0.5 rounded-sm text-[10px] font-bold bg-[#ffebee] text-[#bb0000] border border-[#bb0000]/25">
-                استاندارد IATF 16949 / داینامیک و قابل ویرایش
-              </span>
+        }
+        endContent={
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 bg-[var(--fiori-bg-subtle)] p-0.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+              <button
+                type="button"
+                onClick={() => setMode('SCRAP')}
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                  mode === 'SCRAP'
+                    ? 'bg-[var(--fiori-brand)] text-white font-semibold'
+                    : 'text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)]'
+                }`}
+              >
+                <ShieldAlert className={`w-3.5 h-3.5 ${mode === 'SCRAP' ? 'text-white' : 'text-[var(--fiori-negative)]'}`} />
+                <span>پارتو ضایعات (Scrap)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('DOWNTIME')}
+                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                  mode === 'DOWNTIME'
+                    ? 'bg-[var(--fiori-brand)] text-white font-semibold'
+                    : 'text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)]'
+                }`}
+              >
+                <Clock className={`w-3.5 h-3.5 ${mode === 'DOWNTIME' ? 'text-white' : 'text-[var(--fiori-critical)]'}`} />
+                <span>پارتو توقفات (Downtime)</span>
+              </button>
             </div>
-            <p className="text-xs text-[#666666] mt-0.5">
-              رتبه‌بندی نزولی علل ضایعات و توقفات؛ با کلیک روی آیکون مداد (ویرایش در کشو) می‌توانید مقادیر و اقدام اصلاحی هر ردیف را تغییر دهید.
-            </p>
-          </div>
-        </div>
 
-        {/* Mode Toggle & Add Button */}
-        <div className="flex flex-wrap items-center gap-2 self-start">
-          <div className="flex items-center gap-1 bg-[#f0f0f0] p-1 rounded-sm border border-[#d9d9d9]">
             <button
               type="button"
-              onClick={() => setMode('SCRAP')}
-              className={`px-3 py-1 rounded-sm text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                mode === 'SCRAP'
-                  ? 'bg-[#007cc0] text-white'
-                  : 'text-[#666666] hover:text-[#333333]'
-              }`}
+              onClick={handleAddNewCause}
+              className="sap-btn-emphasized px-3 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer"
             >
-              <ShieldAlert className={`w-3.5 h-3.5 ${mode === 'SCRAP' ? 'text-white' : 'text-[#bb0000]'}`} />
-              <span>پارتو علل ضایعات کیفی (Scrap)</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>افزودن علت جدید</span>
             </button>
+
             <button
               type="button"
-              onClick={() => setMode('DOWNTIME')}
-              className={`px-3 py-1 rounded-sm text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                mode === 'DOWNTIME'
-                  ? 'bg-[#007cc0] text-white'
-                  : 'text-[#666666] hover:text-[#333333]'
-              }`}
+              onClick={toggleDetailsExpanded}
+              className="sap-btn-standard px-2.5 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
-              <Clock className={`w-3.5 h-3.5 ${mode === 'DOWNTIME' ? 'text-white' : 'text-[#e9730c]'}`} />
-              <span>پارتو علل توقفات خط (Downtime)</span>
+              <span>{isDetailsExpanded ? 'بستن جزئیات پارتو' : `نمایش نمودار (${toPersianDigits(computedRows.length)} علت)`}</span>
+              {isDetailsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
           </div>
+        }
+      />
 
-          <button
-            type="button"
-            onClick={handleAddNewCause}
-            className="sap-btn-emphasized px-3 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>افزودن علت جدید</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={toggleDetailsExpanded}
-            className="sap-btn-standard px-2.5 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-          >
-            <span>{isDetailsExpanded ? 'بستن جزئیات پارتو' : `نمایش نمودار (${toPersianDigits(computedRows.length)} علت)`}</span>
-            {isDetailsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* 80/20 Insight Banner (Always visible at a glance) */}
+      {/* 80/20 Insight Strip (Always visible at a glance) */}
       <div
         onClick={toggleDetailsExpanded}
-        className="bg-[#f8f9fa] hover:bg-[#f0f4f8] border border-[#d9d9d9] rounded-sm px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs cursor-pointer transition-colors"
+        className="cursor-pointer"
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleDetailsExpanded();
+          }
+        }}
       >
-        <div className="flex items-center gap-2 text-[#333333]">
-          <TrendingDown className="w-4 h-4 text-[#bb0000] shrink-0" />
+        <FioriMessageStrip
+          tone="warning"
+          compact
+          icon={<TrendingDown className="w-4 h-4 shrink-0" />}
+          actions={
+            <div className="flex items-center gap-2 font-mono text-[11px] tabular-nums">
+              <span className="text-[var(--fiori-text-secondary)]">
+                مجموع کل:{' '}
+                <strong className="text-[var(--fiori-text-primary)]">
+                  {formatNumber(totalSum)} {mode === 'SCRAP' ? 'قطعه' : 'دقیقه'}
+                </strong>
+              </span>
+              <FioriObjectStatus tone="negative" label="Vital 80%" size="sm" />
+            </div>
+          }
+        >
           <span>
-            تحلیل پارتو (۸۰/۲۰): <strong className="text-[#bb0000]">۲ علت اول</strong> به تنهایی عامل{' '}
-            <strong className="font-mono text-[#333333]">{toPersianDigits(topTwoCumulative)}٪</strong> از کل{' '}
-            {mode === 'SCRAP' ? 'ضایعات ثبت‌شده' : 'توقفات خطوط تولید'} هستند.
+            تحلیل پارتو (۸۰/۲۰): <strong className="text-[var(--fiori-negative)]">۲ علت اول</strong> به تنهایی عامل{' '}
+            <strong className="font-mono tabular-nums text-[var(--fiori-text-primary)]">
+              {toPersianDigits(topTwoCumulative)}٪
+            </strong>{' '}
+            از کل {mode === 'SCRAP' ? 'ضایعات ثبت‌شده' : 'توقفات خطوط تولید'} هستند.
           </span>
-        </div>
-        <div className="flex items-center gap-3 font-mono text-[11px]">
-          <span className="text-[#666666]">
-            مجموع کل:{' '}
-            <strong className="text-[#333333]">
-              {formatNumber(totalSum)} {mode === 'SCRAP' ? 'قطعه' : 'دقیقه'}
-            </strong>
-          </span>
-          <span className="px-2 py-0.5 rounded-sm bg-[#ffebee] text-[#bb0000] border border-[#bb0000]/25 font-sans font-bold text-[10px]">
-            علل بحرانی (Vital 80%)
-          </span>
-        </div>
+        </FioriMessageStrip>
       </div>
 
       {/* Minimal Descending Bar Chart Rows with Pencil Edit & Soft Delete */}
       {isDetailsExpanded && (
-      <div className="space-y-2.5">
-        {computedRows.map(row => (
-          <div
-            key={row.id}
-            className={`p-3 rounded-sm border transition-all ${
-              row.isVitalFew
-                ? 'bg-[#fff8f8] border-[#bb0000]/25 hover:border-[#bb0000]/45'
-                : 'bg-[#ffffff] border-[#d9d9d9] hover:bg-[#f8f9fa]'
-            }`}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span
-                  className={`w-6 h-6 rounded-sm font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
-                    row.rank === 1
-                      ? 'bg-[#bb0000] text-white'
-                      : row.rank === 2
-                      ? 'bg-[#e9730c] text-white'
-                      : 'bg-[#f0f0f0] text-[#333333] border border-[#d9d9d9]'
-                  }`}
-                >
-                  {toPersianDigits(row.rank)}
-                </span>
-                <span className="text-xs font-bold text-[#333333]">{row.title}</span>
-                <span className="px-2 py-0.5 rounded-sm text-[10px] font-semibold bg-[#f0f0f0] text-[#333333] border border-[#d9d9d9]">
-                  {row.category6M}
-                </span>
-                {row.isVitalFew && (
-                  <span className="px-2 py-0.5 rounded-sm text-[10px] font-bold bg-[#ffebee] text-[#bb0000] border border-[#bb0000]/25">
-                    اولویت ۸۰/۲۰
+        <div className="space-y-2.5">
+          {computedRows.map(row => (
+            <div
+              key={row.id}
+              className={`p-3 rounded-[var(--fiori-radius-sm)] border transition-colors ${
+                row.isVitalFew
+                  ? 'bg-[var(--fiori-negative-bg)]/45 border-[var(--fiori-negative-border)]'
+                  : 'bg-[var(--fiori-bg-surface)] border-[var(--fiori-border-default)] hover:bg-[var(--fiori-bg-subtle)]'
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className={`w-6 h-6 rounded-[var(--fiori-radius-sm)] font-mono text-xs font-semibold flex items-center justify-center shrink-0 tabular-nums ${
+                      row.rank === 1
+                        ? 'bg-[var(--fiori-negative)] text-white'
+                        : row.rank === 2
+                        ? 'bg-[var(--fiori-critical)] text-white'
+                        : 'bg-[var(--fiori-neutral-bg)] text-[var(--fiori-text-primary)] border border-[var(--fiori-border-default)]'
+                    }`}
+                  >
+                    {toPersianDigits(row.rank)}
                   </span>
-                )}
+                  <span className="text-xs font-semibold text-[var(--fiori-text-primary)]">{row.title}</span>
+                  <FioriObjectStatus tone="neutral" label={row.category6M} size="sm" />
+                  {row.isVitalFew && <FioriObjectStatus tone="negative" label="اولویت ۸۰/۲۰" size="sm" />}
+                </div>
+
+                <div className="flex items-center gap-2 font-mono text-xs shrink-0 self-end sm:self-center tabular-nums">
+                  <span className="font-semibold text-[var(--fiori-text-primary)] ml-1">
+                    {formatNumber(row.value)}{' '}
+                    <span className="text-[10px] font-sans font-normal text-[var(--fiori-text-secondary)]">
+                      {row.unitLabel}
+                    </span>
+                  </span>
+                  <FioriObjectStatus tone="neutral" label={`سهم: ${toPersianDigits(row.sharePercent)}٪`} size="sm" />
+                  <FioriObjectStatus
+                    tone={row.cumulativePercent <= 82 ? 'negative' : 'neutral'}
+                    label={`تجمعی: ${toPersianDigits(row.cumulativePercent)}٪`}
+                    size="sm"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => handleEditCause(row)}
+                    title="ویرایش در کشو (Edit)"
+                    className="p-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-border-default)] hover:border-[var(--fiori-brand)] transition cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCause(row)}
+                    title="حذف منطقی (Soft Delete)"
+                    className="p-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] hover:bg-[var(--fiori-negative)] text-[var(--fiori-text-secondary)] hover:text-white border border-[var(--fiori-border-default)] transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 font-mono text-xs shrink-0 self-end sm:self-center">
-                <span className="font-bold text-[#333333] ml-1">
-                  {formatNumber(row.value)}{' '}
-                  <span className="text-[10px] font-sans font-normal text-[#666666]">{row.unitLabel}</span>
-                </span>
-                <span className="px-2 py-0.5 rounded-sm bg-[#f0f0f0] text-[#333333] font-bold text-[11px] border border-[#d9d9d9]">
-                  سهم: {toPersianDigits(row.sharePercent)}٪
-                </span>
-                <span
-                  className={`px-2 py-0.5 rounded-sm font-bold text-[11px] border ${
-                    row.cumulativePercent <= 82
-                      ? 'bg-[#ffebee] text-[#bb0000] border-[#bb0000]/25'
-                      : 'bg-[#f8f9fa] text-[#666666] border-[#d9d9d9]'
+              {/* Descending Horizontal Bar */}
+              <div className="w-full h-2.5 bg-[var(--fiori-neutral-bg)] rounded-[var(--fiori-radius-sm)] overflow-hidden p-0.5 border border-[var(--fiori-border-default)]">
+                <div
+                  className={`h-full rounded-[2px] transition-all duration-500 ${
+                    row.rank === 1
+                      ? 'bg-[var(--fiori-negative)]'
+                      : row.rank === 2
+                      ? 'bg-[var(--fiori-critical)]'
+                      : row.rank === 3
+                      ? 'bg-[var(--fiori-brand)]'
+                      : 'bg-[var(--fiori-neutral)]'
                   }`}
-                >
-                  تجمعی: {toPersianDigits(row.cumulativePercent)}٪
+                  style={{ width: `${Math.max(6, row.widthRatioPercent)}%` }}
+                />
+              </div>
+
+              {/* Sub-row: Station & IATF 16949 Corrective Action */}
+              <div className="mt-2 pt-1.5 border-t border-[var(--fiori-border-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-[var(--fiori-text-secondary)]">
+                <span>
+                  ایستگاه درگیر: <strong className="text-[var(--fiori-text-primary)]">{row.affectedStation}</strong>
                 </span>
-
-                {/* Pencil Edit Icon (Opens Slide-Over Drawer) */}
-                <button
-                  type="button"
-                  onClick={() => handleEditCause(row)}
-                  title="ویرایش در کشو (Edit)"
-                  className="p-1.5 rounded-sm bg-[#ffffff] hover:bg-[#e5f3fa] text-[#007cc0] border border-[#d9d9d9] hover:border-[#007cc0] transition cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                </button>
-
-                {/* Soft Delete Icon (Opens ConfirmDialog + Undo Toast) */}
-                <button
-                  type="button"
-                  onClick={() => handleDeleteCause(row)}
-                  title="حذف منطقی (Soft Delete)"
-                  className="p-1.5 rounded-sm bg-[#ffffff] hover:bg-[#bb0000] text-[#666666] hover:text-white border border-[#d9d9d9] transition cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <span className="text-[var(--fiori-positive)] font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[var(--fiori-positive)] shrink-0" />
+                  اقدام اصلاحی (CAPA): {row.capaAction}
+                </span>
               </div>
             </div>
-
-            {/* Descending Horizontal Bar */}
-            <div className="w-full h-2.5 bg-[#f0f0f0] rounded-sm overflow-hidden p-0.5 border border-[#d9d9d9]">
-              <div
-                className={`h-full rounded-xs transition-all duration-500 ${
-                  row.rank === 1
-                    ? 'bg-[#bb0000]'
-                    : row.rank === 2
-                    ? 'bg-[#e9730c]'
-                    : row.rank === 3
-                    ? 'bg-[#007cc0]'
-                    : 'bg-[#666666]'
-                }`}
-                style={{ width: `${Math.max(6, row.widthRatioPercent)}%` }}
-              />
-            </div>
-
-            {/* Sub-row: Station & IATF 16949 Corrective Action */}
-            <div className="mt-2 pt-1.5 border-t border-[#e8e8e8] flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-[#666666]">
-              <span>
-                ایستگاه درگیر: <strong className="text-[#333333]">{row.affectedStation}</strong>
-              </span>
-              <span className="text-[#107e3e] font-medium flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#107e3e] shrink-0" />
-                اقدام اصلاحی (CAPA): {row.capaAction}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
       )}
     </div>
   );

@@ -52,6 +52,7 @@ export interface FioriDataTableProps<T> {
   stickyHeader?: boolean;
   compact?: boolean;
   bordered?: boolean;
+  tableFooter?: React.ReactNode;
   className?: string;
 }
 
@@ -85,6 +86,7 @@ export function FioriDataTable<T>({
   stickyHeader = false,
   compact = true,
   bordered = true,
+  tableFooter,
   className = '',
 }: FioriDataTableProps<T>) {
   const [internalSortKey, setInternalSortKey] = useState<string | undefined>(defaultSortKey);
@@ -283,6 +285,7 @@ export function FioriDataTable<T>({
               })
             )}
           </tbody>
+          {tableFooter && sortedData.length > 0 && <tfoot>{tableFooter}</tfoot>}
         </table>
       </div>
 

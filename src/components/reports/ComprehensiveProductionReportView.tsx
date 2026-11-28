@@ -2,29 +2,18 @@ import React, { useState, useMemo } from 'react';
 import {
   Gauge,
   Clock,
-  AlertTriangle,
   TrendingUp,
-  Activity,
-  Layers,
-  Calendar,
-  CheckCircle2,
-  XCircle,
-  HelpCircle,
   Download,
   Printer,
   ChevronDown,
   ChevronUp,
   ChevronRight,
-  Filter,
   BarChart3,
   GitBranch,
   Search,
-  Factory,
-  ArrowRight,
   ShieldAlert,
   Plus,
   X,
-  RefreshCw,
   Trash2,
   ExternalLink,
 } from 'lucide-react';
@@ -33,6 +22,17 @@ import { formatNumber, toPersianDigits } from '../../utils/formatters';
 import { ScrapParetoChart } from './ScrapParetoChart';
 import { useErpRouter } from '../../context/RouterContext';
 import { usePersistedExpandMap, usePersistedOpen } from '../../hooks/usePersistedCollapse';
+import { EmptyState } from '../common/EmptyState';
+import {
+  FioriDynamicPage,
+  FioriDataTable,
+  FioriTableColumn,
+  FioriToolbar,
+  FioriObjectStatus,
+  FioriMessageStrip,
+  FioriDialog,
+  FioriStatusTone,
+} from '../fiori/ui';
 
 // -------------------------------------------------------------
 // Types & Domain Models
@@ -63,8 +63,8 @@ export interface ScheduleAdherenceRecord {
   plannedEndHour: string;
   actualStartHour: string;
   actualEndHour: string;
-  adherencePercent: number; // e.g. 92%
-  varianceUnits: number; // actual - planned
+  adherencePercent: number;
+  varianceUnits: number;
   status: 'AHEAD' | 'ON_TRACK' | 'DELAYED' | 'CRITICAL_LAG';
   delayRootCause?: string;
   shifts: string;
@@ -82,6 +82,14 @@ export interface OeeNodeItem {
   children?: OeeNodeItem[];
 }
 
+const DOWNTIME_CATEGORY_TONE: Record<MachineDowntimeEvent['category'], FioriStatusTone> = {
+  UNPLANNED_BREAKDOWN: 'negative',
+  SETUP_CHANGE: 'critical',
+  MINOR_STOP: 'critical',
+  MATERIAL_SHORTAGE: 'brand',
+  OPERATOR_ABSENCE: 'neutral',
+};
+
 export const ComprehensiveProductionReportView: React.FC = () => {
   const { traceDocument } = useErpRouter();
   // Horizon Filter: Today, Yesterday, Current Week, Monthly
@@ -98,10 +106,10 @@ export const ComprehensiveProductionReportView: React.FC = () => {
   const [isAdherenceSectionOpen, , toggleAdherenceSection] = usePersistedOpen('report_schedule_adherence_open', false);
 
   // Selected Machine for timeline inspection
-  const [inspectedMachine, setInspectedMachine] = useState<string | null>(null);
+  const [inspectedMachine] = useState<string | null>(null);
 
   // -------------------------------------------------------------
-  // Data: Dynamic Machine Downtime Events (سوابق و رویدادهای زنده توقفات ماشین‌آلات)
+  // Data: Dynamic Machine Downtime Events
   // -------------------------------------------------------------
   const DEFAULT_INITIAL_DOWNTIMES: MachineDowntimeEvent[] = [
     {
@@ -273,7 +281,6 @@ export const ComprehensiveProductionReportView: React.FC = () => {
 
     saveDowntimes([newEvent, ...machineDowntimes]);
 
-    // Send to backend /api/oee/log-shift to sync with central engine
     try {
       await fetch('/api/oee/log-shift', {
         method: 'POST',
@@ -295,7 +302,7 @@ export const ComprehensiveProductionReportView: React.FC = () => {
   };
 
   // -------------------------------------------------------------
-  // Data: Schedule Adherence (انحراف از برنامه تولید)
+  // Data: Schedule Adherence
   // -------------------------------------------------------------
   const adherenceList: ScheduleAdherenceRecord[] = useMemo(
     () => [
@@ -361,10 +368,8 @@ export const ComprehensiveProductionReportView: React.FC = () => {
   // Dynamic OEE Calculation Driven Live by Downtime & Maintenance Logs
   // -------------------------------------------------------------
   const dynamicOeeMetrics = useMemo(() => {
-    // 6 machines * 8 hours = 2,880 total calendar operating minutes in shift
     const totalShiftMinutes = 6 * 480;
 
-    // Categorize actual downtime logs
     const setupMinutes = machineDowntimes
       .filter(d => d.category === 'SETUP_CHANGE')
       .reduce((sum, d) => sum + d.durationMinutes, 0);
@@ -380,12 +385,10 @@ export const ComprehensiveProductionReportView: React.FC = () => {
     const totalDowntimeMinutes = setupMinutes + breakdownMinutes;
     const netOperatingMinutes = Math.max(100, totalShiftMinutes - totalDowntimeMinutes);
 
-    // 1. Availability = (Operating Time / Planned Time) * 100
     const availPct = Math.round((netOperatingMinutes / totalShiftMinutes) * 1000) / 10;
     const setupPct = Math.round((setupMinutes / totalShiftMinutes) * 1000) / 10;
     const breakdownPct = Math.round((breakdownMinutes / totalShiftMinutes) * 1000) / 10;
 
-    // 2. Performance = (Operating Run Speed vs Ideal)
     const speedLossMinutes = minorStopsMinutes + 35;
     const perfPct = Math.max(
       60,
@@ -397,7 +400,6 @@ export const ComprehensiveProductionReportView: React.FC = () => {
       Math.round(((speedLossMinutes - minorStopsMinutes) / netOperatingMinutes) * 1000) / 10
     );
 
-    // 3. Quality = (Good Pieces / Total Pieces)
     const baseProducedPcs = 7200;
     const setupScrapPcs = Math.round(setupMinutes * 0.8);
     const processScrapPcs = Math.round(breakdownMinutes * 0.5) + 38;
@@ -406,7 +408,6 @@ export const ComprehensiveProductionReportView: React.FC = () => {
     const setupScrapPct = Math.round((setupScrapPcs / baseProducedPcs) * 1000) / 10;
     const processScrapPct = Math.round((processScrapPcs / baseProducedPcs) * 1000) / 10;
 
-    // Root OEE = (A * P * Q) / 10000
     const oeePct = Math.round(((availPct * perfPct * qualPct) / 10000) * 10) / 10;
 
     return {
@@ -437,9 +438,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
       title: 'شاخص اثربخشی کلی تجهیزات (OEE کل کارخانه - محاسباتی زنده)',
       metric: `${toPersianDigits(m.oeePct)}٪`,
       percentage: m.oeePct,
-      color: 'text-amber-700',
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-300',
+      color: 'text-[var(--fiori-critical)]',
+      bgColor: 'bg-[var(--fiori-critical-bg)]/60',
+      borderColor: 'border-[var(--fiori-critical-border)]',
       description: `حاصل‌ضرب پویای مؤلفه‌ها: دسترس‌پذیری (${toPersianDigits(m.availPct)}٪) × راندمان عملکرد (${toPersianDigits(m.perfPct)}٪) × کیفیت سالم (${toPersianDigits(m.qualPct)}٪)`,
       children: [
         {
@@ -447,9 +448,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
           title: '۱. نرخ دسترس‌پذیری ماشین‌آلات (Availability)',
           metric: `${toPersianDigits(m.availPct)}٪`,
           percentage: m.availPct,
-          color: 'text-blue-700',
-          bgColor: 'bg-blue-50',
-          borderColor: 'border-blue-300',
+          color: 'text-[var(--fiori-brand)]',
+          bgColor: 'bg-[var(--fiori-info-bg)]',
+          borderColor: 'border-[var(--fiori-info-border)]',
           description: `زمان کارکرد خالص کسر از کل ${toPersianDigits(m.totalDowntimeMinutes)} دقیقه توقف ثبت‌شده در رویدادها`,
           children: [
             {
@@ -457,9 +458,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
               title: 'توقفات برنامه‌ریزی‌شده / تعویض قالب (SMED)',
               metric: `${toPersianDigits(m.setupPct)}٪ زمان کل (${toPersianDigits(m.setupMinutes)} دقیقه)`,
               percentage: m.setupPct,
-              color: 'text-slate-700',
-              bgColor: 'bg-slate-50',
-              borderColor: 'border-slate-200',
+              color: 'text-[var(--fiori-text-primary)]',
+              bgColor: 'bg-[var(--fiori-bg-subtle)]',
+              borderColor: 'border-[var(--fiori-border-default)]',
               description: `مجموع زمان توقفات تعویض قالب و ستاپ ثبت‌شده در ${toPersianDigits(machineDowntimes.filter(d => d.category === 'SETUP_CHANGE').length)} رویداد لاگ‌شده`,
             },
             {
@@ -467,9 +468,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
               title: 'خرابی‌های اضطراری مکانیکی و هیدرولیکی',
               metric: `${toPersianDigits(m.breakdownPct)}٪ زمان کل (${toPersianDigits(m.breakdownMinutes)} دقیقه)`,
               percentage: m.breakdownPct,
-              color: 'text-rose-700',
-              bgColor: 'bg-rose-50',
-              borderColor: 'border-rose-200',
+              color: 'text-[var(--fiori-negative)]',
+              bgColor: 'bg-[var(--fiori-negative-bg)]',
+              borderColor: 'border-[var(--fiori-negative-border)]',
               description: `مجموع زمان خرابی‌های اضطراری هیدرولیک و توقفات خط در ${toPersianDigits(machineDowntimes.filter(d => d.category === 'UNPLANNED_BREAKDOWN' || d.category === 'MATERIAL_SHORTAGE').length)} رویداد لاگ‌شده`,
             },
           ],
@@ -479,9 +480,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
           title: '۲. راندمان عملکرد و ریتم ضرب (Performance Rate)',
           metric: `${toPersianDigits(m.perfPct)}٪`,
           percentage: m.perfPct,
-          color: 'text-[#007cc0]',
-          bgColor: 'bg-[#e5f3fa]',
-          borderColor: 'border-[#007cc0]/30',
+          color: 'text-[var(--fiori-brand)]',
+          bgColor: 'bg-[var(--fiori-brand-bg)]',
+          borderColor: 'border-[var(--fiori-brand-border)]',
           description: 'نسبت ضرب واقعی به ظرفیت اسمی استاندارد (کسر توقفات میکرو و افت سرعت ناشی از جنس ورق)',
           children: [
             {
@@ -489,9 +490,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
               title: 'توقفات میکرو (زیر ۵ دقیقه) و پران قطعه',
               metric: `${toPersianDigits(m.minorStopsPct)}٪ افت سرعت (${toPersianDigits(m.minorStopsMinutes)} دقیقه)`,
               percentage: m.minorStopsPct,
-              color: 'text-[#e9730c]',
-              bgColor: 'bg-[#fff8f0]',
-              borderColor: 'border-[#e9730c]/30',
+              color: 'text-[var(--fiori-critical)]',
+              bgColor: 'bg-[var(--fiori-critical-bg)]',
+              borderColor: 'border-[var(--fiori-critical-border)]',
               description: 'توقفات کوتاه ناشی از گیرکردن قطعه در قالب و مکث رول‌بازکن',
             },
             {
@@ -499,9 +500,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
               title: 'کاهش ریتم اسمی به علت سختی و ضخامت ورق',
               metric: `${toPersianDigits(m.reducedSpeedPct)}٪ افت سرعت`,
               percentage: m.reducedSpeedPct,
-              color: 'text-[#007cc0]',
-              bgColor: 'bg-[#ffffff]',
-              borderColor: 'border-[#d9d9d9]',
+              color: 'text-[var(--fiori-brand)]',
+              bgColor: 'bg-[var(--fiori-bg-surface)]',
+              borderColor: 'border-[var(--fiori-border-default)]',
               description: 'احتیاط اپراتور و پرس در شکل‌دهی ورق‌های با استحکام بالا جهت پیشگیری از چروک‌خوردگی و ترک',
             },
           ],
@@ -511,9 +512,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
           title: '۳. نرخ کیفیت و تولید سالم (Quality Rate)',
           metric: `${toPersianDigits(m.qualPct)}٪`,
           percentage: m.qualPct,
-          color: 'text-emerald-700',
-          bgColor: 'bg-emerald-50',
-          borderColor: 'border-emerald-300',
+          color: 'text-[var(--fiori-positive)]',
+          bgColor: 'bg-[var(--fiori-positive-bg)]',
+          borderColor: 'border-[var(--fiori-positive-border)]',
           description: `نسبت قطعات سالم تاییدشده (مجموع ضایعات: ${toPersianDigits(m.setupScrapPcs + m.processScrapPcs)} قطعه)`,
           children: [
             {
@@ -521,9 +522,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
               title: 'ضایعات قطعات تنظیمی و راه‌اندازی ابتدای شیفت',
               metric: `${toPersianDigits(m.setupScrapPct)}٪ (${toPersianDigits(m.setupScrapPcs)} قطعه)`,
               percentage: m.setupScrapPct,
-              color: 'text-emerald-700',
-              bgColor: 'bg-emerald-50',
-              borderColor: 'border-emerald-200',
+              color: 'text-[var(--fiori-positive)]',
+              bgColor: 'bg-[var(--fiori-positive-bg)]',
+              borderColor: 'border-[var(--fiori-positive-border)]',
               description: 'قطعات تست اولیه حین تنظیم لقی قالب و کنترل ابعادی با گیج',
             },
             {
@@ -531,9 +532,9 @@ export const ComprehensiveProductionReportView: React.FC = () => {
               title: 'ضایعات حین فرآیند (پلیسه، ترک و پارگی کشش)',
               metric: `${toPersianDigits(m.processScrapPct)}٪ (${toPersianDigits(m.processScrapPcs)} قطعه)`,
               percentage: m.processScrapPct,
-              color: 'text-rose-700',
-              bgColor: 'bg-rose-50',
-              borderColor: 'border-rose-200',
+              color: 'text-[var(--fiori-negative)]',
+              bgColor: 'bg-[var(--fiori-negative-bg)]',
+              borderColor: 'border-[var(--fiori-negative-border)]',
               description: 'ترک لبه در کشش عمیق و جوش سرد شناسایی‌شده در بازرسی‌های حین تولید',
             },
           ],
@@ -582,6 +583,245 @@ export const ComprehensiveProductionReportView: React.FC = () => {
       hall: found?.hall || '',
     };
   });
+
+  // Downtime Log Fiori Columns
+  const downtimeColumns = useMemo<FioriTableColumn<MachineDowntimeEvent>[]>(
+    () => [
+      {
+        key: 'machineCode',
+        header: 'کد ماشین',
+        isMono: true,
+        isLtrCode: true,
+        cellClassName: 'font-semibold text-[var(--fiori-text-primary)]',
+        render: ev => ev.machineCode,
+      },
+      {
+        key: 'machineName',
+        header: 'نام دستگاه و پرس',
+        cellClassName: 'font-semibold text-[var(--fiori-text-primary)]',
+        render: ev => ev.machineName,
+      },
+      {
+        key: 'hall',
+        header: 'سالن',
+        cellClassName: 'text-[var(--fiori-text-secondary)]',
+        render: ev => ev.hall,
+      },
+      {
+        key: 'categoryLabel',
+        header: 'نوع توقف',
+        render: ev => (
+          <FioriObjectStatus
+            tone={DOWNTIME_CATEGORY_TONE[ev.category]}
+            label={ev.categoryLabel}
+          />
+        ),
+      },
+      {
+        key: 'startHour',
+        header: 'ساعت شروع',
+        isMono: true,
+        isLtrCode: true,
+        cellClassName: 'font-semibold',
+        render: ev => ev.startHour,
+      },
+      {
+        key: 'durationMinutes',
+        header: 'مدت (دقیقه)',
+        isMono: true,
+        sortable: true,
+        sortValue: ev => ev.durationMinutes,
+        cellClassName: 'font-semibold text-[var(--fiori-negative)]',
+        render: ev => `${toPersianDigits(ev.durationMinutes)} min`,
+      },
+      {
+        key: 'reason',
+        header: 'علت ریشه‌ای خرابی',
+        cellClassName: 'text-[11px] leading-snug',
+        render: ev => ev.reason,
+      },
+      {
+        key: 'actionTaken',
+        header: 'اقدام اصلاحی انجام‌شده (Action)',
+        cellClassName: 'text-[11px] text-[var(--fiori-positive)] leading-snug',
+        render: ev => ev.actionTaken,
+      },
+      {
+        key: 'actions',
+        header: 'عملیات',
+        align: 'center',
+        render: ev => (
+          <button
+            type="button"
+            onClick={() => handleDeleteDowntimeEvent(ev.id)}
+            className="p-1 text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-negative)] hover:bg-[var(--fiori-negative-bg)] rounded-[var(--fiori-radius-sm)] transition cursor-pointer"
+            title="حذف این توقف و به‌روزرسانی آنی درصد شاخه‌های درخت OEE"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        ),
+      },
+    ],
+    [machineDowntimes]
+  );
+
+  // Schedule Adherence Fiori Columns
+  const adherenceColumns = useMemo<FioriTableColumn<ScheduleAdherenceRecord>[]>(
+    () => [
+      {
+        key: 'orderCode',
+        header: 'شماره دستور کار',
+        sortable: true,
+        sortValue: item => item.orderCode,
+        render: item => (
+          <button
+            type="button"
+            onClick={() => traceDocument(item.orderCode, 'WIP_TRACEABILITY')}
+            className="sap-doc-link fiori-ltr-code font-bold"
+            title="رهگیری دستور کار در WIP"
+          >
+            {item.orderCode}
+          </button>
+        ),
+      },
+      {
+        key: 'part',
+        header: 'نام و مشخصات قطعه',
+        render: item => (
+          <div>
+            <div className="font-semibold text-[var(--fiori-text-primary)]">{item.partName}</div>
+            <button
+              type="button"
+              onClick={() => traceDocument(item.partCode, 'INVENTORY_LEDGER')}
+              className="sap-doc-link fiori-ltr-code text-[10px]"
+              title="مشاهده کاردکس قطعه"
+            >
+              {item.partCode}
+            </button>
+          </div>
+        ),
+      },
+      {
+        key: 'carModel',
+        header: 'خودرو',
+        render: item => item.carModel,
+      },
+      {
+        key: 'plannedWindow',
+        header: 'زمان مصوب',
+        isMono: true,
+        cellClassName: 'text-[11px] text-[var(--fiori-text-secondary)]',
+        render: item => `${item.plannedStartHour} تا ${item.plannedEndHour}`,
+      },
+      {
+        key: 'actualWindow',
+        header: 'زمان واقعی',
+        isMono: true,
+        cellClassName: 'text-[11px]',
+        render: item => `${item.actualStartHour} تا ${item.actualEndHour}`,
+      },
+      {
+        key: 'plannedQty',
+        header: 'تیراژ مصوب',
+        isMono: true,
+        sortable: true,
+        sortValue: item => item.plannedQty,
+        cellClassName: 'font-semibold',
+        render: item => formatNumber(item.plannedQty),
+      },
+      {
+        key: 'actualProducedQty',
+        header: 'تولید سالم',
+        isMono: true,
+        sortable: true,
+        sortValue: item => item.actualProducedQty,
+        cellClassName: 'font-semibold text-[var(--fiori-positive)]',
+        render: item => formatNumber(item.actualProducedQty),
+      },
+      {
+        key: 'scrapQty',
+        header: 'ضایعات',
+        isMono: true,
+        cellClassName: 'text-[var(--fiori-negative)]',
+        render: item => formatNumber(item.scrapQty),
+      },
+      {
+        key: 'adherencePercent',
+        header: 'درصد تحقق (Adherence)',
+        sortable: true,
+        sortValue: item => item.adherencePercent,
+        render: item => (
+          <div className="flex items-center gap-2">
+            <div className="w-16 bg-[var(--fiori-bg-subtle)] rounded-sm h-2 overflow-hidden border border-[var(--fiori-border-default)]">
+              <div
+                className={`h-full ${
+                  item.adherencePercent >= 95
+                    ? 'bg-[var(--fiori-positive)]'
+                    : item.adherencePercent >= 85
+                    ? 'bg-[var(--fiori-critical)]'
+                    : 'bg-[var(--fiori-negative)]'
+                }`}
+                style={{ width: `${Math.min(100, item.adherencePercent)}%` }}
+              />
+            </div>
+            <span className="font-mono font-semibold tabular-nums">
+              {toPersianDigits(item.adherencePercent)}٪
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: 'varianceUnits',
+        header: 'انحراف (تعداد)',
+        isMono: true,
+        sortable: true,
+        sortValue: item => item.varianceUnits,
+        cellClassName: item =>
+          `font-semibold ${
+            item.varianceUnits >= 0
+              ? 'text-[var(--fiori-positive)]'
+              : 'text-[var(--fiori-negative)]'
+          }`,
+        render: item =>
+          item.varianceUnits >= 0
+            ? `+${formatNumber(item.varianceUnits)}`
+            : formatNumber(item.varianceUnits),
+      },
+      {
+        key: 'status',
+        header: 'وضعیت انطباق',
+        render: item => (
+          <FioriObjectStatus
+            tone={
+              item.status === 'AHEAD'
+                ? 'positive'
+                : item.status === 'ON_TRACK'
+                ? 'brand'
+                : item.status === 'DELAYED'
+                ? 'critical'
+                : 'negative'
+            }
+            label={
+              item.status === 'AHEAD'
+                ? 'جلوتر از برنامه'
+                : item.status === 'ON_TRACK'
+                ? 'منطبق با برنامه'
+                : item.status === 'DELAYED'
+                ? 'دارای تأخیر'
+                : 'تأخیر بحرانی'
+            }
+          />
+        ),
+      },
+      {
+        key: 'delayRootCause',
+        header: 'علت ریشه‌ای تأخیر',
+        cellClassName: 'text-[11px] text-[var(--fiori-text-secondary)] leading-snug',
+        render: item => item.delayRootCause || '-',
+      },
+    ],
+    [traceDocument]
+  );
 
   // Print Isolated Report (A4 Landscape)
   const handlePrintReport = () => {
@@ -759,55 +999,42 @@ export const ComprehensiveProductionReportView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 text-right font-sans" dir="rtl">
-      {/* ==================================================================== */}
-      {/* HEADER: COMPREHENSIVE PRODUCTION PERFORMANCE & ADHERENCE            */}
-      {/* ==================================================================== */}
-      <div className="sap-card p-4 space-y-3.5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#e8e8e8] pb-3.5">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-sm bg-[#e5f3fa] border border-[#007cc0]/25 text-[#007cc0] flex items-center justify-center shrink-0">
-              <Activity className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-[#333333]">
-                  داشبورد گزارش‌دهی جامع تولید: شاخص‌های بهره‌وری (OEE)، توقفات ماشین‌آلات و انحراف برنامه (Schedule Adherence)
-                </h2>
-                <span className="px-2 py-0.5 rounded-sm text-[11px] font-bold bg-[#e5f3fa] text-[#007cc0] border border-[#007cc0]/25">
-                  نمودارهای ساختار درختی و محور زمانی (Timeline)
-                </span>
-              </div>
-              <p className="text-xs text-[#666666] mt-1">
-                رصد بلادرنگ زنجیره ارزش تولید: ساختار سلسله‌مراتبی OEE (دسترس‌پذیری × عملکرد × کیفیت)، توقفات سالن‌های پرس بر روی خط زمان (Gantt/Timeline) و تحلیل شکاف زمانی و مقداری دستورهای ساخت (MO).
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrintReport}
-              className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5 text-[#007cc0]" />
-              <span>چاپ رسمی گزارش (A4 ایزوله)</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>خروجی اکسل (CSV)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Global Control Filters */}
+    <FioriDynamicPage
+      title="داشبورد گزارش‌دهی جامع تولید: شاخص‌های بهره‌وری (OEE)، توقفات ماشین‌آلات و انحراف برنامه (Schedule Adherence)"
+      subtitle="رصد بلادرنگ زنجیره ارزش تولید: ساختار سلسله‌مراتبی OEE (دسترس‌پذیری × عملکرد × کیفیت)، توقفات سالن‌های پرس بر روی خط زمان (Gantt/Timeline) و تحلیل شکاف زمانی و مقداری دستورهای ساخت (MO)."
+      status={
+        <FioriObjectStatus
+          tone="brand"
+          label="نمودارهای ساختار درختی و محور زمانی (Timeline)"
+        />
+      }
+      collapsibleFilters={false}
+      activeFiltersCount={selectedHall !== 'ALL' ? 1 : 0}
+      onResetFilters={() => setSelectedHall('ALL')}
+      headerActions={
+        <>
+          <button
+            type="button"
+            onClick={handlePrintReport}
+            className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>چاپ رسمی گزارش (A4 ایزوله)</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="sap-btn-emphasized flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>خروجی اکسل (CSV)</span>
+          </button>
+        </>
+      }
+      filterBar={
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-[#333333]">بازه زمانی گزارش:</span>
+            <span className="font-semibold text-[var(--fiori-text-primary)]">بازه زمانی گزارش:</span>
             {[
               { id: 'TODAY' as const, label: 'امروز (شیفت فعال)' },
               { id: 'YESTERDAY' as const, label: 'روز قبل' },
@@ -818,10 +1045,10 @@ export const ComprehensiveProductionReportView: React.FC = () => {
                 key={h.id}
                 type="button"
                 onClick={() => setSelectedHorizon(h.id)}
-                className={`px-3 py-1 rounded-sm font-bold transition cursor-pointer border ${
+                className={`px-3 py-1 rounded-[var(--fiori-radius-sm)] font-semibold transition cursor-pointer border ${
                   selectedHorizon === h.id
-                    ? 'bg-[#e5f3fa] text-[#007cc0] border-[#007cc0]'
-                    : 'bg-[#ffffff] text-[#666666] hover:text-[#333333] border-[#d9d9d9]'
+                    ? 'bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border-[var(--fiori-brand)]'
+                    : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] border-[var(--fiori-border-default)]'
                 }`}
               >
                 {h.label}
@@ -830,11 +1057,11 @@ export const ComprehensiveProductionReportView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[#666666] font-medium">فیلتر سالن:</span>
+            <span className="text-[var(--fiori-text-secondary)] font-medium">فیلتر سالن:</span>
             <select
               value={selectedHall}
               onChange={e => setSelectedHall(e.target.value)}
-              className="bg-[#ffffff] border border-[#bfbfbf] focus:border-[#007cc0] rounded-sm px-3 py-1 font-bold text-[#333333] focus:outline-none"
+              className="fiori-input px-3 py-1 font-semibold cursor-pointer"
             >
               <option value="ALL">همه سالن‌های کارخانه</option>
               <option value="سالن برش">سالن برش و گیوتین</option>
@@ -843,146 +1070,169 @@ export const ComprehensiveProductionReportView: React.FC = () => {
             </select>
           </div>
         </div>
-      </div>
+      }
+      kpiStrip={
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* KPI 1: OEE */}
+          <div className="fiori-surface-card p-3.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[var(--fiori-text-secondary)]">
+                شاخص کل OEE کارخانه
+              </span>
+              <Gauge className="w-4 h-4 text-[var(--fiori-brand)]" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums">
+                ۷۱.۶٪
+              </span>
+              <span className="text-xs font-semibold text-[var(--fiori-positive)]">
+                روند مثبت (+۲.۴٪)
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--fiori-text-secondary)]">
+              هدف استاندارد ساپکو: بالای ۷۰٪ | دسترس‌پذیری ۸۸.۴٪ × عملکرد ۸۲.۵٪ × کیفیت ۹۸.۲٪
+            </p>
+          </div>
 
-      {/* ==================================================================== */}
-      {/* TOP KPI OVERVIEW CARDS                                               */}
-      {/* ==================================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* KPI 1: OEE */}
-        <div className="sap-card border-r-2 border-r-[#007cc0] p-3.5 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#666666]">شاخص کل OEE کارخانه</span>
-            <Gauge className="w-4 h-4 text-[#007cc0]" />
+          {/* KPI 2: Schedule Adherence */}
+          <div className="fiori-surface-card p-3.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[var(--fiori-text-secondary)]">
+                انطباق با برنامه (Adherence)
+              </span>
+              <TrendingUp className="w-4 h-4 text-[var(--fiori-brand)]" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums">
+                {toPersianDigits(overallAdherencePercent)}٪
+              </span>
+              <span className="text-xs font-semibold text-[var(--fiori-text-secondary)] tabular-nums">
+                تولید {formatNumber(totalActualPcs)} از {formatNumber(totalPlannedPcs)}
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--fiori-text-secondary)]">
+              کسری نهایی خط: {formatNumber(Math.abs(totalActualPcs - totalPlannedPcs))} قطعه (عمدتاً به دلیل توقف پرس ۲۵۰ تن)
+            </p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-[#333333] font-mono">۷۱.۶٪</span>
-            <span className="text-xs font-bold text-[#107e3e]">روند مثبت (+۲.۴٪)</span>
+
+          {/* KPI 3: Total Downtimes */}
+          <div className="fiori-surface-card p-3.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[var(--fiori-text-secondary)]">
+                مجموع زمان توقفات ماشین‌آلات
+              </span>
+              <Clock className="w-4 h-4 text-[var(--fiori-negative)]" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[var(--fiori-negative)] font-mono tabular-nums">
+                {toPersianDigits(totalDowntimeMinutes)}
+              </span>
+              <span className="text-xs font-semibold text-[var(--fiori-text-secondary)] tabular-nums">
+                دقیقه ({toPersianDigits((totalDowntimeMinutes / 60).toFixed(1))} ساعت)
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--fiori-text-secondary)]">
+              توقف اضطراری: ۹۵ دقیقه (۴۳٪) | تعویض قالب و ستاپ: ۸۰ دقیقه (۳۶٪) | سایر: ۴۵ دقیقه
+            </p>
           </div>
-          <p className="text-[11px] text-[#666666]">
-            هدف استاندارد ساپکو: بالای ۷۰٪ | دسترس‌پذیری ۸۸.۴٪ × عملکرد ۸۲.۵٪ × کیفیت ۹۸.۲٪
-          </p>
+
+          {/* KPI 4: Quality & Scrap Rate */}
+          <div className="fiori-surface-card p-3.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[var(--fiori-text-secondary)]">
+                نرخ کیفیت و تولید سالم
+              </span>
+              <ShieldAlert className="w-4 h-4 text-[var(--fiori-positive)]" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[var(--fiori-positive)] font-mono tabular-nums">
+                ۹۸.۲٪
+              </span>
+              <span className="text-xs font-semibold text-[var(--fiori-negative)] tabular-nums">
+                ضایعات: ۱.۸٪ (۱۲۸ عدد)
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--fiori-text-secondary)]">
+              بیشترین ضایعات در قالب کشش صندلی چپ (۳۱ قطعه) به علت نوسان فشار بالشتک پرس
+            </p>
+          </div>
         </div>
-
-        {/* KPI 2: Schedule Adherence */}
-        <div className="sap-card border-r-2 border-r-[#007cc0] p-3.5 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#666666]">انطباق با برنامه (Adherence)</span>
-            <TrendingUp className="w-4 h-4 text-[#007cc0]" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-[#333333] font-mono">
-              {toPersianDigits(overallAdherencePercent)}٪
-            </span>
-            <span className="text-xs font-bold text-[#666666]">
-              تولید {formatNumber(totalActualPcs)} از {formatNumber(totalPlannedPcs)}
-            </span>
-          </div>
-          <p className="text-[11px] text-[#666666]">
-            کسری نهایی خط: {formatNumber(Math.abs(totalActualPcs - totalPlannedPcs))} قطعه (عمدتاً به دلیل توقف پرس ۲۵۰ تن)
-          </p>
-        </div>
-
-        {/* KPI 3: Total Downtimes */}
-        <div className="sap-card border-r-2 border-r-[#bb0000] p-3.5 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#666666]">مجموع زمان توقفات ماشین‌آلات</span>
-            <Clock className="w-4 h-4 text-[#bb0000]" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-[#bb0000] font-mono">
-              {toPersianDigits(totalDowntimeMinutes)}
-            </span>
-            <span className="text-xs font-bold text-[#666666]">دقیقه ({toPersianDigits((totalDowntimeMinutes / 60).toFixed(1))} ساعت)</span>
-          </div>
-          <p className="text-[11px] text-[#666666]">
-            توقف اضطراری: ۹۵ دقیقه (۴۳٪) | تعویض قالب و ستاپ: ۸۰ دقیقه (۳۶٪) | سایر: ۴۵ دقیقه
-          </p>
-        </div>
-
-        {/* KPI 4: Quality & Scrap Rate */}
-        <div className="sap-card border-r-2 border-r-[#107e3e] p-3.5 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#666666]">نرخ کیفیت و تولید سالم</span>
-            <ShieldAlert className="w-4 h-4 text-[#107e3e]" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-[#107e3e] font-mono">۹۸.۲٪</span>
-            <span className="text-xs font-bold text-[#bb0000]">ضایعات: ۱.۸٪ (۱۲۸ عدد)</span>
-          </div>
-          <p className="text-[11px] text-[#666666]">
-            بیشترین ضایعات در قالب کشش صندلی چپ (۳۱ قطعه) به علت نوسان فشار بالشتک پرس
-          </p>
-        </div>
-      </div>
-
+      }
+    >
       {/* ==================================================================== */}
       {/* SECTION 1: TREE-STRUCTURED OEE BREAKDOWN CHART (نمودار درختی OEE)    */}
       {/* ==================================================================== */}
-      <div className="sap-card p-4 space-y-3.5">
-        <div className="border-b border-[#e8e8e8] pb-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-sm bg-[#fff8f0] text-[#e9730c] border border-[#e9730c]/30 flex items-center justify-center">
+      <div className="fiori-surface-card p-4 space-y-3.5">
+        <FioriToolbar
+          variant="section"
+          title="۱. نمودار ساختار درختی شکست شاخص اثربخشی کلی تجهیزات (Tree-Structured OEE Breakdown)"
+          subtitle="نمایش علل ریشه‌ای افت OEE در قالب شاخه‌های دسترس‌پذیری، عملکرد و کیفیت و دلایل فرعی مربوط به هر شاخه"
+          startContent={
+            <div className="w-8 h-8 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-critical-bg)] text-[var(--fiori-critical)] border border-[var(--fiori-critical-border)] flex items-center justify-center shrink-0">
               <GitBranch className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-[#333333]">
-                ۱. نمودار ساختار درختی شکست شاخص اثربخشی کلی تجهیزات (Tree-Structured OEE Breakdown)
-              </h3>
-              <p className="text-xs text-[#666666] mt-0.5">
-                نمایش علل ریشه‌ای افت OEE در قالب شاخه‌های دسترس‌پذیری، عملکرد و کیفیت و دلایل فرعی مربوط به هر شاخه
-              </p>
+          }
+          endContent={
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setIsLogDowntimeModalOpen(true)}
+                className="sap-btn-emphasized px-3 py-1 cursor-pointer flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>ثبت رویداد توقف / خرابی نت</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => expandAllOeeNodes(['oee_root', 'oee_avail', 'oee_perf', 'oee_qual'])}
+                className="sap-btn-standard px-2.5 py-1 cursor-pointer"
+              >
+                باز کردن همه شاخه‌ها
+              </button>
+              <button
+                type="button"
+                onClick={collapseAllOeeNodes}
+                className="sap-btn-standard px-2.5 py-1 cursor-pointer"
+              >
+                بستن همه شاخه‌ها
+              </button>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => setIsLogDowntimeModalOpen(true)}
-              className="sap-btn-emphasized px-3 py-1 cursor-pointer flex items-center gap-1"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>ثبت رویداد توقف / خرابی نت</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => expandAllOeeNodes(['oee_root', 'oee_avail', 'oee_perf', 'oee_qual'])}
-              className="sap-btn-standard px-2.5 py-1 cursor-pointer"
-            >
-              باز کردن همه شاخه‌ها
-            </button>
-            <button
-              type="button"
-              onClick={collapseAllOeeNodes}
-              className="sap-btn-standard px-2.5 py-1 cursor-pointer"
-            >
-              بستن همه شاخه‌ها
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Tree Root Node */}
         <div className="space-y-4 pt-1">
           {/* Level 0: Root Node */}
-          <div className={`p-3.5 rounded-sm border ${oeeTree.borderColor} ${oeeTree.bgColor} transition-all`}>
+          <div
+            className={`p-3.5 rounded-[var(--fiori-radius-md)] border ${oeeTree.borderColor} ${oeeTree.bgColor} transition-all`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => toggleNode(oeeTree.id)}
-                  className="w-7 h-7 rounded-lg bg-white border border-amber-300 text-amber-900 flex items-center justify-center cursor-pointer shadow-2xs"
+                  className="w-7 h-7 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] border border-[var(--fiori-critical-border)] text-[var(--fiori-critical)] flex items-center justify-center cursor-pointer"
                   title={isOeeNodeExpanded(oeeTree.id) ? 'بستن شاخه‌های OEE' : 'باز کردن شاخه‌های OEE'}
                 >
-                  {isOeeNodeExpanded(oeeTree.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                  {isOeeNodeExpanded(oeeTree.id) ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4" />
+                  )}
                 </button>
                 <div>
-                  <span className="font-bold text-sm text-slate-900 block">{oeeTree.title}</span>
-                  <span className="text-xs text-slate-600">{oeeTree.description}</span>
+                  <span className="font-semibold text-sm text-[var(--fiori-text-primary)] block">
+                    {oeeTree.title}
+                  </span>
+                  <span className="text-xs text-[var(--fiori-text-secondary)]">
+                    {oeeTree.description}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <div className="w-48 bg-white border border-amber-200 rounded-full h-3 overflow-hidden p-0.5">
+                <div className="w-48 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-critical-border)] rounded-sm h-3 overflow-hidden p-0.5">
                   <div
-                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                    className="bg-[var(--fiori-critical)] h-full rounded-sm transition-all duration-500"
                     style={{ width: `${oeeTree.percentage}%` }}
                   />
                 </div>
@@ -997,33 +1247,37 @@ export const ComprehensiveProductionReportView: React.FC = () => {
                       events: machineDowntimes,
                     })
                   }
-                  className="font-mono font-black text-xl text-amber-900 hover:underline cursor-pointer flex items-center gap-1"
+                  className="font-mono font-bold text-xl tabular-nums text-[var(--fiori-critical)] hover:underline cursor-pointer flex items-center gap-1"
                   title="کلیک جهت مشاهده لاگ‌های توقف مؤثر بر OEE"
                 >
                   <span>{oeeTree.metric}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-amber-600 inline" />
+                  <ExternalLink className="w-3.5 h-3.5 inline" />
                 </button>
               </div>
             </div>
 
-            {/* Level 1: Three Pillars (Availability, Performance, Quality) */}
+            {/* Level 1: Three Pillars */}
             {isOeeNodeExpanded(oeeTree.id) && oeeTree.children && (
-              <div className="mt-4 pt-4 border-t border-amber-200/80 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="mt-4 pt-4 border-t border-[var(--fiori-critical-border)] grid grid-cols-1 md:grid-cols-3 gap-4">
                 {oeeTree.children.map(pillar => {
                   const isExpanded = isOeeNodeExpanded(pillar.id);
                   return (
                     <div
                       key={pillar.id}
-                      className={`p-3.5 rounded-xl border ${pillar.borderColor} ${pillar.bgColor} flex flex-col justify-between space-y-3`}
+                      className={`p-3.5 rounded-[var(--fiori-radius-md)] border ${pillar.borderColor} ${pillar.bgColor} flex flex-col justify-between space-y-3`}
                     >
                       <div>
-                        <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
+                        <div className="flex items-center justify-between gap-2 border-b border-[var(--fiori-border-subtle)] pb-2">
                           <button
                             type="button"
                             onClick={() => toggleNode(pillar.id)}
-                            className="flex items-center gap-1.5 text-xs font-bold text-slate-900 hover:text-slate-700 cursor-pointer text-right"
+                            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--fiori-text-primary)] hover:text-[var(--fiori-brand)] cursor-pointer text-right"
                           >
-                            {isExpanded ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
+                            {isExpanded ? (
+                              <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                            )}
                             <span>{pillar.title}</span>
                           </button>
                           <button
@@ -1057,19 +1311,21 @@ export const ComprehensiveProductionReportView: React.FC = () => {
                                 });
                               }
                             }}
-                            className={`font-mono font-bold text-sm hover:underline cursor-pointer flex items-center gap-1 ${pillar.color}`}
+                            className={`font-mono font-bold tabular-nums text-sm hover:underline cursor-pointer flex items-center gap-1 ${pillar.color}`}
                             title="مشاهده لاگ‌های این ستون OEE"
                           >
                             <span>{pillar.metric}</span>
                             <ExternalLink className="w-3 h-3 inline opacity-70" />
                           </button>
                         </div>
-                        <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">{pillar.description}</p>
+                        <p className="text-[11px] text-[var(--fiori-text-secondary)] mt-2 leading-relaxed">
+                          {pillar.description}
+                        </p>
                       </div>
 
-                      {/* Level 2 Sub-branches (Root Causes) */}
+                      {/* Level 2 Sub-branches */}
                       {isExpanded && pillar.children && (
-                        <div className="space-y-2 pt-2 border-t border-slate-200/60">
+                        <div className="space-y-2 pt-2 border-t border-[var(--fiori-border-subtle)]">
                           {pillar.children.map(sub => (
                             <button
                               key={sub.id}
@@ -1111,18 +1367,20 @@ export const ComprehensiveProductionReportView: React.FC = () => {
                                   });
                                 }
                               }}
-                              className={`w-full p-2.5 rounded-lg border text-right transition cursor-pointer hover:shadow-xs group ${sub.borderColor} ${sub.bgColor} space-y-1 text-xs`}
+                              className={`w-full p-2.5 rounded-[var(--fiori-radius-sm)] border text-right transition cursor-pointer hover:shadow-xs group ${sub.borderColor} ${sub.bgColor} space-y-1 text-xs`}
                             >
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-slate-800 text-[11px] group-hover:text-blue-700 flex items-center gap-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-semibold text-[var(--fiori-text-primary)] text-[11px] group-hover:text-[var(--fiori-brand)] flex items-center gap-1">
                                   <span>{sub.title}</span>
                                   <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition" />
                                 </span>
-                                <span className="font-mono font-bold text-[11px] text-slate-900 group-hover:underline">
+                                <span className="font-mono font-semibold text-[11px] tabular-nums text-[var(--fiori-text-primary)] group-hover:underline">
                                   {sub.metric}
                                 </span>
                               </div>
-                              <p className="text-[10px] text-slate-500 leading-normal">{sub.description}</p>
+                              <p className="text-[10px] text-[var(--fiori-text-secondary)] leading-normal">
+                                {sub.description}
+                              </p>
                             </button>
                           ))}
                         </div>
@@ -1142,27 +1400,32 @@ export const ComprehensiveProductionReportView: React.FC = () => {
       <ScrapParetoChart />
 
       {/* ==================================================================== */}
-      {/* SECTION 2: MACHINE DOWNTIME TIMELINE (نمودار زمانی توقفات ماشین‌آلات) */}
+      {/* SECTION 2: MACHINE DOWNTIME TIMELINE                                 */}
       {/* ==================================================================== */}
-      <div className="sap-card p-4 space-y-3.5">
+      <div className="fiori-surface-card p-4 space-y-3.5">
         <div
           onClick={toggleDowntimeSection}
           className={`flex flex-wrap items-center justify-between gap-3 cursor-pointer ${
-            isDowntimeSectionOpen ? 'border-b border-[#e8e8e8] pb-3' : ''
+            isDowntimeSectionOpen ? 'border-b border-[var(--fiori-border-subtle)] pb-3' : ''
           }`}
         >
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-sm bg-[#ffebee] text-[#bb0000] border border-[#bb0000]/25 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-negative-bg)] text-[var(--fiori-negative)] border border-[var(--fiori-negative-border)] flex items-center justify-center shrink-0">
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#333333]">
+              <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)]">
                 ۲. نمودار زمانی توقفات ماشین‌آلات و خطوط تولید (Machine Downtime Timeline / Gantt)
               </h3>
-              <p className="text-xs text-[#666666] mt-0.5 tabular-nums">
+              <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5 tabular-nums">
                 مجموع توقفات شیفت:{' '}
-                <strong className="font-mono text-[#bb0000]">{toPersianDigits(totalDowntimeMinutes)} دقیقه</strong>{' '}
-                در <strong className="font-mono text-[#333333]">{toPersianDigits(uniqueMachines.length)} دستگاه</strong>{' '}
+                <strong className="font-mono text-[var(--fiori-negative)]">
+                  {toPersianDigits(totalDowntimeMinutes)} دقیقه
+                </strong>{' '}
+                در{' '}
+                <strong className="font-mono text-[var(--fiori-text-primary)]">
+                  {toPersianDigits(uniqueMachines.length)} دستگاه
+                </strong>{' '}
                 ({toPersianDigits(filteredDowntimes.length)} رویداد ثبت‌شده)
               </p>
             </div>
@@ -1171,22 +1434,10 @@ export const ComprehensiveProductionReportView: React.FC = () => {
           <div className="flex items-center gap-3 text-xs flex-wrap" onClick={e => e.stopPropagation()}>
             {isDowntimeSectionOpen && (
               <>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#bb0000] inline-block" />
-                  <span className="text-[#666666]">خرابی اضطراری</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#e9730c] inline-block" />
-                  <span className="text-[#666666]">تعویض قالب (SMED)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#d97706] inline-block" />
-                  <span className="text-[#666666]">توقف جزئی پران</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#007cc0] inline-block" />
-                  <span className="text-[#666666]">کمبود مهره جوش / تغذیه</span>
-                </div>
+                <FioriObjectStatus tone="negative" variant="dot" label="خرابی اضطراری" />
+                <FioriObjectStatus tone="critical" variant="dot" label="تعویض قالب (SMED)" />
+                <FioriObjectStatus tone="critical" variant="dot" label="توقف جزئی پران" />
+                <FioriObjectStatus tone="brand" variant="dot" label="کمبود مهره جوش / تغذیه" />
               </>
             )}
             <button
@@ -1201,149 +1452,132 @@ export const ComprehensiveProductionReportView: React.FC = () => {
         </div>
 
         {isDowntimeSectionOpen && (
-        <>
-        {/* Timeline Axis (Hours 07:00 to 19:00) */}
-        <div className="overflow-x-auto border border-[#d9d9d9] rounded-sm p-3.5 bg-[#f8f9fa] space-y-3.5">
-          <div className="min-w-[850px] space-y-3">
-            {/* Hour Rulers */}
-            <div className="grid grid-cols-12 gap-1 text-[11px] font-mono text-[#666666] border-b border-[#d9d9d9] pb-2 text-center">
-              <span>۰۷:۰۰</span>
-              <span>۰۸:۰۰</span>
-              <span>۰۹:۰۰</span>
-              <span>۱۰:۰۰</span>
-              <span>۱۱:۰۰</span>
-              <span>۱۲:۰۰</span>
-              <span>۱۳:۰۰</span>
-              <span>۱۴:۰۰</span>
-              <span>۱۵:۰۰</span>
-              <span>۱۶:۰۰</span>
-              <span>۱۷:۰۰</span>
-              <span>۱۸:۰۰</span>
+          <>
+            {/* Timeline Axis (Hours 07:00 to 19:00) */}
+            <div className="overflow-x-auto border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] p-3.5 bg-[var(--fiori-bg-subtle)] space-y-3.5">
+              <div className="min-w-[850px] space-y-3">
+                {/* Hour Rulers */}
+                <div className="grid grid-cols-12 gap-1 text-[11px] font-mono text-[var(--fiori-text-secondary)] border-b border-[var(--fiori-border-default)] pb-2 text-center">
+                  <span>۰۷:۰۰</span>
+                  <span>۰۸:۰۰</span>
+                  <span>۰۹:۰۰</span>
+                  <span>۱۰:۰۰</span>
+                  <span>۱۱:۰۰</span>
+                  <span>۱۲:۰۰</span>
+                  <span>۱۳:۰۰</span>
+                  <span>۱۴:۰۰</span>
+                  <span>۱۵:۰۰</span>
+                  <span>۱۶:۰۰</span>
+                  <span>۱۷:۰۰</span>
+                  <span>۱۸:۰۰</span>
+                </div>
+
+                {/* Machine Rows */}
+                {uniqueMachines.map(mch => {
+                  const events = machineDowntimes.filter(ev => ev.machineCode === mch.code);
+                  return (
+                    <div key={mch.code} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-[var(--fiori-text-primary)]">
+                          {mch.name}{' '}
+                          <span className="font-mono text-[var(--fiori-text-secondary)] font-normal">
+                            (<span className="fiori-ltr-code">{mch.code}</span> — {mch.hall})
+                          </span>
+                        </span>
+                        <span className="text-[11px] text-[var(--fiori-text-secondary)] tabular-nums">
+                          مجموع توقف: {toPersianDigits(events.reduce((sum, e) => sum + e.durationMinutes, 0))} دقیقه
+                        </span>
+                      </div>
+
+                      {/* 12-hour bar track */}
+                      <div className="relative h-8 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] overflow-hidden flex items-center">
+                        <div className="absolute inset-0 grid grid-cols-12 pointer-events-none divide-x divide-[var(--fiori-border-subtle)] divide-x-reverse" />
+
+                        {events.map(ev => {
+                          const [hStr, mStr] = ev.startHour.split(':');
+                          const startTotalMinutes = (parseInt(hStr, 10) - 7) * 60 + parseInt(mStr, 10);
+                          const leftPercent = Math.max(0, Math.min(100, (startTotalMinutes / 720) * 100));
+                          const widthPercent = Math.max(
+                            2,
+                            Math.min(100 - leftPercent, (ev.durationMinutes / 720) * 100)
+                          );
+
+                          return (
+                            <div
+                              key={ev.id}
+                              style={{
+                                right: `${leftPercent}%`,
+                                width: `${widthPercent}%`,
+                              }}
+                              title={`${ev.categoryLabel} (${ev.startHour} به مدت ${ev.durationMinutes} دقیقه): ${ev.reason}`}
+                              className={`absolute h-6 rounded-sm px-1.5 text-[10px] text-white font-semibold flex items-center justify-center truncate cursor-pointer shadow-xs ${ev.color}`}
+                            >
+                              {ev.durationMinutes}m
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Machine Rows */}
-            {uniqueMachines.map(mch => {
-              const events = machineDowntimes.filter(ev => ev.machineCode === mch.code);
-              return (
-                <div key={mch.code} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-[#333333]">
-                      {mch.name} <span className="font-mono text-[#666666] font-normal">({mch.code} — {mch.hall})</span>
-                    </span>
-                    <span className="text-[11px] text-[#666666]">
-                      مجموع توقف: {toPersianDigits(events.reduce((sum, e) => sum + e.durationMinutes, 0))} دقیقه
-                    </span>
-                  </div>
-
-                  {/* 12-hour bar track */}
-                  <div className="relative h-8 bg-[#ffffff] border border-[#d9d9d9] rounded-sm overflow-hidden flex items-center">
-                    {/* Background Grid Lines */}
-                    <div className="absolute inset-0 grid grid-cols-12 pointer-events-none divide-x divide-[#e8e8e8] divide-x-reverse" />
-
-                    {/* Render Events as blocks along 12 hours (7:00 to 19:00 = 720 minutes) */}
-                    {events.map(ev => {
-                      const [hStr, mStr] = ev.startHour.split(':');
-                      const startTotalMinutes = (parseInt(hStr, 10) - 7) * 60 + parseInt(mStr, 10);
-                      const leftPercent = Math.max(0, Math.min(100, (startTotalMinutes / 720) * 100));
-                      const widthPercent = Math.max(2, Math.min(100 - leftPercent, (ev.durationMinutes / 720) * 100));
-
-                      return (
-                        <div
-                          key={ev.id}
-                          style={{
-                            right: `${leftPercent}%`,
-                            width: `${widthPercent}%`,
-                          }}
-                          title={`${ev.categoryLabel} (${ev.startHour} به مدت ${ev.durationMinutes} دقیقه): ${ev.reason}`}
-                          className={`absolute h-6 rounded-xs px-1.5 text-[10px] text-white font-bold flex items-center justify-center truncate cursor-pointer shadow-xs ${ev.color}`}
-                        >
-                          {ev.durationMinutes}m
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Detailed Downtime Log Table */}
-        <div className="overflow-x-auto border border-[#d9d9d9] rounded-sm">
-          <table className="w-full text-right text-xs sap-table-compact">
-            <thead className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333]">
-              <tr>
-                <th className="py-2 px-3">کد ماشین</th>
-                <th className="py-2 px-3">نام دستگاه و پرس</th>
-                <th className="py-2 px-3">سالن</th>
-                <th className="py-2 px-3">نوع توقف</th>
-                <th className="py-2 px-3">ساعت شروع</th>
-                <th className="py-2 px-3">مدت (دقیقه)</th>
-                <th className="py-2 px-3">علت ریشه‌ای خرابی</th>
-                <th className="py-2 px-3">اقدام اصلاحی انجام‌شده (Action)</th>
-                <th className="py-2 px-3 text-center">عملیات</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e8e8e8]">
-              {filteredDowntimes.map(ev => (
-                <tr key={ev.id} className="hover:bg-[#e5f3fa]/55">
-                  <td className="py-2 px-3 font-mono font-bold text-[#333333]">{ev.machineCode}</td>
-                  <td className="py-2 px-3 font-bold text-[#333333]">{ev.machineName}</td>
-                  <td className="py-2 px-3 text-[#666666]">{ev.hall}</td>
-                  <td className="py-2 px-3">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[11px] font-bold bg-[#f8f9fa] text-[#333333] border border-[#d9d9d9]">
-                      <span className={`w-2 h-2 rounded-full ${ev.color}`} />
-                      <span>{ev.categoryLabel}</span>
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 font-mono font-bold text-[#333333]">{ev.startHour}</td>
-                  <td className="py-2 px-3 font-mono font-bold text-[#bb0000]">{toPersianDigits(ev.durationMinutes)} min</td>
-                  <td className="py-2 px-3 text-[#333333] text-[11px] leading-snug">{ev.reason}</td>
-                  <td className="py-2 px-3 text-[#107e3e] text-[11px] leading-snug">{ev.actionTaken}</td>
-                  <td className="py-2 px-3 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteDowntimeEvent(ev.id)}
-                      className="p-1 text-[#666666] hover:text-[#bb0000] hover:bg-[#ffebee] rounded-sm transition cursor-pointer"
-                      title="حذف این توقف و به‌روزرسانی آنی درصد شاخه‌های درخت OEE"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        </>
+            {/* Detailed Downtime Log Table */}
+            <FioriDataTable
+              columns={downtimeColumns}
+              data={filteredDowntimes}
+              rowKey={ev => ev.id}
+              emptyState={
+                <EmptyState
+                  compact
+                  variant="NO_DOWNTIME"
+                  actionLabel="ثبت لاگ توقف دستگاه"
+                  onAction={() => setIsLogDowntimeModalOpen(true)}
+                />
+              }
+            />
+          </>
         )}
       </div>
 
       {/* ==================================================================== */}
-      {/* SECTION 3: SCHEDULE ADHERENCE (انحراف از برنامه تولید و زمان‌بندی)    */}
+      {/* SECTION 3: SCHEDULE ADHERENCE                                        */}
       {/* ==================================================================== */}
-      <div className="sap-card p-4 space-y-3.5">
+      <div className="fiori-surface-card p-4 space-y-3.5">
         <div
           onClick={toggleAdherenceSection}
           className={`flex flex-wrap items-center justify-between gap-3 cursor-pointer ${
-            isAdherenceSectionOpen ? 'border-b border-[#e8e8e8] pb-3' : ''
+            isAdherenceSectionOpen ? 'border-b border-[var(--fiori-border-subtle)] pb-3' : ''
           }`}
         >
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-sm bg-[#e5f3fa] text-[#007cc0] border border-[#007cc0]/25 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-brand-border)] flex items-center justify-center shrink-0">
               <BarChart3 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#333333]">
+              <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)]">
                 ۳. ماتریس انحراف از برنامه تولید و تطابق زمان‌بندی (Schedule Adherence & Variance Analysis)
               </h3>
-              <p className="text-xs text-[#666666] mt-0.5 tabular-nums">
+              <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5 tabular-nums">
                 انطباق کل:{' '}
-                <strong className="font-mono text-[#007cc0]">{toPersianDigits(overallAdherencePercent)}٪</strong> ·{' '}
-                تولید سالم: <strong className="font-mono text-[#107e3e]">{formatNumber(totalActualPcs)}</strong> از{' '}
-                <strong className="font-mono text-[#333333]">{formatNumber(totalPlannedPcs)}</strong> ·{' '}
-                <span className="text-[#bb0000]">
-                  {toPersianDigits(adherenceList.filter(a => a.status === 'DELAYED' || a.status === 'CRITICAL_LAG').length)} دستور با تأخیر
+                <strong className="font-mono text-[var(--fiori-brand)]">
+                  {toPersianDigits(overallAdherencePercent)}٪
+                </strong>{' '}
+                · تولید سالم:{' '}
+                <strong className="font-mono text-[var(--fiori-positive)]">
+                  {formatNumber(totalActualPcs)}
+                </strong>{' '}
+                از{' '}
+                <strong className="font-mono text-[var(--fiori-text-primary)]">
+                  {formatNumber(totalPlannedPcs)}
+                </strong>{' '}
+                ·{' '}
+                <span className="text-[var(--fiori-negative)]">
+                  {toPersianDigits(
+                    adherenceList.filter(a => a.status === 'DELAYED' || a.status === 'CRITICAL_LAG').length
+                  )}{' '}
+                  دستور با تأخیر
                 </span>
               </p>
             </div>
@@ -1352,13 +1586,13 @@ export const ComprehensiveProductionReportView: React.FC = () => {
           <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
             {isAdherenceSectionOpen && (
               <div className="relative w-64 text-xs">
-                <Search className="w-3.5 h-3.5 text-[#666666] absolute right-2.5 top-2" />
+                <Search className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="جستجوی دستور کار یا نام قطعه..."
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] focus:border-[#007cc0] rounded-sm pr-8 pl-2.5 py-1.5 text-[#333333] focus:outline-none"
+                  className="fiori-input w-full pr-8 pl-2.5 py-1.5"
                 />
               </div>
             )}
@@ -1367,313 +1601,244 @@ export const ComprehensiveProductionReportView: React.FC = () => {
               onClick={toggleAdherenceSection}
               className="sap-btn-standard px-2.5 py-1 text-xs flex items-center gap-1 cursor-pointer whitespace-nowrap"
             >
-              <span>{isAdherenceSectionOpen ? 'بستن جدول' : `نمایش ماتریس (${toPersianDigits(filteredAdherence.length)} دستور)`}</span>
+              <span>
+                {isAdherenceSectionOpen
+                  ? 'بستن جدول'
+                  : `نمایش ماتریس (${toPersianDigits(filteredAdherence.length)} دستور)`}
+              </span>
               {isAdherenceSectionOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
           </div>
         </div>
 
         {isAdherenceSectionOpen && (
-        <>
-
-        {/* Schedule Adherence Table */}
-        <div className="overflow-x-auto border border-[#d9d9d9] rounded-sm">
-          <table className="w-full text-right text-xs sap-table-compact">
-            <thead className="bg-[#ffffff] border-b border-[#d9d9d9] text-[#333333]">
-              <tr>
-                <th className="py-2 px-3">شماره دستور کار</th>
-                <th className="py-2 px-3">نام و مشخصات قطعه</th>
-                <th className="py-2 px-3">خودرو</th>
-                <th className="py-2 px-3">زمان مصوب</th>
-                <th className="py-2 px-3">زمان واقعی</th>
-                <th className="py-2 px-3">تیراژ مصوب</th>
-                <th className="py-2 px-3 text-[#107e3e]">تولید سالم</th>
-                <th className="py-2 px-3 text-[#bb0000]">ضایعات</th>
-                <th className="py-2 px-3">درصد تحقق (Adherence)</th>
-                <th className="py-2 px-3">انحراف (تعداد)</th>
-                <th className="py-2 px-3">وضعیت انطباق</th>
-                <th className="py-2 px-3">علت ریشه‌ای تأخیر</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e8e8e8]">
-              {filteredAdherence.map(item => {
-                const statusBadge =
-                  item.status === 'AHEAD'
-                    ? { bg: 'bg-[#e8f5e9] text-[#107e3e] border-[#107e3e]/30', text: 'جلوتر از برنامه' }
-                    : item.status === 'ON_TRACK'
-                    ? { bg: 'bg-[#e5f3fa] text-[#007cc0] border-[#007cc0]/30', text: 'منطبق با برنامه' }
-                    : item.status === 'DELAYED'
-                    ? { bg: 'bg-[#fff8f0] text-[#e9730c] border-[#e9730c]/30', text: 'دارای تأخیر' }
-                    : { bg: 'bg-[#ffebee] text-[#bb0000] border-[#bb0000]/30', text: 'تأخیر بحرانی' };
-
-                return (
-                  <tr key={item.orderCode} className="hover:bg-[#e5f3fa]/55">
-                    <td className="py-2 px-3 font-mono font-bold">
-                      <button
-                        type="button"
-                        onClick={() => traceDocument(item.orderCode, 'WIP_TRACEABILITY')}
-                        className="sap-doc-link"
-                        title="رهگیری دستور کار در WIP"
-                      >
-                        {item.orderCode}
-                      </button>
-                    </td>
-                    <td className="py-2 px-3">
-                      <div className="font-bold text-[#333333]">{item.partName}</div>
-                      <button
-                        type="button"
-                        onClick={() => traceDocument(item.partCode, 'INVENTORY_LEDGER')}
-                        className="sap-doc-link text-[10px]"
-                        title="مشاهده کاردکس قطعه"
-                      >
-                        {item.partCode}
-                      </button>
-                    </td>
-                    <td className="py-2 px-3 text-[#333333]">{item.carModel}</td>
-                    <td className="py-2 px-3 font-mono text-[#666666] text-[11px]">
-                      {item.plannedStartHour} تا {item.plannedEndHour}
-                    </td>
-                    <td className="py-2 px-3 font-mono text-[#333333] text-[11px]">
-                      {item.actualStartHour} تا {item.actualEndHour}
-                    </td>
-                    <td className="py-2 px-3 font-mono font-bold text-[#333333]">
-                      {formatNumber(item.plannedQty)}
-                    </td>
-                    <td className="py-2 px-3 font-mono font-bold text-[#107e3e]">
-                      {formatNumber(item.actualProducedQty)}
-                    </td>
-                    <td className="py-2 px-3 font-mono text-[#bb0000]">
-                      {formatNumber(item.scrapQty)}
-                    </td>
-                    <td className="py-2 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-[#f0f0f0] rounded-sm h-2 overflow-hidden border border-[#d9d9d9]">
-                          <div
-                            className={`h-full ${
-                              item.adherencePercent >= 95
-                                ? 'bg-[#107e3e]'
-                                : item.adherencePercent >= 85
-                                ? 'bg-[#e9730c]'
-                                : 'bg-[#bb0000]'
-                            }`}
-                            style={{ width: `${Math.min(100, item.adherencePercent)}%` }}
-                          />
-                        </div>
-                        <span className="font-mono font-bold text-[#333333]">{toPersianDigits(item.adherencePercent)}٪</span>
-                      </div>
-                    </td>
-                    <td className="py-2 px-3 font-mono font-bold">
-                      <span className={item.varianceUnits >= 0 ? 'text-[#107e3e]' : 'text-[#bb0000]'}>
-                        {item.varianceUnits >= 0 ? `+${formatNumber(item.varianceUnits)}` : formatNumber(item.varianceUnits)}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3">
-                      <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold border ${statusBadge.bg}`}>
-                        {statusBadge.text}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-[11px] text-[#666666] leading-snug">
-                      {item.delayRootCause || '-'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        </>
+          <FioriDataTable
+            columns={adherenceColumns}
+            data={filteredAdherence}
+            rowKey={item => item.orderCode}
+            emptyState={
+              <EmptyState
+                compact
+                variant="SEARCH_NO_MATCH"
+                actionLabel="پاک‌کردن متن جستجو"
+                onAction={() => setSearchQuery('')}
+              />
+            }
+          />
         )}
       </div>
 
       {/* ==================================================================== */}
-      {/* MODAL: LOG NEW DOWNTIME / MAINTENANCE BREAKDOWN (DYNAMIC OEE ENGINE) */}
+      {/* MODAL: LOG NEW DOWNTIME / MAINTENANCE BREAKDOWN (FioriDialog)        */}
       {/* ==================================================================== */}
-      {isLogDowntimeModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#333333]/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="bg-[#ffffff] border border-[#d9d9d9] rounded-sm max-w-md w-full p-5 shadow-2xl space-y-4 text-right text-xs">
-            <div className="flex items-center justify-between border-b border-[#e8e8e8] pb-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[#007cc0]" />
-                <h4 className="font-bold text-sm text-[#333333]">
-                  ثبت لاگ توقف دستگاه و باز-محاسبه زنده شاخص OEE
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsLogDowntimeModalOpen(false)}
-                className="p-1 hover:bg-[#f5f5f5] rounded-sm text-[#666666] hover:text-[#333333] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddDowntimeEvent} className="space-y-3">
-              <div>
-                <label className="block font-bold text-[#333333] mb-1">دستگاه و خط تولید *</label>
-                <select
-                  value={newDtMachineCode}
-                  onChange={e => setNewDtMachineCode(e.target.value)}
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] focus:border-[#007cc0] rounded-sm px-3 py-1.5 font-bold text-xs text-[#333333] focus:outline-none cursor-pointer"
-                >
-                  <option value="PRS-250T-01">پرس ۲۵۰ تن ۱ (کشش/بلنک - سالن پرس)</option>
-                  <option value="PRS-160T-01">پرس ۱۶۰ تن ۱ (خم/پانچ - سالن پرس)</option>
-                  <option value="SHR-GUI-01">قیچی گیوتین ۶ متری ۱ (سالن برش)</option>
-                  <option value="PRS-800T-G1">پرس هیدرولیک ۸۰۰ تن (سالن پرس سنگین)</option>
-                  <option value="WLD-SPOT-01">پرس‌جوش مقاومتی ۱ (مهره‌جوش M6 - سالن جوش)</option>
-                  <option value="WLD-CO2-ST01">کابین جوش CO2 شماره ۱ (سالن جوش)</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">دسته‌بندی توقف *</label>
-                  <select
-                    value={newDtCategory}
-                    onChange={e => setNewDtCategory(e.target.value as any)}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] focus:border-[#007cc0] rounded-sm px-2.5 py-1.5 font-bold text-xs text-[#333333] focus:outline-none cursor-pointer"
-                  >
-                    <option value="UNPLANNED_BREAKDOWN">خرابی اضطراری (نت)</option>
-                    <option value="SETUP_CHANGE">تعویض قالب و ستاپ (SMED)</option>
-                    <option value="MINOR_STOP">توقف کوتاه / میکرو</option>
-                    <option value="MATERIAL_SHORTAGE">کسری ورق / مواد اولیه</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-bold text-[#333333] mb-1">مدت زمان توقف (دقیقه) *</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={480}
-                    required
-                    value={newDtDuration}
-                    onChange={e => setNewDtDuration(Number(e.target.value))}
-                    className="w-full bg-[#ffffff] border border-[#bfbfbf] focus:border-[#007cc0] rounded-sm px-3 py-1.5 font-mono font-bold text-xs text-[#bb0000] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#333333] mb-1">ساعت شروع توقف</label>
-                <input
-                  type="text"
-                  placeholder="مثلاً 10:30"
-                  value={newDtStartHour}
-                  onChange={e => setNewDtStartHour(e.target.value)}
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] focus:border-[#007cc0] rounded-sm px-3 py-1.5 font-mono text-xs text-[#333333] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#333333] mb-1">علت توقف و ریشه‌یابی عیب *</label>
-                <textarea
-                  rows={2}
-                  required
-                  placeholder="شرح خرابی، نشت روغن، شکست سنبه، عیب الکتریکی..."
-                  value={newDtReason}
-                  onChange={e => setNewDtReason(e.target.value)}
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] focus:border-[#007cc0] rounded-sm px-3 py-1.5 text-xs text-[#333333] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#333333] mb-1">اقدام اصلاحی و عملیات نت (PM)</label>
-                <input
-                  type="text"
-                  placeholder="تعویض پکینگ، هواگیری، تیزکاری تیغه..."
-                  value={newDtAction}
-                  onChange={e => setNewDtAction(e.target.value)}
-                  className="w-full bg-[#ffffff] border border-[#bfbfbf] focus:border-[#007cc0] rounded-sm px-3 py-1.5 text-xs text-[#333333] focus:outline-none"
-                />
-              </div>
-
-              <div className="p-2.5 rounded-sm bg-[#fff8f0] border border-[#e9730c]/30 text-[10px] text-[#333333] leading-relaxed">
-                با فشردن دکمه ثبت، زمان توقف مستقیماً از ساعت کارکرد خالص کم شده و شاخص دسترس‌پذیری (Availability) و OEE در نمودار درختی بلافاصله باز-محاسبه می‌گردد.
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#e8e8e8]">
-                <button
-                  type="button"
-                  onClick={() => setIsLogDowntimeModalOpen(false)}
-                  className="sap-btn-standard px-4 py-1.5 cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="sap-btn-emphasized px-5 py-1.5 cursor-pointer flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>ثبت توقف و باز-محاسبه OEE</span>
-                </button>
-              </div>
-            </form>
+      <FioriDialog
+        isOpen={isLogDowntimeModalOpen}
+        onClose={() => setIsLogDowntimeModalOpen(false)}
+        title="ثبت لاگ توقف دستگاه و باز-محاسبه زنده شاخص OEE"
+        icon={<Clock className="w-4 h-4" />}
+        tone="brand"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsLogDowntimeModalOpen(false)}
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="log-downtime-form"
+              className="sap-btn-emphasized px-5 py-1.5 text-xs cursor-pointer flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>ثبت توقف و باز-محاسبه OEE</span>
+            </button>
+          </>
+        }
+      >
+        <form id="log-downtime-form" onSubmit={handleAddDowntimeEvent} className="space-y-3 text-xs">
+          <div>
+            <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">
+              دستگاه و خط تولید *
+            </label>
+            <select
+              value={newDtMachineCode}
+              onChange={e => setNewDtMachineCode(e.target.value)}
+              className="fiori-input w-full px-3 py-1.5 font-semibold cursor-pointer"
+            >
+              <option value="PRS-250T-01">پرس ۲۵۰ تن ۱ (کشش/بلنک - سالن پرس)</option>
+              <option value="PRS-160T-01">پرس ۱۶۰ تن ۱ (خم/پانچ - سالن پرس)</option>
+              <option value="SHR-GUI-01">قیچی گیوتین ۶ متری ۱ (سالن برش)</option>
+              <option value="PRS-800T-G1">پرس هیدرولیک ۸۰۰ تن (سالن پرس سنگین)</option>
+              <option value="WLD-SPOT-01">پرس‌جوش مقاومتی ۱ (مهره‌جوش M6 - سالن جوش)</option>
+              <option value="WLD-CO2-ST01">کابین جوش CO2 شماره ۱ (سالن جوش)</option>
+            </select>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">
+                دسته‌بندی توقف *
+              </label>
+              <select
+                value={newDtCategory}
+                onChange={e =>
+                  setNewDtCategory(
+                    e.target.value as
+                      | 'SETUP_CHANGE'
+                      | 'UNPLANNED_BREAKDOWN'
+                      | 'MINOR_STOP'
+                      | 'MATERIAL_SHORTAGE'
+                  )
+                }
+                className="fiori-input w-full px-2.5 py-1.5 font-semibold cursor-pointer"
+              >
+                <option value="UNPLANNED_BREAKDOWN">خرابی اضطراری (نت)</option>
+                <option value="SETUP_CHANGE">تعویض قالب و ستاپ (SMED)</option>
+                <option value="MINOR_STOP">توقف کوتاه / میکرو</option>
+                <option value="MATERIAL_SHORTAGE">کسری ورق / مواد اولیه</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">
+                مدت زمان توقف (دقیقه) *
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={480}
+                required
+                value={newDtDuration}
+                onChange={e => setNewDtDuration(Number(e.target.value))}
+                className="fiori-input w-full px-3 py-1.5 font-mono font-semibold text-[var(--fiori-negative)]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">
+              ساعت شروع توقف
+            </label>
+            <input
+              type="text"
+              placeholder="مثلاً 10:30"
+              value={newDtStartHour}
+              onChange={e => setNewDtStartHour(e.target.value)}
+              className="fiori-input w-full px-3 py-1.5 font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">
+              علت توقف و ریشه‌یابی عیب *
+            </label>
+            <textarea
+              rows={2}
+              required
+              placeholder="شرح خرابی، نشت روغن، شکست سنبه، عیب الکتریکی..."
+              value={newDtReason}
+              onChange={e => setNewDtReason(e.target.value)}
+              className="fiori-input w-full px-3 py-1.5"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-[var(--fiori-text-primary)] mb-1">
+              اقدام اصلاحی و عملیات نت (PM)
+            </label>
+            <input
+              type="text"
+              placeholder="تعویض پکینگ، هواگیری، تیزکاری تیغه..."
+              value={newDtAction}
+              onChange={e => setNewDtAction(e.target.value)}
+              className="fiori-input w-full px-3 py-1.5"
+            />
+          </div>
+
+          <FioriMessageStrip tone="warning" compact>
+            با فشردن دکمه ثبت، زمان توقف مستقیماً از ساعت کارکرد خالص کم شده و شاخص دسترس‌پذیری (Availability) و OEE در نمودار درختی بلافاصله باز-محاسبه می‌گردد.
+          </FioriMessageStrip>
+        </form>
+      </FioriDialog>
 
       {/* ==================================================================== */}
-      {/* SLIDE-OVER DRAWER: OEE TREE BRANCH DRILL-DOWN (RECORDS BEHIND NODE)  */}
+      {/* SLIDE-OVER DRAWER: OEE TREE BRANCH DRILL-DOWN                        */}
       {/* ==================================================================== */}
       {oeeDrillDownContext && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-[#333333]/40 backdrop-blur-[1px] flex justify-end animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl bg-[#ffffff] h-full shadow-2xl flex flex-col text-right text-xs border-r border-[#d9d9d9]">
-            <div className="p-4 border-b border-[#d9d9d9] bg-[#f8f9fa] flex items-center justify-between">
+        <div className="fixed inset-0 z-50 overflow-hidden bg-[#1d2d3e]/40 backdrop-blur-[1px] flex justify-end no-print">
+          <div className="relative w-full max-w-2xl bg-[var(--fiori-bg-surface)] h-full shadow-[var(--fiori-shadow-dialog)] flex flex-col text-right text-xs border-r border-[var(--fiori-border-default)]">
+            <div className="p-4 border-b border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)] flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-sm bg-[#e5f3fa] text-[#007cc0] border border-[#007cc0]/25 text-[10px] font-bold">
-                    Drill-Down شاخه درخت OEE
-                  </span>
-                  <span className="font-mono font-bold text-[#333333] text-sm">
+                  <FioriObjectStatus tone="brand" label="Drill-Down شاخه درخت OEE" />
+                  <span className="font-mono font-bold text-[var(--fiori-text-primary)] text-sm tabular-nums">
                     {oeeDrillDownContext.metric}
                   </span>
                 </div>
-                <h3 className="font-bold text-sm text-[#333333] mt-1">{oeeDrillDownContext.title}</h3>
-                <p className="text-[#666666] text-[11px] mt-0.5">{oeeDrillDownContext.description}</p>
+                <h3 className="font-semibold text-sm text-[var(--fiori-text-primary)] mt-1">
+                  {oeeDrillDownContext.title}
+                </h3>
+                <p className="text-[var(--fiori-text-secondary)] text-[11px] mt-0.5">
+                  {oeeDrillDownContext.description}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setOeeDrillDownContext(null)}
-                className="p-1.5 text-[#666666] hover:text-[#333333] rounded-sm hover:bg-[#e8e8e8] cursor-pointer"
+                className="p-1.5 text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] rounded-[var(--fiori-radius-sm)] hover:bg-[var(--fiori-bg-hover)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-3 bg-[#e5f3fa] border-b border-[#007cc0]/20 text-[11px] text-[#333333] flex items-center justify-between">
-              <span>دسته‌بندی: <strong>{oeeDrillDownContext.categoryLabel}</strong></span>
-              <span>تعداد رویدادهای خام: <strong>{toPersianDigits(oeeDrillDownContext.events.length)} مورد</strong></span>
+            <div className="p-3 bg-[var(--fiori-brand-bg)] border-b border-[var(--fiori-brand-border)] text-[11px] text-[var(--fiori-text-primary)] flex items-center justify-between">
+              <span>
+                دسته‌بندی: <strong>{oeeDrillDownContext.categoryLabel}</strong>
+              </span>
+              <span className="tabular-nums">
+                تعداد رویدادهای خام:{' '}
+                <strong>{toPersianDigits(oeeDrillDownContext.events.length)} مورد</strong>
+              </span>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
               {oeeDrillDownContext.events.length > 0 ? (
                 oeeDrillDownContext.events.map(ev => (
-                  <div key={ev.id} className="p-3 bg-[#f8f9fa] border border-[#d9d9d9] rounded-sm space-y-1.5 hover:bg-[#ffffff] transition">
+                  <div
+                    key={ev.id}
+                    className="p-3 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] space-y-1.5 hover:bg-[var(--fiori-bg-surface)] transition"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold bg-[#007cc0] text-white px-2 py-0.5 rounded-sm text-[10px]">
-                          {ev.machineCode}
-                        </span>
-                        <strong className="text-[#333333] text-xs">{ev.machineName}</strong>
+                        <FioriObjectStatus tone="brand" label={ev.machineCode} ltrCode />
+                        <strong className="text-[var(--fiori-text-primary)] text-xs">
+                          {ev.machineName}
+                        </strong>
                       </div>
-                      <span className="font-mono font-bold text-[#bb0000] text-xs bg-[#ffebee] border border-[#bb0000]/25 px-2 py-0.5 rounded-sm">
-                        {toPersianDigits(ev.durationMinutes)} دقیقه توقف
-                      </span>
+                      <FioriObjectStatus
+                        tone="negative"
+                        label={`${toPersianDigits(ev.durationMinutes)} دقیقه توقف`}
+                      />
                     </div>
-                    <div className="text-[11px] text-[#333333] leading-snug">
-                      <span className="text-[#666666] font-semibold">علت خرابی: </span>
+                    <div className="text-[11px] text-[var(--fiori-text-primary)] leading-snug">
+                      <span className="text-[var(--fiori-text-secondary)] font-semibold">
+                        علت خرابی:{' '}
+                      </span>
                       {ev.reason}
                     </div>
-                    <div className="text-[11px] text-[#107e3e] leading-snug">
-                      <span className="text-[#107e3e] font-semibold">اقدام اصلاحی نت: </span>
+                    <div className="text-[11px] text-[var(--fiori-positive)] leading-snug">
+                      <span className="font-semibold">اقدام اصلاحی نت: </span>
                       {ev.actionTaken}
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-[#666666] font-mono pt-1 border-t border-[#e8e8e8]">
+                    <div className="flex items-center justify-between text-[10px] text-[var(--fiori-text-secondary)] font-mono pt-1 border-t border-[var(--fiori-border-subtle)]">
                       <span>سالن: {ev.hall}</span>
                       <span>شروع: {ev.startHour}</span>
                       <button
                         type="button"
                         onClick={() => handleDeleteDowntimeEvent(ev.id)}
-                        className="text-[#bb0000] hover:underline flex items-center gap-0.5 cursor-pointer"
+                        className="text-[var(--fiori-negative)] hover:underline flex items-center gap-0.5 cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" />
                         <span>حذف رویداد</span>
@@ -1682,13 +1847,19 @@ export const ComprehensiveProductionReportView: React.FC = () => {
                   </div>
                 ))
               ) : (
-                <div className="p-12 text-center text-[#666666]">
-                  هیچ لاگ توقفی در این شاخه ثبت نشده است.
-                </div>
+                <EmptyState
+                  compact
+                  variant="NO_DOWNTIME"
+                  actionLabel="ثبت لاگ توقف جدید"
+                  onAction={() => {
+                    setOeeDrillDownContext(null);
+                    setIsLogDowntimeModalOpen(true);
+                  }}
+                />
               )}
             </div>
 
-            <div className="p-3 border-t border-[#d9d9d9] bg-[#f8f9fa] flex justify-between items-center">
+            <div className="p-3 border-t border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)] flex justify-between items-center">
               <button
                 type="button"
                 onClick={() => {
@@ -1711,6 +1882,6 @@ export const ComprehensiveProductionReportView: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </FioriDynamicPage>
   );
 };
