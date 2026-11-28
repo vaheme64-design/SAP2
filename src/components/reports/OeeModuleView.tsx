@@ -4,11 +4,9 @@ import {
   Activity,
   ShieldCheck,
   Zap,
-  AlertTriangle,
   RefreshCw,
   Download,
   Printer,
-  CheckCircle2,
   Clock,
   Layers,
   Wrench,
@@ -19,20 +17,33 @@ import {
   FileSpreadsheet,
   Info,
   ExternalLink,
-  Filter,
   Database,
-  AlertCircle,
 } from 'lucide-react';
 import type {
   OeeAnalyticsResponse,
   OeeAnalyticsMachineRow,
+  OeeAnalyticsShiftRow,
   OeeAnalyticsOperationRow,
+  OeeAnalyticsDailyRow,
+  OeeSourceReportRecord,
+  OeeSourceDowntimeEvent,
+  OeeSourceAssignmentRecord,
   OeeDataQualityStatus,
   OeeDowntimeCategory,
 } from '../../types/oeeAndConsumables';
 import { formatNumber, toPersianDigits } from '../../utils/formatters';
 import { ReportModuleSkeleton } from '../common/Skeleton';
 import { useErpRouter } from '../../context/RouterContext';
+import {
+  FioriDynamicPage,
+  FioriDataTable,
+  FioriToolbar,
+  FioriObjectStatus,
+  FioriMessageStrip,
+  type FioriTableColumn,
+  type FioriStatusTone,
+} from '../fiori/ui';
+import { EmptyState } from '../common/EmptyState';
 
 export interface OeeModuleViewProps {
   machines?: any[];
@@ -48,48 +59,44 @@ type DrilldownTarget =
 
 const DATA_QUALITY_META: Record<
   OeeDataQualityStatus,
-  { labelFa: string; badgeClass: string; borderClass: string }
+  { labelFa: string; tone: FioriStatusTone }
 > = {
   RELIABLE: {
     labelFa: 'معتبر (داده کامل)',
-    badgeClass: 'bg-[#e8f5e9] text-[#107e3e] border-[#107e3e]/30',
-    borderClass: 'border-r-[#107e3e]',
+    tone: 'positive',
   },
   PARTIAL: {
     labelFa: 'ناقص جزئی (نیاز به بررسی)',
-    badgeClass: 'bg-[#fff4e5] text-[#b45309] border-[#e9730c]/30',
-    borderClass: 'border-r-[#e9730c]',
+    tone: 'critical',
   },
   UNRELIABLE: {
     labelFa: 'نامعتبر / ناسازگار',
-    badgeClass: 'bg-[#fdecea] text-[#bb0000] border-[#bb0000]/30',
-    borderClass: 'border-r-[#bb0000]',
+    tone: 'negative',
   },
   INSUFFICIENT_DATA: {
     labelFa: 'داده ناکافی (عدم محاسبه)',
-    badgeClass: 'bg-[#f2f4f7] text-[#475467] border-[#d0d5dd]',
-    borderClass: 'border-r-[#667085]',
+    tone: 'neutral',
   },
 };
 
 const DOWNTIME_CATEGORY_META: Record<
   OeeDowntimeCategory,
-  { labelFa: string; badgeClass: string; barColor: string }
+  { labelFa: string; tone: FioriStatusTone; barClass: string }
 > = {
   UNPLANNED: {
     labelFa: 'توقف اضطراری / خرابی',
-    badgeClass: 'bg-[#fdecea] text-[#bb0000] border-[#bb0000]/25',
-    barColor: 'bg-[#bb0000]',
+    tone: 'negative',
+    barClass: 'bg-[var(--fiori-negative)]',
   },
   SETUP: {
     labelFa: 'ستاپ و تعویض قالب',
-    badgeClass: 'bg-[#fff4e5] text-[#b45309] border-[#e9730c]/25',
-    barColor: 'bg-[#e9730c]',
+    tone: 'critical',
+    barClass: 'bg-[var(--fiori-critical)]',
   },
   PLANNED: {
     labelFa: 'توقف برنامه‌ریزی‌شده (PM)',
-    badgeClass: 'bg-[#e5f3fa] text-[#007cc0] border-[#007cc0]/25',
-    barColor: 'bg-[#007cc0]',
+    tone: 'info',
+    barClass: 'bg-[var(--fiori-brand)]',
   },
 };
 
@@ -118,11 +125,11 @@ function formatSecondsFa(sec: number | null | undefined): string {
 }
 
 function getOeeValueColor(value: number | null): string {
-  if (value === null) return 'text-[#667085]';
-  if (value >= 85) return 'text-[#107e3e]';
-  if (value >= 70) return 'text-[#007cc0]';
-  if (value >= 55) return 'text-[#b45309]';
-  return 'text-[#bb0000]';
+  if (value === null) return 'text-[var(--fiori-text-muted)]';
+  if (value >= 85) return 'text-[var(--fiori-positive)]';
+  if (value >= 70) return 'text-[var(--fiori-brand)]';
+  if (value >= 55) return 'text-[var(--fiori-critical)]';
+  return 'text-[var(--fiori-negative)]';
 }
 
 export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
@@ -249,6 +256,828 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
     };
   }, [drilldown, data]);
 
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (startDate) count += 1;
+    if (endDate) count += 1;
+    if (machineFilter !== 'ALL') count += 1;
+    if (shiftFilter !== 'ALL') count += 1;
+    if (hallFilter !== 'ALL') count += 1;
+    return count;
+  }, [startDate, endDate, machineFilter, shiftFilter, hallFilter]);
+
+  const machineColumns = useMemo<FioriTableColumn<OeeAnalyticsMachineRow>[]>(
+    () => [
+      {
+        key: 'machine',
+        header: 'ماشین / سالن',
+        sortable: true,
+        sortValue: m => m.machineCode,
+        render: m => (
+          <div>
+            <div className="fiori-ltr-code font-semibold text-[var(--fiori-text-primary)] font-mono">
+              {m.machineCode}
+            </div>
+            <div className="text-[11px] text-[var(--fiori-text-secondary)]">{m.machineName}</div>
+            <div className="text-[10px] text-[var(--fiori-text-muted)]">{m.hallLocation}</div>
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'وضعیت داده',
+        sortable: true,
+        sortValue: m => m.dataQualityStatus,
+        render: m => {
+          const rowDq = DATA_QUALITY_META[m.dataQualityStatus];
+          return (
+            <div>
+              <FioriObjectStatus tone={rowDq.tone} label={rowDq.labelFa} icon />
+              {m.missingInputs.length > 0 && (
+                <div className="text-[10px] text-[var(--fiori-critical)] mt-1">
+                  مفقود: {m.missingInputs.join('، ')}
+                </div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        key: 'availability',
+        header: 'دسترس‌پذیری (A)',
+        align: 'center',
+        sortable: true,
+        sortValue: m => m.availabilityPercent ?? -1,
+        isMono: true,
+        render: m => (
+          <span className={`font-semibold ${getOeeValueColor(m.availabilityPercent)}`}>
+            {formatPercentOrNull(m.availabilityPercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'performance',
+        header: 'عملکرد (P)',
+        align: 'center',
+        sortable: true,
+        sortValue: m => m.performancePercent ?? -1,
+        isMono: true,
+        render: m => (
+          <div className={`font-semibold ${getOeeValueColor(m.performancePercent)}`}>
+            <div>{formatPercentOrNull(m.performancePercent)}</div>
+            {m.rawPerformancePercent !== null && m.rawPerformancePercent > 100.5 && (
+              <div className="text-[10px] text-[var(--fiori-negative)]">
+                خام: {formatPercentOrNull(m.rawPerformancePercent)}
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'quality',
+        header: 'کیفیت (Q)',
+        align: 'center',
+        sortable: true,
+        sortValue: m => m.qualityPercent ?? -1,
+        isMono: true,
+        render: m => (
+          <span className={`font-semibold ${getOeeValueColor(m.qualityPercent)}`}>
+            {formatPercentOrNull(m.qualityPercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'oee',
+        header: 'OEE',
+        align: 'center',
+        sortable: true,
+        sortValue: m => m.oeePercent ?? -1,
+        isMono: true,
+        render: m => (
+          <span className={`font-semibold text-sm ${getOeeValueColor(m.oeePercent)}`}>
+            {formatPercentOrNull(m.oeePercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'planVsActual',
+        header: 'واقعی / برنامه',
+        align: 'center',
+        sortable: true,
+        sortValue: m => m.goodQty,
+        isMono: true,
+        render: m => (
+          <div>
+            <div>
+              <strong className="text-[var(--fiori-text-primary)]">{formatNumber(m.goodQty)}</strong> /{' '}
+              {formatNumber(m.plannedQty)}
+            </div>
+            <div className="text-[10px] text-[var(--fiori-text-muted)]">
+              تحقق: {formatPercentOrNull(m.planAdherencePercent)}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'goodScrap',
+        header: 'سالم / ضایعات',
+        align: 'center',
+        isMono: true,
+        render: m => (
+          <span>
+            <span className="text-[var(--fiori-positive)] font-semibold">{formatNumber(m.goodQty)}</span>
+            <span className="mx-1 text-[var(--fiori-text-muted)]">/</span>
+            <span className="text-[var(--fiori-negative)] font-semibold">
+              {formatNumber(m.scrapQty + m.rejectedQty)}
+            </span>
+          </span>
+        ),
+      },
+      {
+        key: 'timeBreakdown',
+        header: 'زمان (تولید/ستاپ/PM/خرابی)',
+        align: 'center',
+        isMono: true,
+        hideBelow: 'lg',
+        render: m => (
+          <span className="text-[11px]">
+            <span className="text-[var(--fiori-positive)]" title="کارکرد">
+              {toPersianDigits(m.time.operatingTimeMinutes)}
+            </span>
+            {' / '}
+            <span className="text-[var(--fiori-critical)]" title="ستاپ">
+              {toPersianDigits(m.time.setupTimeMinutes)}
+            </span>
+            {' / '}
+            <span className="text-[var(--fiori-brand)]" title="توقف برنامه‌ریزی">
+              {toPersianDigits(m.time.plannedDowntimeMinutes)}
+            </span>
+            {' / '}
+            <span className="text-[var(--fiori-negative)]" title="خرابی اضطراری">
+              {toPersianDigits(m.time.unplannedDowntimeMinutes)}
+            </span>
+          </span>
+        ),
+      },
+      {
+        key: 'cycle',
+        header: 'سیکل (استاندارد / واقعی)',
+        align: 'center',
+        isMono: true,
+        hideBelow: 'md',
+        render: m => (
+          <div className="text-[11px]">
+            <div>
+              {m.idealCycleTimeSec != null ? `${toPersianDigits(m.idealCycleTimeSec.toFixed(1))}s` : 'ناموجود'}
+            </div>
+            <div className="text-[var(--fiori-text-muted)]">
+              {m.actualCycleTimeSec != null ? `${toPersianDigits(m.actualCycleTimeSec.toFixed(1))}s` : '—'}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'records',
+        header: 'سوابق',
+        align: 'center',
+        render: m => (
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setDrilldown({ kind: 'MACHINE', row: m });
+            }}
+            className="sap-btn-standard inline-flex items-center gap-1 px-2 py-1 text-[11px] text-[var(--fiori-brand)] font-semibold cursor-pointer"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>{toPersianDigits(m.reportsCount + m.downtimeEventsCount)}</span>
+          </button>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const shiftColumns = useMemo<FioriTableColumn<OeeAnalyticsShiftRow>[]>(
+    () => [
+      {
+        key: 'shift',
+        header: 'شیفت کاری',
+        sortable: true,
+        sortValue: s => s.shiftName,
+        render: s => (
+          <div>
+            <div className="font-semibold text-[var(--fiori-text-primary)]">{s.shiftName}</div>
+            <div className="text-[10px] font-mono text-[var(--fiori-text-muted)]">
+              <span className="fiori-ltr-code">{s.shiftCode}</span> • {toPersianDigits(s.productiveHoursPerShift)} ساعت/شیفت
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'وضعیت داده',
+        render: s => {
+          const rowDq = DATA_QUALITY_META[s.dataQualityStatus];
+          return <FioriObjectStatus tone={rowDq.tone} label={rowDq.labelFa} icon />;
+        },
+      },
+      {
+        key: 'availability',
+        header: 'دسترس‌پذیری (A)',
+        align: 'center',
+        sortable: true,
+        sortValue: s => s.availabilityPercent ?? -1,
+        isMono: true,
+        render: s => (
+          <span className={`font-semibold ${getOeeValueColor(s.availabilityPercent)}`}>
+            {formatPercentOrNull(s.availabilityPercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'performance',
+        header: 'عملکرد (P)',
+        align: 'center',
+        sortable: true,
+        sortValue: s => s.performancePercent ?? -1,
+        isMono: true,
+        render: s => (
+          <span className={`font-semibold ${getOeeValueColor(s.performancePercent)}`}>
+            {formatPercentOrNull(s.performancePercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'quality',
+        header: 'کیفیت (Q)',
+        align: 'center',
+        sortable: true,
+        sortValue: s => s.qualityPercent ?? -1,
+        isMono: true,
+        render: s => (
+          <span className={`font-semibold ${getOeeValueColor(s.qualityPercent)}`}>
+            {formatPercentOrNull(s.qualityPercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'oee',
+        header: 'OEE',
+        align: 'center',
+        sortable: true,
+        sortValue: s => s.oeePercent ?? -1,
+        isMono: true,
+        render: s => (
+          <span className={`font-semibold text-sm ${getOeeValueColor(s.oeePercent)}`}>
+            {formatPercentOrNull(s.oeePercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'planVsActual',
+        header: 'واقعی / برنامه',
+        align: 'center',
+        isMono: true,
+        render: s => (
+          <span>
+            {formatNumber(s.goodQty)} / {formatNumber(s.plannedQty)}
+          </span>
+        ),
+      },
+      {
+        key: 'goodScrap',
+        header: 'سالم / ضایعات',
+        align: 'center',
+        isMono: true,
+        render: s => (
+          <span>
+            <span className="text-[var(--fiori-positive)] font-semibold">{formatNumber(s.goodQty)}</span>
+            {' / '}
+            <span className="text-[var(--fiori-negative)] font-semibold">
+              {formatNumber(s.scrapQty + s.rejectedQty)}
+            </span>
+          </span>
+        ),
+      },
+      {
+        key: 'opTime',
+        header: 'کارکرد (دقیقه)',
+        align: 'center',
+        sortable: true,
+        sortValue: s => s.time.operatingTimeMinutes,
+        isMono: true,
+        render: s => toPersianDigits(s.time.operatingTimeMinutes),
+      },
+      {
+        key: 'losses',
+        header: 'ستاپ / PM / خرابی',
+        align: 'center',
+        isMono: true,
+        hideBelow: 'md',
+        render: s => (
+          <span className="text-[11px]">
+            <span className="text-[var(--fiori-critical)]">{toPersianDigits(s.time.setupTimeMinutes)}</span>
+            {' / '}
+            <span className="text-[var(--fiori-brand)]">{toPersianDigits(s.time.plannedDowntimeMinutes)}</span>
+            {' / '}
+            <span className="text-[var(--fiori-negative)]">{toPersianDigits(s.time.unplannedDowntimeMinutes)}</span>
+          </span>
+        ),
+      },
+      {
+        key: 'reportsCount',
+        header: 'تعداد گزارش',
+        align: 'center',
+        sortable: true,
+        sortValue: s => s.reportsCount,
+        isMono: true,
+        render: s => toPersianDigits(s.reportsCount),
+      },
+    ],
+    [],
+  );
+
+  const operationColumns = useMemo<FioriTableColumn<OeeAnalyticsOperationRow>[]>(
+    () => [
+      {
+        key: 'moPart',
+        header: 'دستور کار / قطعه',
+        sortable: true,
+        sortValue: op => op.moNumber,
+        render: op => (
+          <div>
+            <div className="fiori-ltr-code font-semibold font-mono text-[var(--fiori-brand)]">
+              {op.moNumber}
+            </div>
+            <div className="text-[11px] text-[var(--fiori-text-primary)]">{op.partName}</div>
+            <div className="fiori-ltr-code text-[10px] font-mono text-[var(--fiori-text-muted)]">
+              {op.partCode}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'opMachine',
+        header: 'عملیات / ماشین',
+        sortable: true,
+        sortValue: op => op.stepCode,
+        render: op => (
+          <div>
+            <div className="font-semibold text-[var(--fiori-text-primary)]">
+              <span className="fiori-ltr-code font-mono">{op.stepCode}</span> — {op.stepName}
+            </div>
+            <div className="text-[10px] text-[var(--fiori-text-muted)]">
+              {op.machineCode ? `${op.machineCode} (${op.machineName})` : 'بدون ماشین تخصیص‌یافته'}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'کیفیت داده',
+        render: op => {
+          const rowDq = DATA_QUALITY_META[op.dataQualityStatus];
+          return <FioriObjectStatus tone={rowDq.tone} label={rowDq.labelFa} icon />;
+        },
+      },
+      {
+        key: 'quantities',
+        header: 'برنامه / سالم / ضایعات',
+        align: 'center',
+        isMono: true,
+        render: op => (
+          <span>
+            <span>{formatNumber(op.plannedQty)}</span>
+            {' / '}
+            <strong className="text-[var(--fiori-positive)]">{formatNumber(op.goodQty)}</strong>
+            {' / '}
+            <strong className="text-[var(--fiori-negative)]">{formatNumber(op.scrapQty + op.rejectedQty)}</strong>
+          </span>
+        ),
+      },
+      {
+        key: 'adherence',
+        header: 'تحقق',
+        align: 'center',
+        sortable: true,
+        sortValue: op => op.planAdherencePercent ?? -1,
+        isMono: true,
+        render: op => (
+          <span className="font-semibold">{formatPercentOrNull(op.planAdherencePercent)}</span>
+        ),
+      },
+      {
+        key: 'apq',
+        header: 'A / P / Q',
+        align: 'center',
+        isMono: true,
+        hideBelow: 'md',
+        render: op => (
+          <span className="text-[11px]">
+            <span>{formatPercentOrNull(op.availabilityPercent)}</span>
+            {' • '}
+            <span>{formatPercentOrNull(op.performancePercent)}</span>
+            {' • '}
+            <span>{formatPercentOrNull(op.qualityPercent)}</span>
+          </span>
+        ),
+      },
+      {
+        key: 'oee',
+        header: 'OEE',
+        align: 'center',
+        sortable: true,
+        sortValue: op => op.oeePercent ?? -1,
+        isMono: true,
+        render: op => (
+          <span className={`font-semibold ${getOeeValueColor(op.oeePercent)}`}>
+            {formatPercentOrNull(op.oeePercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'cycle',
+        header: 'سیکل (استاندارد/واقعی)',
+        align: 'center',
+        isMono: true,
+        hideBelow: 'lg',
+        render: op => (
+          <span className="text-[11px]">
+            {op.idealCycleTimeSec != null ? `${toPersianDigits(op.idealCycleTimeSec.toFixed(1))}s` : 'ناموجود'}
+            {' / '}
+            {op.actualCycleTimeSec != null ? `${toPersianDigits(op.actualCycleTimeSec.toFixed(1))}s` : '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'records',
+        header: 'سوابق',
+        align: 'center',
+        render: op => (
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setDrilldown({ kind: 'OPERATION', row: op });
+            }}
+            className="sap-btn-standard inline-flex items-center gap-1 px-2 py-1 text-[11px] text-[var(--fiori-brand)] font-semibold cursor-pointer"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>{toPersianDigits(op.reportsCount)}</span>
+          </button>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const dailyColumns = useMemo<FioriTableColumn<OeeAnalyticsDailyRow>[]>(
+    () => [
+      {
+        key: 'date',
+        header: 'تاریخ (میلادی)',
+        sortable: true,
+        sortValue: d => d.date,
+        isLtrCode: true,
+        render: d => <span className="font-semibold text-[var(--fiori-text-primary)]">{d.date}</span>,
+      },
+      {
+        key: 'activeMachines',
+        header: 'ماشین فعال',
+        align: 'center',
+        sortable: true,
+        sortValue: d => d.activeMachinesCount,
+        isMono: true,
+        render: d => toPersianDigits(d.activeMachinesCount),
+      },
+      {
+        key: 'status',
+        header: 'وضعیت داده',
+        align: 'center',
+        render: d => {
+          const rowDq = DATA_QUALITY_META[d.dataQualityStatus];
+          return <FioriObjectStatus tone={rowDq.tone} label={rowDq.labelFa} icon />;
+        },
+      },
+      {
+        key: 'availability',
+        header: 'دسترس‌پذیری (A)',
+        align: 'center',
+        sortable: true,
+        sortValue: d => d.availabilityPercent ?? -1,
+        isMono: true,
+        render: d => (
+          <span className={`font-semibold ${getOeeValueColor(d.availabilityPercent)}`}>
+            {formatPercentOrNull(d.availabilityPercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'performance',
+        header: 'عملکرد (P)',
+        align: 'center',
+        sortable: true,
+        sortValue: d => d.performancePercent ?? -1,
+        isMono: true,
+        render: d => (
+          <span className={`font-semibold ${getOeeValueColor(d.performancePercent)}`}>
+            {formatPercentOrNull(d.performancePercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'quality',
+        header: 'کیفیت (Q)',
+        align: 'center',
+        sortable: true,
+        sortValue: d => d.qualityPercent ?? -1,
+        isMono: true,
+        render: d => (
+          <span className={`font-semibold ${getOeeValueColor(d.qualityPercent)}`}>
+            {formatPercentOrNull(d.qualityPercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'oee',
+        header: 'OEE',
+        align: 'center',
+        sortable: true,
+        sortValue: d => d.oeePercent ?? -1,
+        isMono: true,
+        render: d => (
+          <span className={`font-semibold ${getOeeValueColor(d.oeePercent)}`}>
+            {formatPercentOrNull(d.oeePercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'goodScrap',
+        header: 'سالم / ضایعات',
+        align: 'center',
+        isMono: true,
+        render: d => (
+          <span>
+            <span className="text-[var(--fiori-positive)] font-semibold">{formatNumber(d.goodQty)}</span>
+            {' / '}
+            <span className="text-[var(--fiori-negative)] font-semibold">
+              {formatNumber(d.scrapQty + d.rejectedQty)}
+            </span>
+          </span>
+        ),
+      },
+      {
+        key: 'timeBreakdown',
+        header: 'کارکرد / ستاپ / PM / خرابی (دقیقه)',
+        align: 'center',
+        isMono: true,
+        hideBelow: 'md',
+        render: d => (
+          <span className="text-[11px]">
+            <span className="text-[var(--fiori-positive)]">{toPersianDigits(d.time.operatingTimeMinutes)}</span>
+            {' / '}
+            <span className="text-[var(--fiori-critical)]">{toPersianDigits(d.time.setupTimeMinutes)}</span>
+            {' / '}
+            <span className="text-[var(--fiori-brand)]">{toPersianDigits(d.time.plannedDowntimeMinutes)}</span>
+            {' / '}
+            <span className="text-[var(--fiori-negative)]">{toPersianDigits(d.time.unplannedDowntimeMinutes)}</span>
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const sourceReportColumns = useMemo<FioriTableColumn<OeeSourceReportRecord>[]>(
+    () => [
+      {
+        key: 'reportNumber',
+        header: 'شماره گزارش / تاریخ',
+        sortable: true,
+        sortValue: r => r.dateKey,
+        isMono: true,
+        render: r => (
+          <div>
+            <div className="fiori-ltr-code font-semibold text-[var(--fiori-text-primary)]">{r.reportNumber}</div>
+            <div className="fiori-ltr-code text-[10px] text-[var(--fiori-text-muted)]">{r.dateKey}</div>
+          </div>
+        ),
+      },
+      {
+        key: 'mo',
+        header: 'دستور کار / عملیات',
+        sortable: true,
+        sortValue: r => r.moNumber,
+        render: r => (
+          <div>
+            <div className="fiori-ltr-code font-mono font-semibold text-[var(--fiori-brand)]">{r.moNumber}</div>
+            <div className="text-[11px] text-[var(--fiori-text-primary)]">
+              <span className="fiori-ltr-code font-mono">{r.stepCode}</span> — {r.partName}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'machineShift',
+        header: 'ماشین / شیفت',
+        render: r => (
+          <div>
+            <div className="fiori-ltr-code font-mono font-semibold text-[var(--fiori-text-primary)]">
+              {r.machineCode}
+            </div>
+            <div className="text-[10px] text-[var(--fiori-text-muted)]">
+              {r.shiftName} • {r.operatorName}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'goodScrap',
+        header: 'سالم / ضایعات',
+        align: 'center',
+        isMono: true,
+        render: r => (
+          <span>
+            <span className="text-[var(--fiori-positive)] font-semibold">{formatNumber(r.goodQty)}</span>
+            {' / '}
+            <span className="text-[var(--fiori-negative)]">{formatNumber(r.scrapQty + r.rejectedQty)}</span>
+          </span>
+        ),
+      },
+      {
+        key: 'runDowntime',
+        header: 'کارکرد / توقف (دقیقه)',
+        align: 'center',
+        isMono: true,
+        render: r => `${toPersianDigits(r.runTimeMinutes)} / ${toPersianDigits(r.downtimeMinutes)}`,
+      },
+      {
+        key: 'idealCycle',
+        header: 'سیکل استاندارد و منبع',
+        align: 'center',
+        hideBelow: 'md',
+        render: r => (
+          <div className="text-[11px]">
+            <div className="font-mono">{formatSecondsFa(r.idealCycleTimeSec)}</div>
+            <div className="text-[10px] text-[var(--fiori-text-muted)]">
+              {CYCLE_SOURCE_LABELS[r.idealCycleSource] || r.idealCycleSource}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'perf',
+        header: 'عملکرد گزارش',
+        align: 'center',
+        sortable: true,
+        sortValue: r => r.reportPerformancePercent ?? -1,
+        isMono: true,
+        render: r => (
+          <span className={`font-semibold ${getOeeValueColor(r.reportPerformancePercent)}`}>
+            {formatPercentOrNull(r.reportPerformancePercent)}
+          </span>
+        ),
+      },
+      {
+        key: 'flags',
+        header: 'هشدارهای داده',
+        render: r =>
+          r.dataFlags.length === 0 ? (
+            <FioriObjectStatus tone="positive" variant="text" label="سالم" icon />
+          ) : (
+            <div className="flex flex-wrap gap-1">
+              {r.dataFlags.map(f => (
+                <FioriObjectStatus key={f} tone="critical" label={f} ltrCode />
+              ))}
+            </div>
+          ),
+      },
+    ],
+    [],
+  );
+
+  const sourceDowntimeColumns = useMemo<FioriTableColumn<OeeSourceDowntimeEvent>[]>(
+    () => [
+      {
+        key: 'dateKey',
+        header: 'تاریخ',
+        sortable: true,
+        sortValue: d => d.dateKey,
+        isLtrCode: true,
+        render: d => d.dateKey,
+      },
+      {
+        key: 'category',
+        header: 'دسته‌بندی',
+        sortable: true,
+        sortValue: d => d.category,
+        render: d => {
+          const cat = DOWNTIME_CATEGORY_META[d.category];
+          return <FioriObjectStatus tone={cat.tone} label={cat.labelFa} />;
+        },
+      },
+      {
+        key: 'machineShift',
+        header: 'ماشین / شیفت',
+        render: d => (
+          <div>
+            <span className="fiori-ltr-code font-mono font-semibold text-[var(--fiori-text-primary)]">
+              {d.machineCode}
+            </span>
+            <span className="text-[10px] text-[var(--fiori-text-muted)] block">{d.shiftName || '—'}</span>
+          </div>
+        ),
+      },
+      {
+        key: 'moOp',
+        header: 'دستور کار / عملیات',
+        isLtrCode: true,
+        render: d => `${d.moNumber || '—'}${d.stepCode ? ` / ${d.stepCode}` : ''}`,
+      },
+      {
+        key: 'reason',
+        header: 'علت توقف',
+        render: d => <span className="text-[var(--fiori-text-primary)]">{d.reason}</span>,
+      },
+      {
+        key: 'duration',
+        header: 'مدت (دقیقه)',
+        align: 'center',
+        sortable: true,
+        sortValue: d => d.durationMinutes,
+        isMono: true,
+        render: d => (
+          <span className="font-semibold text-[var(--fiori-negative)]">
+            {toPersianDigits(d.durationMinutes)}
+          </span>
+        ),
+      },
+      {
+        key: 'source',
+        header: 'منبع ثبت',
+        hideBelow: 'md',
+        render: d => (
+          <span className="text-[10px] font-mono text-[var(--fiori-text-muted)]">
+            <span className="fiori-ltr-code">{d.source}</span> ({d.recordedBy})
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const sourceAssignmentColumns = useMemo<FioriTableColumn<OeeSourceAssignmentRecord>[]>(
+    () => [
+      {
+        key: 'assignedDate',
+        header: 'تاریخ تخصیص',
+        sortable: true,
+        sortValue: a => a.assignedDate,
+        isLtrCode: true,
+        render: a => a.assignedDate,
+      },
+      {
+        key: 'machine',
+        header: 'ماشین',
+        sortable: true,
+        sortValue: a => a.machineCode,
+        render: a => (
+          <span className="font-semibold text-[var(--fiori-text-primary)]">
+            <span className="fiori-ltr-code font-mono">{a.machineCode}</span> — {a.machineName}
+          </span>
+        ),
+      },
+      {
+        key: 'shift',
+        header: 'شیفت',
+        render: a => a.shiftName,
+      },
+      {
+        key: 'moOp',
+        header: 'دستور کار / مرحله',
+        isLtrCode: true,
+        render: a => `${a.moNumber} / ${a.stepCode}`,
+      },
+      {
+        key: 'minutes',
+        header: 'ظرفیت شیفت (دقیقه)',
+        align: 'center',
+        sortable: true,
+        sortValue: a => a.productiveMinutes,
+        isMono: true,
+        render: a => toPersianDigits(a.productiveMinutes),
+      },
+      {
+        key: 'status',
+        header: 'وضعیت',
+        align: 'center',
+        render: a => <FioriObjectStatus tone="neutral" label={a.status} ltrCode />,
+      },
+    ],
+    [],
+  );
+
   const summary = data?.summary;
   const dqMeta = summary ? DATA_QUALITY_META[summary.dataQualityStatus] : DATA_QUALITY_META.INSUFFICIENT_DATA;
 
@@ -264,37 +1093,26 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
     : 1;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="sap-card p-4 text-[#333333] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2 rounded-sm bg-[#e5f3fa] text-[#007cc0] border border-[#007cc0]/25 shrink-0">
-            <Gauge className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-bold text-[#333333]">
-                تحلیل OEE، عملکرد ماشین‌آلات و بهره‌وری تولید (KPIMS P4 Analytics)
-              </h2>
-              {summary && (
-                <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold border ${dqMeta.badgeClass}`}>
-                  کیفیت داده: {dqMeta.labelFa}
-                </span>
-              )}
-              {data && (
-                <span className="px-2 py-0.5 rounded-sm text-[10px] font-mono bg-[#f7f7f7] text-[#666666] border border-[#d9d9d9]">
-                  {toPersianDigits(data.summary.totalReportsCount)} گزارش تولید •{' '}
-                  {toPersianDigits(data.summary.totalDowntimeEventsCount)} رویداد توقف
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-[#666666] mt-0.5">
-              محاسبه یکپارچه دسترس‌پذیری (Availability)، عملکرد (Performance)، کیفیت (Quality) و OEE مستقیماً از سوابق واقعی کارگاه، تخصیص ماشین‌آلات و توقفات ثبت‌شده (بدون مقادیر ساختگی)
-            </p>
-          </div>
+    <FioriDynamicPage
+      title="تحلیل OEE، عملکرد ماشین‌آلات و بهره‌وری تولید (KPIMS P4 Analytics)"
+      subtitle="محاسبه یکپارچه دسترس‌پذیری (Availability)، عملکرد (Performance)، کیفیت (Quality) و OEE مستقیماً از سوابق واقعی کارگاه، تخصیص ماشین‌آلات و توقفات ثبت‌شده (بدون مقادیر ساختگی)"
+      status={
+        <div className="flex flex-wrap items-center gap-1.5">
+          {summary && <FioriObjectStatus tone={dqMeta.tone} label={`کیفیت داده: ${dqMeta.labelFa}`} icon />}
+          {data && (
+            <FioriObjectStatus
+              tone="neutral"
+              label={`${toPersianDigits(data.summary.totalReportsCount)} گزارش تولید • ${toPersianDigits(
+                data.summary.totalDowntimeEventsCount,
+              )} رویداد توقف`}
+            />
+          )}
         </div>
-
-        <div className="flex items-center flex-wrap gap-2">
+      }
+      activeFiltersCount={activeFiltersCount}
+      onResetFilters={handleResetFilters}
+      headerActions={
+        <>
           <button
             type="button"
             onClick={handleGoToShopFloor}
@@ -310,7 +1128,7 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
             onClick={() => setShowFormulas(prev => !prev)}
             className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
           >
-            <Info className="w-3.5 h-3.5 text-[#007cc0]" />
+            <Info className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
             <span>فرمول‌ها و مبنای محاسبه</span>
           </button>
 
@@ -320,7 +1138,7 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
             disabled={loading}
             className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#007cc0]' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[var(--fiori-brand)]' : ''}`} />
             <span>بروزرسانی</span>
           </button>
 
@@ -330,7 +1148,7 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
             disabled={exporting || !data}
             className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-[#107e3e]" />
+            <Download className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
             <span>{exporting ? 'در حال خروجی...' : 'خروجی CSV (همگام)'}</span>
           </button>
 
@@ -339,157 +1157,161 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
             onClick={() => window.print()}
             className="sap-btn-standard flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5 text-[#666666]" />
+            <Printer className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)]" />
             <span>چاپ</span>
           </button>
-        </div>
-      </div>
+        </>
+      }
+      filterBar={
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <label className="text-[var(--fiori-text-secondary)]">از تاریخ:</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="fiori-input fiori-ltr-code px-2 py-1 text-xs font-mono"
+              />
+            </div>
 
-      {/* Formula Reference Drawer/Box */}
+            <div className="flex items-center gap-1.5">
+              <label className="text-[var(--fiori-text-secondary)]">تا تاریخ:</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="fiori-input fiori-ltr-code px-2 py-1 text-xs font-mono"
+              />
+            </div>
+
+            <select
+              value={machineFilter}
+              onChange={e => setMachineFilter(e.target.value)}
+              className="fiori-input px-2.5 py-1 text-xs"
+            >
+              <option value="ALL">همه ماشین‌آلات</option>
+              {data?.masterData.machines.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.code} — {m.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={shiftFilter}
+              onChange={e => setShiftFilter(e.target.value)}
+              className="fiori-input px-2.5 py-1 text-xs"
+            >
+              <option value="ALL">همه شیفت‌ها</option>
+              {data?.masterData.shifts.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({toPersianDigits(s.productiveHours)} ساعت)
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={hallFilter}
+              onChange={e => setHallFilter(e.target.value)}
+              className="fiori-input px-2.5 py-1 text-xs"
+            >
+              <option value="ALL">همه سالن‌ها</option>
+              {data?.masterData.halls.map(h => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {data && (
+            <div className="flex items-center gap-2.5 text-[11px] text-[var(--fiori-text-secondary)]">
+              <FioriObjectStatus
+                tone="positive"
+                variant="text"
+                label={`معتبر: ${toPersianDigits(data.dataQualityOverview.reliableCount)}`}
+              />
+              <span className="text-[var(--fiori-border-default)]">|</span>
+              <FioriObjectStatus
+                tone="critical"
+                variant="text"
+                label={`ناقص/هشدار: ${toPersianDigits(
+                  data.dataQualityOverview.partialCount + data.dataQualityOverview.unreliableCount,
+                )}`}
+              />
+              <span className="text-[var(--fiori-border-default)]">|</span>
+              <FioriObjectStatus
+                tone="neutral"
+                variant="text"
+                label={`داده ناکافی: ${toPersianDigits(data.dataQualityOverview.insufficientCount)}`}
+              />
+            </div>
+          )}
+        </div>
+      }
+    >
+      {/* Formula Reference Box */}
       {showFormulas && data?.formulas && (
-        <div className="sap-card p-4 bg-[#f8fbfe] border border-[#007cc0]/30 text-xs space-y-2">
-          <div className="flex items-center justify-between border-b border-[#007cc0]/20 pb-2">
-            <span className="font-bold text-[#007cc0] flex items-center gap-1.5">
+        <div className="fiori-surface-card p-4 bg-[var(--fiori-info-bg)]/50 border-[var(--fiori-info-border)] text-xs space-y-2.5">
+          <div className="flex items-center justify-between border-b border-[var(--fiori-info-border)] pb-2">
+            <span className="font-semibold text-[var(--fiori-info)] flex items-center gap-1.5">
               <Info className="w-4 h-4" />
               فرمول‌های استاندارد ISO 22400 / TPM مورد استفاده در داشبورد، گزارش‌ها و خروجی CSV
             </span>
             <button
               type="button"
               onClick={() => setShowFormulas(false)}
-              className="text-[#666666] hover:text-[#333333] cursor-pointer"
+              className="p-1 rounded-[var(--fiori-radius-sm)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-bg-hover)] cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 font-mono text-[11px] text-[#333333]" dir="ltr">
-            <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-              <strong className="text-[#007cc0] block">Planned Production Time:</strong>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 font-mono text-[11px] text-[var(--fiori-text-primary)] fiori-ltr-code">
+            <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+              <strong className="text-[var(--fiori-brand)] block">Planned Production Time:</strong>
               {data.formulas.plannedProductionTime}
             </div>
-            <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-              <strong className="text-[#007cc0] block">Availability (A):</strong>
+            <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+              <strong className="text-[var(--fiori-brand)] block">Availability (A):</strong>
               {data.formulas.availability}
             </div>
-            <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-              <strong className="text-[#007cc0] block">Performance (P):</strong>
+            <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+              <strong className="text-[var(--fiori-brand)] block">Performance (P):</strong>
               {data.formulas.performance}
             </div>
-            <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-              <strong className="text-[#007cc0] block">Quality (Q):</strong>
+            <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+              <strong className="text-[var(--fiori-brand)] block">Quality (Q):</strong>
               {data.formulas.quality}
             </div>
-            <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-              <strong className="text-[#107e3e] block">OEE:</strong>
+            <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+              <strong className="text-[var(--fiori-positive)] block">OEE:</strong>
               {data.formulas.oee}
             </div>
-            <div className="bg-white p-2 rounded border border-[#e5e7eb]">
-              <strong className="text-[#333333] block">TEEP & Downtime Deduplication:</strong>
+            <div className="bg-[var(--fiori-bg-surface)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)]">
+              <strong className="text-[var(--fiori-text-primary)] block">TEEP & Downtime Deduplication:</strong>
               {data.formulas.teep} | {data.formulas.downtimeDeduplication}
             </div>
           </div>
         </div>
       )}
 
-      {/* Filter Bar */}
-      <div className="sap-card p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="font-bold text-[#333333] flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5 text-[#007cc0]" />
-            فیلترها:
-          </span>
-
-          <div className="flex items-center gap-1.5">
-            <label className="text-[#666666]">از تاریخ:</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              className="bg-white border border-[#bfbfbf] rounded-sm px-2 py-1 text-xs font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <label className="text-[#666666]">تا تاریخ:</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
-              className="bg-white border border-[#bfbfbf] rounded-sm px-2 py-1 text-xs font-mono text-[#333333] focus:outline-none focus:border-[#007cc0]"
-            />
-          </div>
-
-          <select
-            value={machineFilter}
-            onChange={e => setMachineFilter(e.target.value)}
-            className="bg-white border border-[#bfbfbf] rounded-sm px-2.5 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-          >
-            <option value="ALL">همه ماشین‌آلات</option>
-            {data?.masterData.machines.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.code} — {m.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={shiftFilter}
-            onChange={e => setShiftFilter(e.target.value)}
-            className="bg-white border border-[#bfbfbf] rounded-sm px-2.5 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-          >
-            <option value="ALL">همه شیفت‌ها</option>
-            {data?.masterData.shifts.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({toPersianDigits(s.productiveHours)} ساعت)
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={hallFilter}
-            onChange={e => setHallFilter(e.target.value)}
-            className="bg-white border border-[#bfbfbf] rounded-sm px-2.5 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-          >
-            <option value="ALL">همه سالن‌ها</option>
-            {data?.masterData.halls.map(h => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
-
-          {(startDate || endDate || machineFilter !== 'ALL' || shiftFilter !== 'ALL' || hallFilter !== 'ALL') && (
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="px-2.5 py-1 rounded-sm text-xs bg-[#f2f4f7] hover:bg-[#e5e7eb] text-[#333333] border border-[#d0d5dd] cursor-pointer"
-            >
-              پاک کردن فیلترها
-            </button>
-          )}
-        </div>
-
-        {data && (
-          <div className="flex items-center gap-2 text-[11px] text-[#666666]">
-            <span>معتبر: <strong className="text-[#107e3e]">{toPersianDigits(data.dataQualityOverview.reliableCount)}</strong></span>
-            <span>|</span>
-            <span>ناقص/هشدار: <strong className="text-[#b45309]">{toPersianDigits(data.dataQualityOverview.partialCount + data.dataQualityOverview.unreliableCount)}</strong></span>
-            <span>|</span>
-            <span>داده ناکافی: <strong className="text-[#475467]">{toPersianDigits(data.dataQualityOverview.insufficientCount)}</strong></span>
-          </div>
-        )}
-      </div>
-
       {/* Error State */}
       {error && (
-        <div className="p-3 rounded-sm bg-[#fdecea] border border-[#bb0000]/30 text-[#bb0000] text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-          <button type="button" onClick={loadAnalytics} className="underline cursor-pointer">
-            تلاش مجدد
-          </button>
-        </div>
+        <FioriMessageStrip
+          tone="error"
+          actions={
+            <button
+              type="button"
+              onClick={loadAnalytics}
+              className="sap-btn-standard px-2.5 py-1 text-xs cursor-pointer"
+            >
+              تلاش مجدد
+            </button>
+          }
+        >
+          <span className="font-semibold">{error}</span>
+        </FioriMessageStrip>
       )}
 
       {/* Loading Skeleton */}
@@ -497,101 +1319,101 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
 
       {/* Explicit Data Quality & Missing Inputs Banner */}
       {data && summary && (summary.dataQualityStatus !== 'RELIABLE' || data.dataQualityOverview.issues.length > 0) && (
-        <div
-          className={`sap-card p-3.5 border-r-4 ${dqMeta.borderClass} text-xs space-y-2 ${
+        <FioriMessageStrip
+          tone={
             summary.dataQualityStatus === 'UNRELIABLE'
-              ? 'bg-[#fff8f8]'
+              ? 'error'
               : summary.dataQualityStatus === 'INSUFFICIENT_DATA'
-              ? 'bg-[#f8fafc]'
-              : 'bg-[#fffcf5]'
-          }`}
+              ? 'info'
+              : 'warning'
+          }
+          title="شفافیت کیفیت داده‌ها و ورودی‌های ناموجود (عدم ساخت عدد جعلی OEE)"
+          actions={<FioriObjectStatus tone={dqMeta.tone} label={dqMeta.labelFa} icon />}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 font-bold text-[#333333]">
-              <AlertCircle className="w-4 h-4 text-[#b45309] shrink-0" />
-              <span>شفافیت کیفیت داده‌ها و ورودی‌های ناموجود (عدم ساخت عدد جعلی OEE)</span>
-            </div>
-            <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold border ${dqMeta.badgeClass}`}>
-              {dqMeta.labelFa}
-            </span>
-          </div>
-          {summary.missingInputs.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[#666666] font-medium">ورودی‌های مفقود در سطح کل کارخانه:</span>
-              {summary.missingInputs.map(mi => (
-                <span
-                  key={mi}
-                  className="px-2 py-0.5 rounded bg-white border border-[#d0d5dd] font-mono text-[10px] text-[#333333]"
-                >
-                  {mi}
+          <div className="space-y-2 mt-1">
+            {summary.missingInputs.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[var(--fiori-text-secondary)] font-medium">
+                  ورودی‌های مفقود در سطح کل کارخانه:
                 </span>
-              ))}
-            </div>
-          )}
-          {data.dataQualityOverview.issues.length > 0 && (
-            <ul className="space-y-1 text-[11px] text-[#475467] list-disc pr-5">
-              {data.dataQualityOverview.issues.map((issue, idx) => (
-                <li key={`${issue.code}-${idx}`} className={issue.severity === 'ERROR' ? 'text-[#bb0000] font-medium' : ''}>
-                  {issue.messageFa}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                {summary.missingInputs.map(mi => (
+                  <span
+                    key={mi}
+                    className="fiori-ltr-code px-2 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] font-mono text-[10px] text-[var(--fiori-text-primary)]"
+                  >
+                    {mi}
+                  </span>
+                ))}
+              </div>
+            )}
+            {data.dataQualityOverview.issues.length > 0 && (
+              <ul className="space-y-1 text-[11px] text-[var(--fiori-text-secondary)] list-disc pr-5">
+                {data.dataQualityOverview.issues.map((issue, idx) => (
+                  <li
+                    key={`${issue.code}-${idx}`}
+                    className={issue.severity === 'ERROR' ? 'text-[var(--fiori-negative)] font-medium' : ''}
+                  >
+                    {issue.messageFa}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </FioriMessageStrip>
       )}
 
       {/* Top Production-Level KPI Cards */}
       {data && summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* OEE */}
-          <div className={`sap-card p-3.5 border-r-4 ${dqMeta.borderClass}`}>
+          <div className="fiori-surface-card p-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#333333]">OEE کل تولید (وزنی)</span>
-              <Gauge className="w-4 h-4 text-[#007cc0]" />
+              <span className="text-xs font-semibold text-[var(--fiori-text-primary)]">OEE کل تولید (وزنی)</span>
+              <Gauge className="w-4 h-4 text-[var(--fiori-brand)]" />
             </div>
-            <div className={`text-2xl font-bold font-mono tabular-nums mt-1.5 ${getOeeValueColor(summary.oeePercent)}`}>
+            <div className={`text-2xl font-semibold font-mono tabular-nums mt-1.5 ${getOeeValueColor(summary.oeePercent)}`}>
               {formatPercentOrNull(summary.oeePercent)}
             </div>
-            <div className="text-[11px] text-[#666666] mt-1 flex items-center justify-between">
+            <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-1 flex items-center justify-between">
               <span>TEEP: {formatPercentOrNull(summary.teepPercent)}</span>
               <span>هدف جهانی: {toPersianDigits(summary.worldClassBenchmarkOee)}٪</span>
             </div>
             {!summary.oeeCalculable && (
-              <div className="mt-1.5 text-[10px] text-[#b45309] bg-[#fff4e5] px-1.5 py-0.5 rounded">
-                محاسبه نشد — ورودی‌های A/P/Q ناقص است
+              <div className="mt-1.5">
+                <FioriObjectStatus tone="critical" label="محاسبه نشد — ورودی‌های A/P/Q ناقص است" />
               </div>
             )}
           </div>
 
           {/* Availability */}
-          <div className="sap-card p-3.5 border-r-4 border-r-[#007cc0]">
+          <div className="fiori-surface-card p-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#007cc0]">دسترس‌پذیری (Availability)</span>
-              <Clock className="w-4 h-4 text-[#007cc0]" />
+              <span className="text-xs font-semibold text-[var(--fiori-brand)]">دسترس‌پذیری (Availability)</span>
+              <Clock className="w-4 h-4 text-[var(--fiori-brand)]" />
             </div>
-            <div className={`text-2xl font-bold font-mono tabular-nums mt-1.5 ${getOeeValueColor(summary.availabilityPercent)}`}>
+            <div className={`text-2xl font-semibold font-mono tabular-nums mt-1.5 ${getOeeValueColor(summary.availabilityPercent)}`}>
               {formatPercentOrNull(summary.availabilityPercent)}
             </div>
-            <div className="text-[11px] text-[#666666] mt-1 space-y-0.5">
+            <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-1 space-y-0.5">
               <div>کارکرد خالص: <strong>{formatMinutesFa(summary.time.operatingTimeMinutes)}</strong></div>
               <div>زمان برنامه‌ریزی‌شده: <strong>{formatMinutesFa(summary.time.effectivePlannedProductionTimeMinutes)}</strong></div>
             </div>
           </div>
 
           {/* Performance */}
-          <div className="sap-card p-3.5 border-r-4 border-r-[#e9730c]">
+          <div className="fiori-surface-card p-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#b45309]">عملکرد سرعت (Performance)</span>
-              <Zap className="w-4 h-4 text-[#e9730c]" />
+              <span className="text-xs font-semibold text-[var(--fiori-critical)]">عملکرد سرعت (Performance)</span>
+              <Zap className="w-4 h-4 text-[var(--fiori-critical)]" />
             </div>
-            <div className={`text-2xl font-bold font-mono tabular-nums mt-1.5 ${getOeeValueColor(summary.performancePercent)}`}>
+            <div className={`text-2xl font-semibold font-mono tabular-nums mt-1.5 ${getOeeValueColor(summary.performancePercent)}`}>
               {formatPercentOrNull(summary.performancePercent)}
             </div>
-            <div className="text-[11px] text-[#666666] mt-1 space-y-0.5">
+            <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-1 space-y-0.5">
               <div>سیکل استاندارد: <strong>{formatSecondsFa(summary.idealCycleTimeSec)}</strong></div>
               <div>سیکل واقعی: <strong>{formatSecondsFa(summary.actualCycleTimeSec)}</strong></div>
               {summary.rawPerformancePercent !== null && summary.rawPerformancePercent > 100.5 && (
-                <div className="text-[#bb0000] font-bold">
+                <div className="text-[var(--fiori-negative)] font-semibold">
                   خام: {formatPercentOrNull(summary.rawPerformancePercent)} (بررسی سیکل!)
                 </div>
               )}
@@ -599,32 +1421,35 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
           </div>
 
           {/* Quality */}
-          <div className="sap-card p-3.5 border-r-4 border-r-[#107e3e]">
+          <div className="fiori-surface-card p-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#107e3e]">کیفیت (Quality)</span>
-              <ShieldCheck className="w-4 h-4 text-[#107e3e]" />
+              <span className="text-xs font-semibold text-[var(--fiori-positive)]">کیفیت (Quality)</span>
+              <ShieldCheck className="w-4 h-4 text-[var(--fiori-positive)]" />
             </div>
-            <div className={`text-2xl font-bold font-mono tabular-nums mt-1.5 ${getOeeValueColor(summary.qualityPercent)}`}>
+            <div className={`text-2xl font-semibold font-mono tabular-nums mt-1.5 ${getOeeValueColor(summary.qualityPercent)}`}>
               {formatPercentOrNull(summary.qualityPercent)}
             </div>
-            <div className="text-[11px] text-[#666666] mt-1 space-y-0.5">
-              <div>سالم: <strong className="text-[#107e3e]">{formatNumber(summary.goodQty)}</strong> • ضایعات: <strong className="text-[#bb0000]">{formatNumber(summary.scrapQty + summary.rejectedQty)}</strong></div>
+            <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-1 space-y-0.5">
+              <div>
+                سالم: <strong className="text-[var(--fiori-positive)]">{formatNumber(summary.goodQty)}</strong> • ضایعات:{' '}
+                <strong className="text-[var(--fiori-negative)]">{formatNumber(summary.scrapQty + summary.rejectedQty)}</strong>
+              </div>
               <div>نرخ ضایعات: <strong>{formatPercentOrNull(summary.scrapRatePercent)}</strong></div>
             </div>
           </div>
 
           {/* Plan vs Actual */}
-          <div className="sap-card p-3.5 border-r-4 border-r-[#333333]">
+          <div className="fiori-surface-card p-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#333333]">تولید واقعی در برابر برنامه</span>
-              <Activity className="w-4 h-4 text-[#333333]" />
+              <span className="text-xs font-semibold text-[var(--fiori-text-primary)]">تولید واقعی در برابر برنامه</span>
+              <Activity className="w-4 h-4 text-[var(--fiori-text-secondary)]" />
             </div>
-            <div className="text-2xl font-bold font-mono tabular-nums mt-1.5 text-[#333333]">
+            <div className="text-2xl font-semibold font-mono tabular-nums mt-1.5 text-[var(--fiori-text-primary)]">
               {formatPercentOrNull(summary.planAdherencePercent)}
             </div>
-            <div className="text-[11px] text-[#666666] mt-1 space-y-0.5">
+            <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-1 space-y-0.5">
               <div>تولید سالم: <strong>{formatNumber(summary.goodQty)}</strong> / برنامه: <strong>{formatNumber(summary.plannedQty)}</strong></div>
-              <div className={summary.planVarianceQty < 0 ? 'text-[#bb0000]' : 'text-[#107e3e]'}>
+              <div className={summary.planVarianceQty < 0 ? 'text-[var(--fiori-negative)]' : 'text-[var(--fiori-positive)]'}>
                 انحراف: <strong>{summary.planVarianceQty > 0 ? '+' : ''}{formatNumber(summary.planVarianceQty)}</strong>
               </div>
             </div>
@@ -636,24 +1461,24 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
       {data && summary && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Time Classification Visual Bar */}
-          <div className="sap-card p-4 lg:col-span-2 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e8e8e8] pb-2">
-              <h3 className="text-xs font-bold text-[#333333] flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-[#007cc0]" />
+          <div className="fiori-surface-card p-4 lg:col-span-2 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--fiori-border-subtle)] pb-2">
+              <h3 className="text-xs font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-[var(--fiori-brand)]" />
                 تفکیک زمان تولیدی، ستاپ، توقفات برنامه‌ریزی‌شده و اضطراری (بر حسب دقیقه)
               </h3>
-              <span className="text-[11px] text-[#666666]">
+              <span className="text-[11px] text-[var(--fiori-text-secondary)]">
                 زمان شیفت برنامه‌ریزی: <strong>{formatMinutesFa(summary.time.scheduledTimeMinutes)}</strong>
               </span>
             </div>
 
-            <div className="w-full h-5 rounded-sm overflow-hidden flex bg-[#f2f4f7] border border-[#e5e7eb]">
+            <div className="w-full h-5 rounded-[var(--fiori-radius-sm)] overflow-hidden flex bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)]">
               {[
-                { key: 'op', val: summary.time.operatingTimeMinutes, color: 'bg-[#107e3e]', label: 'کارکرد تولیدی' },
-                { key: 'setup', val: summary.time.setupTimeMinutes, color: 'bg-[#e9730c]', label: 'ستاپ/تعویض قالب' },
-                { key: 'planned', val: summary.time.plannedDowntimeMinutes, color: 'bg-[#007cc0]', label: 'توقف برنامه‌ریزی‌شده' },
-                { key: 'unplanned', val: summary.time.unplannedDowntimeMinutes, color: 'bg-[#bb0000]', label: 'توقف اضطراری' },
-                { key: 'idle', val: summary.time.idleUnassignedMinutes, color: 'bg-[#d0d5dd]', label: 'بیکاری/ظرفیت آزاد' },
+                { key: 'op', val: summary.time.operatingTimeMinutes, color: 'bg-[var(--fiori-positive)]', label: 'کارکرد تولیدی' },
+                { key: 'setup', val: summary.time.setupTimeMinutes, color: 'bg-[var(--fiori-critical)]', label: 'ستاپ/تعویض قالب' },
+                { key: 'planned', val: summary.time.plannedDowntimeMinutes, color: 'bg-[var(--fiori-brand)]', label: 'توقف برنامه‌ریزی‌شده' },
+                { key: 'unplanned', val: summary.time.unplannedDowntimeMinutes, color: 'bg-[var(--fiori-negative)]', label: 'توقف اضطراری' },
+                { key: 'idle', val: summary.time.idleUnassignedMinutes, color: 'bg-[var(--fiori-border-default)]', label: 'بیکاری/ظرفیت آزاد' },
               ].map(seg => {
                 const pct = (seg.val / timeTotalForBar) * 100;
                 if (pct <= 0.2) return null;
@@ -669,44 +1494,57 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
-              <div className="p-2 rounded bg-[#f8fafc] border border-[#e5e7eb]">
-                <span className="text-[#107e3e] font-bold block">● کارکرد تولیدی</span>
-                <span className="font-mono font-bold text-[#333333]">{formatMinutesFa(summary.time.operatingTimeMinutes)}</span>
+              <div className="p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)]">
+                <FioriObjectStatus tone="positive" variant="dot" label="کارکرد تولیدی" className="mb-0.5" />
+                <span className="font-mono font-semibold text-[var(--fiori-text-primary)] block tabular-nums">
+                  {formatMinutesFa(summary.time.operatingTimeMinutes)}
+                </span>
               </div>
-              <div className="p-2 rounded bg-[#f8fafc] border border-[#e5e7eb]">
-                <span className="text-[#b45309] font-bold block">● زمان ستاپ (Setup)</span>
-                <span className="font-mono font-bold text-[#333333]">{formatMinutesFa(summary.time.setupTimeMinutes)}</span>
+              <div className="p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)]">
+                <FioriObjectStatus tone="critical" variant="dot" label="زمان ستاپ (Setup)" className="mb-0.5" />
+                <span className="font-mono font-semibold text-[var(--fiori-text-primary)] block tabular-nums">
+                  {formatMinutesFa(summary.time.setupTimeMinutes)}
+                </span>
               </div>
-              <div className="p-2 rounded bg-[#f8fafc] border border-[#e5e7eb]">
-                <span className="text-[#007cc0] font-bold block">● توقف برنامه‌ریزی (PM)</span>
-                <span className="font-mono font-bold text-[#333333]">{formatMinutesFa(summary.time.plannedDowntimeMinutes)}</span>
+              <div className="p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)]">
+                <FioriObjectStatus tone="brand" variant="dot" label="توقف برنامه‌ریزی (PM)" className="mb-0.5" />
+                <span className="font-mono font-semibold text-[var(--fiori-text-primary)] block tabular-nums">
+                  {formatMinutesFa(summary.time.plannedDowntimeMinutes)}
+                </span>
               </div>
-              <div className="p-2 rounded bg-[#f8fafc] border border-[#e5e7eb]">
-                <span className="text-[#bb0000] font-bold block">● توقف اضطراری</span>
-                <span className="font-mono font-bold text-[#333333]">{formatMinutesFa(summary.time.unplannedDowntimeMinutes)}</span>
+              <div className="p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)]">
+                <FioriObjectStatus tone="negative" variant="dot" label="توقف اضطراری" className="mb-0.5" />
+                <span className="font-mono font-semibold text-[var(--fiori-text-primary)] block tabular-nums">
+                  {formatMinutesFa(summary.time.unplannedDowntimeMinutes)}
+                </span>
               </div>
-              <div className="p-2 rounded bg-[#f8fafc] border border-[#e5e7eb]">
-                <span className="text-[#667085] font-bold block">● ظرفیت آزاد / بیکار</span>
-                <span className="font-mono font-bold text-[#333333]">{formatMinutesFa(summary.time.idleUnassignedMinutes)}</span>
+              <div className="p-2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)]">
+                <FioriObjectStatus tone="neutral" variant="dot" label="ظرفیت آزاد / بیکار" className="mb-0.5" />
+                <span className="font-mono font-semibold text-[var(--fiori-text-primary)] block tabular-nums">
+                  {formatMinutesFa(summary.time.idleUnassignedMinutes)}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Top Downtime Reasons */}
-          <div className="sap-card p-4 space-y-2.5">
-            <div className="flex items-center justify-between border-b border-[#e8e8e8] pb-2">
-              <h3 className="text-xs font-bold text-[#333333] flex items-center gap-1.5">
-                <Wrench className="w-4 h-4 text-[#bb0000]" />
+          <div className="fiori-surface-card p-4 space-y-2.5">
+            <div className="flex items-center justify-between border-b border-[var(--fiori-border-subtle)] pb-2">
+              <h3 className="text-xs font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1.5">
+                <Wrench className="w-4 h-4 text-[var(--fiori-negative)]" />
                 علل اصلی توقفات (تفکیک‌شده بدون شمارش مضاعف)
               </h3>
-              <span className="text-[11px] font-mono font-bold text-[#bb0000]">
+              <span className="text-[11px] font-mono font-semibold text-[var(--fiori-negative)] tabular-nums">
                 {formatMinutesFa(data.downtimeSummary.totalDowntimeMinutes)}
               </span>
             </div>
             {data.downtimeSummary.byReason.length === 0 ? (
-              <div className="text-xs text-[#666666] py-6 text-center">
-                هیچ رویداد توقفی در بازه فیلترشده ثبت نشده است.
-              </div>
+              <EmptyState
+                variant="NO_DOWNTIME"
+                compact
+                title="توقفی در این بازه ثبت نشده است"
+                description="هیچ رویداد توقفی در بازه فیلترشده ثبت نشده است."
+              />
             ) : (
               <div className="space-y-2">
                 {data.downtimeSummary.byReason.slice(0, 5).map((item, idx) => {
@@ -715,20 +1553,18 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
                     <div key={`${item.reason}-${idx}`} className="text-[11px] space-y-1">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className={`px-1.5 py-0.5 rounded border text-[9px] font-bold shrink-0 ${catMeta.badgeClass}`}>
-                            {catMeta.labelFa}
-                          </span>
-                          <span className="truncate text-[#333333] font-medium" title={item.reason}>
+                          <FioriObjectStatus tone={catMeta.tone} label={catMeta.labelFa} className="shrink-0" />
+                          <span className="truncate text-[var(--fiori-text-primary)] font-medium" title={item.reason}>
                             {item.reason}
                           </span>
                         </div>
-                        <span className="font-mono font-bold text-[#333333] shrink-0">
+                        <span className="font-mono font-semibold text-[var(--fiori-text-primary)] shrink-0 tabular-nums">
                           {toPersianDigits(item.minutes)} د ({toPersianDigits(item.sharePercent)}٪)
                         </span>
                       </div>
-                      <div className="w-full h-1.5 bg-[#f2f4f7] rounded overflow-hidden">
+                      <div className="w-full h-1.5 bg-[var(--fiori-bg-subtle)] rounded-[var(--fiori-radius-sm)] overflow-hidden border border-[var(--fiori-border-subtle)]">
                         <div
-                          className={`h-full ${catMeta.barColor}`}
+                          className={`h-full ${catMeta.barClass}`}
                           style={{ width: `${Math.min(100, item.sharePercent)}%` }}
                         />
                       </div>
@@ -743,15 +1579,15 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
 
       {/* Multi-Dimensional Analytical Tabs */}
       {data && (
-        <div className="sap-card overflow-hidden">
-          <div className="border-b border-[#e5e7eb] px-3 pt-2.5 flex flex-wrap items-center justify-between gap-2 bg-[#fafafa]">
-            <div className="flex items-center gap-1 flex-wrap">
+        <div className="fiori-surface-card overflow-hidden">
+          <div className="px-3 pt-2 bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-default)] flex flex-wrap items-center justify-between gap-2">
+            <div className="sap-icon-tab-bar border-b-0 flex-wrap">
               {[
                 { id: 'machines' as const, label: `به تفکیک ماشین (${toPersianDigits(data.machines.length)})`, icon: Gauge },
                 { id: 'shifts' as const, label: `به تفکیک شیفت (${toPersianDigits(data.byShift.length)})`, icon: Clock },
                 { id: 'operations' as const, label: `به تفکیک عملیات و دستور کار (${toPersianDigits(data.byOperation.length)})`, icon: Layers },
                 { id: 'daily' as const, label: `روند روزانه (${toPersianDigits(data.byDate.length)})`, icon: Calendar },
-                { id: 'sources' as const, label: `سوابق منبع (Drill-down)`, icon: Database },
+                { id: 'sources' as const, label: 'سوابق منبع (Drill-down)', icon: Database },
               ].map(t => {
                 const Icon = t.icon;
                 const active = activeTab === t.id;
@@ -760,11 +1596,7 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
                     key={t.id}
                     type="button"
                     onClick={() => setActiveTab(t.id)}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer ${
-                      active
-                        ? 'border-[#007cc0] text-[#007cc0] bg-white'
-                        : 'border-transparent text-[#666666] hover:text-[#333333]'
-                    }`}
+                    className={`sap-icon-tab ${active ? 'sap-icon-tab-active' : ''}`}
                   >
                     <Icon className="w-3.5 h-3.5" />
                     <span>{t.label}</span>
@@ -776,7 +1608,7 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
             <button
               type="button"
               onClick={() => handleExportCsv()}
-              className="mb-1.5 px-2.5 py-1 rounded text-[11px] font-medium bg-white border border-[#d0d5dd] hover:border-[#107e3e] text-[#107e3e] flex items-center gap-1 cursor-pointer"
+              className="sap-btn-standard mb-1.5 px-2.5 py-1 text-[11px] text-[var(--fiori-positive)] flex items-center gap-1 cursor-pointer"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>دانلود CSV همین تب</span>
@@ -785,567 +1617,189 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
 
           {/* TAB 1: BY MACHINE */}
           {activeTab === 'machines' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-right border-collapse">
-                <thead>
-                  <tr className="bg-[#f5f7fa] text-[#475467] border-b border-[#e5e7eb]">
-                    <th className="p-2.5 font-bold">ماشین / سالن</th>
-                    <th className="p-2.5 font-bold">وضعیت داده</th>
-                    <th className="p-2.5 font-bold text-center">دسترس‌پذیری (A)</th>
-                    <th className="p-2.5 font-bold text-center">عملکرد (P)</th>
-                    <th className="p-2.5 font-bold text-center">کیفیت (Q)</th>
-                    <th className="p-2.5 font-bold text-center">OEE</th>
-                    <th className="p-2.5 font-bold text-center">واقعی / برنامه</th>
-                    <th className="p-2.5 font-bold text-center">سالم / ضایعات</th>
-                    <th className="p-2.5 font-bold text-center">زمان (تولید/ستاپ/PM/خرابی)</th>
-                    <th className="p-2.5 font-bold text-center">سیکل (استاندارد / واقعی)</th>
-                    <th className="p-2.5 font-bold text-center">سوابق</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#eaecf0]">
-                  {data.machines.length === 0 ? (
-                    <tr>
-                      <td colSpan={11} className="p-8 text-center text-[#666666]">
-                        ماشینی مطابق فیلترهای انتخاب‌شده یافت نشد.
-                      </td>
-                    </tr>
-                  ) : (
-                    data.machines.map(m => {
-                      const rowDq = DATA_QUALITY_META[m.dataQualityStatus];
-                      return (
-                        <tr
-                          key={m.machineId}
-                          onClick={() => setDrilldown({ kind: 'MACHINE', row: m })}
-                          className="hover:bg-[#f0f7fc] transition cursor-pointer"
-                        >
-                          <td className="p-2.5">
-                            <div className="font-bold text-[#333333] font-mono">{m.machineCode}</div>
-                            <div className="text-[11px] text-[#475467]">{m.machineName}</div>
-                            <div className="text-[10px] text-[#667085]">{m.hallLocation}</div>
-                          </td>
-                          <td className="p-2.5">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${rowDq.badgeClass}`}>
-                              {rowDq.labelFa}
-                            </span>
-                            {m.missingInputs.length > 0 && (
-                              <div className="text-[10px] text-[#b45309] mt-0.5">
-                                مفقود: {m.missingInputs.join('، ')}
-                              </div>
-                            )}
-                          </td>
-                          <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(m.availabilityPercent)}`}>
-                            {formatPercentOrNull(m.availabilityPercent)}
-                          </td>
-                          <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(m.performancePercent)}`}>
-                            <div>{formatPercentOrNull(m.performancePercent)}</div>
-                            {m.rawPerformancePercent !== null && m.rawPerformancePercent > 100.5 && (
-                              <div className="text-[10px] text-[#bb0000]">خام: {formatPercentOrNull(m.rawPerformancePercent)}</div>
-                            )}
-                          </td>
-                          <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(m.qualityPercent)}`}>
-                            {formatPercentOrNull(m.qualityPercent)}
-                          </td>
-                          <td className={`p-2.5 text-center font-mono font-bold text-sm ${getOeeValueColor(m.oeePercent)}`}>
-                            {formatPercentOrNull(m.oeePercent)}
-                          </td>
-                          <td className="p-2.5 text-center font-mono">
-                            <div>
-                              <strong className="text-[#333333]">{formatNumber(m.goodQty)}</strong> / {formatNumber(m.plannedQty)}
-                            </div>
-                            <div className="text-[10px] text-[#667085]">
-                              تحقق: {formatPercentOrNull(m.planAdherencePercent)}
-                            </div>
-                          </td>
-                          <td className="p-2.5 text-center font-mono">
-                            <span className="text-[#107e3e] font-bold">{formatNumber(m.goodQty)}</span>
-                            <span className="mx-1 text-[#98a2b3]">/</span>
-                            <span className="text-[#bb0000] font-bold">{formatNumber(m.scrapQty + m.rejectedQty)}</span>
-                          </td>
-                          <td className="p-2.5 text-center font-mono text-[11px]">
-                            <span className="text-[#107e3e]" title="کارکرد">{toPersianDigits(m.time.operatingTimeMinutes)}</span>
-                            {' / '}
-                            <span className="text-[#b45309]" title="ستاپ">{toPersianDigits(m.time.setupTimeMinutes)}</span>
-                            {' / '}
-                            <span className="text-[#007cc0]" title="توقف برنامه‌ریزی">{toPersianDigits(m.time.plannedDowntimeMinutes)}</span>
-                            {' / '}
-                            <span className="text-[#bb0000]" title="خرابی اضطراری">{toPersianDigits(m.time.unplannedDowntimeMinutes)}</span>
-                          </td>
-                          <td className="p-2.5 text-center font-mono text-[11px]">
-                            <div>{m.idealCycleTimeSec != null ? `${toPersianDigits(m.idealCycleTimeSec.toFixed(1))}s` : 'ناموجود'}</div>
-                            <div className="text-[#667085]">
-                              {m.actualCycleTimeSec != null ? `${toPersianDigits(m.actualCycleTimeSec.toFixed(1))}s` : '—'}
-                            </div>
-                          </td>
-                          <td className="p-2.5 text-center">
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDrilldown({ kind: 'MACHINE', row: m });
-                              }}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#e5f3fa] text-[#007cc0] hover:bg-[#d0ebfa] text-[11px] font-bold cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>{toPersianDigits(m.reportsCount + m.downtimeEventsCount)}</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <FioriDataTable
+              columns={machineColumns}
+              data={data.machines}
+              rowKey={m => m.machineId}
+              onRowClick={m => setDrilldown({ kind: 'MACHINE', row: m })}
+              bordered={false}
+              emptyState={
+                <div className="p-4">
+                  <EmptyState
+                    variant="FILTER_NO_MATCH"
+                    compact
+                    title="ماشینی مطابق فیلترهای انتخاب‌شده یافت نشد"
+                    description="فیلترهای تاریخ، سالن یا شیفت را تغییر دهید یا بازنشانی کنید."
+                    actionLabel={activeFiltersCount > 0 ? 'پاک کردن فیلترها' : undefined}
+                    onAction={activeFiltersCount > 0 ? handleResetFilters : undefined}
+                  />
+                </div>
+              }
+            />
           )}
 
           {/* TAB 2: BY SHIFT */}
           {activeTab === 'shifts' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-right border-collapse">
-                <thead>
-                  <tr className="bg-[#f5f7fa] text-[#475467] border-b border-[#e5e7eb]">
-                    <th className="p-2.5 font-bold">شیفت کاری</th>
-                    <th className="p-2.5 font-bold">وضعیت داده</th>
-                    <th className="p-2.5 font-bold text-center">دسترس‌پذیری (A)</th>
-                    <th className="p-2.5 font-bold text-center">عملکرد (P)</th>
-                    <th className="p-2.5 font-bold text-center">کیفیت (Q)</th>
-                    <th className="p-2.5 font-bold text-center">OEE</th>
-                    <th className="p-2.5 font-bold text-center">واقعی / برنامه</th>
-                    <th className="p-2.5 font-bold text-center">سالم / ضایعات</th>
-                    <th className="p-2.5 font-bold text-center">کارکرد (دقیقه)</th>
-                    <th className="p-2.5 font-bold text-center">ستاپ / PM / خرابی</th>
-                    <th className="p-2.5 font-bold text-center">تعداد گزارش</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#eaecf0]">
-                  {data.byShift.map(s => {
-                    const rowDq = DATA_QUALITY_META[s.dataQualityStatus];
-                    return (
-                      <tr key={s.shiftId} className="hover:bg-[#fafafa]">
-                        <td className="p-2.5">
-                          <div className="font-bold text-[#333333]">{s.shiftName}</div>
-                          <div className="text-[10px] font-mono text-[#667085]">
-                            {s.shiftCode} • {toPersianDigits(s.productiveHoursPerShift)} ساعت/شیفت
-                          </div>
-                        </td>
-                        <td className="p-2.5">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${rowDq.badgeClass}`}>
-                            {rowDq.labelFa}
-                          </span>
-                        </td>
-                        <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(s.availabilityPercent)}`}>
-                          {formatPercentOrNull(s.availabilityPercent)}
-                        </td>
-                        <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(s.performancePercent)}`}>
-                          {formatPercentOrNull(s.performancePercent)}
-                        </td>
-                        <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(s.qualityPercent)}`}>
-                          {formatPercentOrNull(s.qualityPercent)}
-                        </td>
-                        <td className={`p-2.5 text-center font-mono font-bold text-sm ${getOeeValueColor(s.oeePercent)}`}>
-                          {formatPercentOrNull(s.oeePercent)}
-                        </td>
-                        <td className="p-2.5 text-center font-mono">
-                          {formatNumber(s.goodQty)} / {formatNumber(s.plannedQty)}
-                        </td>
-                        <td className="p-2.5 text-center font-mono">
-                          <span className="text-[#107e3e] font-bold">{formatNumber(s.goodQty)}</span>
-                          {' / '}
-                          <span className="text-[#bb0000] font-bold">{formatNumber(s.scrapQty + s.rejectedQty)}</span>
-                        </td>
-                        <td className="p-2.5 text-center font-mono">{toPersianDigits(s.time.operatingTimeMinutes)}</td>
-                        <td className="p-2.5 text-center font-mono text-[11px]">
-                          <span className="text-[#b45309]">{toPersianDigits(s.time.setupTimeMinutes)}</span>
-                          {' / '}
-                          <span className="text-[#007cc0]">{toPersianDigits(s.time.plannedDowntimeMinutes)}</span>
-                          {' / '}
-                          <span className="text-[#bb0000]">{toPersianDigits(s.time.unplannedDowntimeMinutes)}</span>
-                        </td>
-                        <td className="p-2.5 text-center font-mono">{toPersianDigits(s.reportsCount)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <FioriDataTable
+              columns={shiftColumns}
+              data={data.byShift}
+              rowKey={s => s.shiftId}
+              bordered={false}
+              emptyState={
+                <div className="p-4">
+                  <EmptyState
+                    variant="NO_DATA"
+                    compact
+                    title="داده‌ای برای مقایسه شیفت‌ها ثبت نشده است"
+                    description="پس از ثبت گزارش‌های تولید در شیفت‌های کاری، آمار هر شیفت در این جدول نمایش داده می‌شود."
+                  />
+                </div>
+              }
+            />
           )}
 
           {/* TAB 3: BY OPERATION */}
           {activeTab === 'operations' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-right border-collapse">
-                <thead>
-                  <tr className="bg-[#f5f7fa] text-[#475467] border-b border-[#e5e7eb]">
-                    <th className="p-2.5 font-bold">دستور کار / قطعه</th>
-                    <th className="p-2.5 font-bold">عملیات / ماشین</th>
-                    <th className="p-2.5 font-bold">کیفیت داده</th>
-                    <th className="p-2.5 font-bold text-center">برنامه / سالم / ضایعات</th>
-                    <th className="p-2.5 font-bold text-center">تحقق</th>
-                    <th className="p-2.5 font-bold text-center">A / P / Q</th>
-                    <th className="p-2.5 font-bold text-center">OEE</th>
-                    <th className="p-2.5 font-bold text-center">سیکل (استاندارد/واقعی)</th>
-                    <th className="p-2.5 font-bold text-center">سوابق</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#eaecf0]">
-                  {data.byOperation.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="p-8 text-center text-[#666666]">
-                        عملیاتی در محدوده فیلترشده یافت نشد.
-                      </td>
-                    </tr>
-                  ) : (
-                    data.byOperation.map(op => {
-                      const rowDq = DATA_QUALITY_META[op.dataQualityStatus];
-                      return (
-                        <tr
-                          key={op.operationId}
-                          onClick={() => setDrilldown({ kind: 'OPERATION', row: op })}
-                          className="hover:bg-[#f0f7fc] transition cursor-pointer"
-                        >
-                          <td className="p-2.5">
-                            <div className="font-bold font-mono text-[#007cc0]">{op.moNumber}</div>
-                            <div className="text-[11px] text-[#333333]">{op.partName}</div>
-                            <div className="text-[10px] font-mono text-[#667085]">{op.partCode}</div>
-                          </td>
-                          <td className="p-2.5">
-                            <div className="font-bold text-[#333333]">
-                              {op.stepCode} — {op.stepName}
-                            </div>
-                            <div className="text-[10px] text-[#667085]">
-                              {op.machineCode ? `${op.machineCode} (${op.machineName})` : 'بدون ماشین تخصیص‌یافته'}
-                            </div>
-                          </td>
-                          <td className="p-2.5">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${rowDq.badgeClass}`}>
-                              {rowDq.labelFa}
-                            </span>
-                          </td>
-                          <td className="p-2.5 text-center font-mono">
-                            <span>{formatNumber(op.plannedQty)}</span>
-                            {' / '}
-                            <strong className="text-[#107e3e]">{formatNumber(op.goodQty)}</strong>
-                            {' / '}
-                            <strong className="text-[#bb0000]">{formatNumber(op.scrapQty + op.rejectedQty)}</strong>
-                          </td>
-                          <td className="p-2.5 text-center font-mono font-bold">
-                            {formatPercentOrNull(op.planAdherencePercent)}
-                          </td>
-                          <td className="p-2.5 text-center font-mono text-[11px]">
-                            <span>{formatPercentOrNull(op.availabilityPercent)}</span>
-                            {' • '}
-                            <span>{formatPercentOrNull(op.performancePercent)}</span>
-                            {' • '}
-                            <span>{formatPercentOrNull(op.qualityPercent)}</span>
-                          </td>
-                          <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(op.oeePercent)}`}>
-                            {formatPercentOrNull(op.oeePercent)}
-                          </td>
-                          <td className="p-2.5 text-center font-mono text-[11px]">
-                            {op.idealCycleTimeSec != null ? `${toPersianDigits(op.idealCycleTimeSec.toFixed(1))}s` : 'ناموجود'}
-                            {' / '}
-                            {op.actualCycleTimeSec != null ? `${toPersianDigits(op.actualCycleTimeSec.toFixed(1))}s` : '—'}
-                          </td>
-                          <td className="p-2.5 text-center">
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDrilldown({ kind: 'OPERATION', row: op });
-                              }}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#e5f3fa] text-[#007cc0] text-[11px] font-bold cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>{toPersianDigits(op.reportsCount)}</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <FioriDataTable
+              columns={operationColumns}
+              data={data.byOperation}
+              rowKey={op => op.operationId}
+              onRowClick={op => setDrilldown({ kind: 'OPERATION', row: op })}
+              bordered={false}
+              emptyState={
+                <div className="p-4">
+                  <EmptyState
+                    variant="FILTER_NO_MATCH"
+                    compact
+                    title="عملیاتی در محدوده فیلترشده یافت نشد"
+                    description="هیچ عملیات یا دستور کاری با فیلترهای انتخاب‌شده تطابق ندارد."
+                    actionLabel={activeFiltersCount > 0 ? 'پاک کردن فیلترها' : undefined}
+                    onAction={activeFiltersCount > 0 ? handleResetFilters : undefined}
+                  />
+                </div>
+              }
+            />
           )}
 
           {/* TAB 4: BY DATE */}
           {activeTab === 'daily' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-right border-collapse">
-                <thead>
-                  <tr className="bg-[#f5f7fa] text-[#475467] border-b border-[#e5e7eb]">
-                    <th className="p-2.5 font-bold">تاریخ (میلادی)</th>
-                    <th className="p-2.5 font-bold text-center">ماشین فعال</th>
-                    <th className="p-2.5 font-bold text-center">وضعیت داده</th>
-                    <th className="p-2.5 font-bold text-center">دسترس‌پذیری (A)</th>
-                    <th className="p-2.5 font-bold text-center">عملکرد (P)</th>
-                    <th className="p-2.5 font-bold text-center">کیفیت (Q)</th>
-                    <th className="p-2.5 font-bold text-center">OEE</th>
-                    <th className="p-2.5 font-bold text-center">سالم / ضایعات</th>
-                    <th className="p-2.5 font-bold text-center">کارکرد / ستاپ / PM / خرابی (دقیقه)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#eaecf0]">
-                  {data.byDate.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="p-8 text-center text-[#666666]">
-                        هیچ رکورد روزانه‌ای در بازه انتخاب‌شده ثبت نشده است.
-                      </td>
-                    </tr>
-                  ) : (
-                    data.byDate.map(d => {
-                      const rowDq = DATA_QUALITY_META[d.dataQualityStatus];
-                      return (
-                        <tr key={d.date} className="hover:bg-[#fafafa]">
-                          <td className="p-2.5 font-mono font-bold text-[#333333]">{d.date}</td>
-                          <td className="p-2.5 text-center font-mono">{toPersianDigits(d.activeMachinesCount)}</td>
-                          <td className="p-2.5 text-center">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${rowDq.badgeClass}`}>
-                              {rowDq.labelFa}
-                            </span>
-                          </td>
-                          <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(d.availabilityPercent)}`}>
-                            {formatPercentOrNull(d.availabilityPercent)}
-                          </td>
-                          <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(d.performancePercent)}`}>
-                            {formatPercentOrNull(d.performancePercent)}
-                          </td>
-                          <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(d.qualityPercent)}`}>
-                            {formatPercentOrNull(d.qualityPercent)}
-                          </td>
-                          <td className={`p-2.5 text-center font-mono font-bold ${getOeeValueColor(d.oeePercent)}`}>
-                            {formatPercentOrNull(d.oeePercent)}
-                          </td>
-                          <td className="p-2.5 text-center font-mono">
-                            <span className="text-[#107e3e] font-bold">{formatNumber(d.goodQty)}</span>
-                            {' / '}
-                            <span className="text-[#bb0000] font-bold">{formatNumber(d.scrapQty + d.rejectedQty)}</span>
-                          </td>
-                          <td className="p-2.5 text-center font-mono text-[11px]">
-                            <span className="text-[#107e3e]">{toPersianDigits(d.time.operatingTimeMinutes)}</span>
-                            {' / '}
-                            <span className="text-[#b45309]">{toPersianDigits(d.time.setupTimeMinutes)}</span>
-                            {' / '}
-                            <span className="text-[#007cc0]">{toPersianDigits(d.time.plannedDowntimeMinutes)}</span>
-                            {' / '}
-                            <span className="text-[#bb0000]">{toPersianDigits(d.time.unplannedDowntimeMinutes)}</span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <FioriDataTable
+              columns={dailyColumns}
+              data={data.byDate}
+              rowKey={d => d.date}
+              bordered={false}
+              emptyState={
+                <div className="p-4">
+                  <EmptyState
+                    variant="NO_DATA"
+                    compact
+                    title="هیچ رکورد روزانه‌ای ثبت نشده است"
+                    description="هیچ رکورد روزانه‌ای در بازه انتخاب‌شده ثبت نشده است."
+                  />
+                </div>
+              }
+            />
           )}
 
           {/* TAB 5: SOURCE RECORDS */}
           {activeTab === 'sources' && (
             <div className="p-3 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  {[
-                    { id: 'reports' as const, label: `گزارش‌های تولید (${toPersianDigits(data.sourceRecords.productionReports.length)})` },
-                    { id: 'downtimes' as const, label: `رویدادهای توقف یکتا (${toPersianDigits(data.sourceRecords.downtimeEvents.length)})` },
-                    { id: 'assignments' as const, label: `تخصیص‌های ماشین (${toPersianDigits(data.sourceRecords.machineAssignments.length)})` },
-                  ].map(st => (
+              <FioriToolbar
+                variant="section"
+                startContent={
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { id: 'reports' as const, label: `گزارش‌های تولید (${toPersianDigits(data.sourceRecords.productionReports.length)})` },
+                      { id: 'downtimes' as const, label: `رویدادهای توقف یکتا (${toPersianDigits(data.sourceRecords.downtimeEvents.length)})` },
+                      { id: 'assignments' as const, label: `تخصیص‌های ماشین (${toPersianDigits(data.sourceRecords.machineAssignments.length)})` },
+                    ].map(st => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => setSourceSubTab(st.id)}
+                        className={`px-3 py-1.5 rounded-[var(--fiori-radius-sm)] text-xs font-semibold border cursor-pointer transition ${
+                          sourceSubTab === st.id
+                            ? 'bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border-[var(--fiori-brand)]'
+                            : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-secondary)] border-[var(--fiori-border-default)] hover:text-[var(--fiori-text-primary)]'
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    ))}
+                  </div>
+                }
+                endContent={
+                  <div className="flex items-center gap-2">
                     <button
-                      key={st.id}
                       type="button"
-                      onClick={() => setSourceSubTab(st.id)}
-                      className={`px-3 py-1.5 rounded-sm text-xs font-bold border cursor-pointer ${
-                        sourceSubTab === st.id
-                          ? 'bg-[#e5f3fa] text-[#007cc0] border-[#007cc0]'
-                          : 'bg-white text-[#666666] border-[#d9d9d9]'
-                      }`}
+                      onClick={() => handleExportCsv('reports')}
+                      className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer"
                     >
-                      {st.label}
+                      CSV گزارش‌های تولید
                     </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleExportCsv('reports')}
-                    className="px-2.5 py-1 rounded text-[11px] bg-white border border-[#d0d5dd] text-[#333333] hover:border-[#007cc0] cursor-pointer"
-                  >
-                    CSV گزارش‌های تولید
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleExportCsv('downtimes')}
-                    className="px-2.5 py-1 rounded text-[11px] bg-white border border-[#d0d5dd] text-[#333333] hover:border-[#007cc0] cursor-pointer"
-                  >
-                    CSV توقفات
-                  </button>
-                </div>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => handleExportCsv('downtimes')}
+                      className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer"
+                    >
+                      CSV توقفات
+                    </button>
+                  </div>
+                }
+              />
 
               {sourceSubTab === 'reports' && (
-                <div className="overflow-x-auto border border-[#eaecf0] rounded">
-                  <table className="w-full text-xs text-right border-collapse">
-                    <thead>
-                      <tr className="bg-[#f5f7fa] text-[#475467] border-b border-[#e5e7eb]">
-                        <th className="p-2 font-bold">شماره گزارش / تاریخ</th>
-                        <th className="p-2 font-bold">دستور کار / عملیات</th>
-                        <th className="p-2 font-bold">ماشین / شیفت</th>
-                        <th className="p-2 font-bold text-center">سالم / ضایعات</th>
-                        <th className="p-2 font-bold text-center">کارکرد / توقف (دقیقه)</th>
-                        <th className="p-2 font-bold text-center">سیکل استاندارد و منبع</th>
-                        <th className="p-2 font-bold text-center">عملکرد گزارش</th>
-                        <th className="p-2 font-bold">هشدارهای داده</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#eaecf0]">
-                      {data.sourceRecords.productionReports.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className="p-6 text-center text-[#666666]">
-                            هیچ گزارش تولیدی ثبت نشده است.
-                          </td>
-                        </tr>
-                      ) : (
-                        data.sourceRecords.productionReports.map(r => (
-                          <tr key={r.id} className="hover:bg-[#fafafa]">
-                            <td className="p-2 font-mono">
-                              <div className="font-bold text-[#333333]">{r.reportNumber}</div>
-                              <div className="text-[10px] text-[#667085]">{r.dateKey}</div>
-                            </td>
-                            <td className="p-2">
-                              <div className="font-mono font-bold text-[#007cc0]">{r.moNumber}</div>
-                              <div className="text-[11px] text-[#333333]">{r.stepCode} — {r.partName}</div>
-                            </td>
-                            <td className="p-2">
-                              <div className="font-mono font-bold">{r.machineCode}</div>
-                              <div className="text-[10px] text-[#667085]">{r.shiftName} • {r.operatorName}</div>
-                            </td>
-                            <td className="p-2 text-center font-mono">
-                              <span className="text-[#107e3e] font-bold">{formatNumber(r.goodQty)}</span>
-                              {' / '}
-                              <span className="text-[#bb0000]">{formatNumber(r.scrapQty + r.rejectedQty)}</span>
-                            </td>
-                            <td className="p-2 text-center font-mono">
-                              {toPersianDigits(r.runTimeMinutes)} / {toPersianDigits(r.downtimeMinutes)}
-                            </td>
-                            <td className="p-2 text-center text-[11px]">
-                              <div className="font-mono">{formatSecondsFa(r.idealCycleTimeSec)}</div>
-                              <div className="text-[10px] text-[#667085]">{CYCLE_SOURCE_LABELS[r.idealCycleSource] || r.idealCycleSource}</div>
-                            </td>
-                            <td className={`p-2 text-center font-mono font-bold ${getOeeValueColor(r.reportPerformancePercent)}`}>
-                              {formatPercentOrNull(r.reportPerformancePercent)}
-                            </td>
-                            <td className="p-2 text-[10px]">
-                              {r.dataFlags.length === 0 ? (
-                                <span className="text-[#107e3e] flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3" /> سالم
-                                </span>
-                              ) : (
-                                <div className="flex flex-wrap gap-1">
-                                  {r.dataFlags.map(f => (
-                                    <span key={f} className="px-1.5 py-0.5 rounded bg-[#fff4e5] text-[#b45309] font-mono">
-                                      {f}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <FioriDataTable
+                  columns={sourceReportColumns}
+                  data={data.sourceRecords.productionReports}
+                  rowKey={r => r.id}
+                  emptyState={
+                    <div className="p-4">
+                      <EmptyState
+                        variant="NO_DATA"
+                        compact
+                        title="هیچ گزارش تولیدی ثبت نشده است"
+                        description="گزارش‌های تولید ثبت‌شده در بخش اجرای کارگاه در اینجا قابل بررسی هستند."
+                      />
+                    </div>
+                  }
+                />
               )}
 
               {sourceSubTab === 'downtimes' && (
-                <div className="overflow-x-auto border border-[#eaecf0] rounded">
-                  <table className="w-full text-xs text-right border-collapse">
-                    <thead>
-                      <tr className="bg-[#f5f7fa] text-[#475467] border-b border-[#e5e7eb]">
-                        <th className="p-2 font-bold">تاریخ</th>
-                        <th className="p-2 font-bold">دسته‌بندی</th>
-                        <th className="p-2 font-bold">ماشین / شیفت</th>
-                        <th className="p-2 font-bold">دستور کار / عملیات</th>
-                        <th className="p-2 font-bold">علت توقف</th>
-                        <th className="p-2 font-bold text-center">مدت (دقیقه)</th>
-                        <th className="p-2 font-bold">منبع ثبت</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#eaecf0]">
-                      {data.sourceRecords.downtimeEvents.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="p-6 text-center text-[#666666]">
-                            هیچ رویداد توقفی ثبت نشده است.
-                          </td>
-                        </tr>
-                      ) : (
-                        data.sourceRecords.downtimeEvents.map(d => {
-                          const cat = DOWNTIME_CATEGORY_META[d.category];
-                          return (
-                            <tr key={d.id} className="hover:bg-[#fafafa]">
-                              <td className="p-2 font-mono">{d.dateKey}</td>
-                              <td className="p-2">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${cat.badgeClass}`}>
-                                  {cat.labelFa}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                <span className="font-mono font-bold">{d.machineCode}</span>
-                                <span className="text-[10px] text-[#667085] block">{d.shiftName || '—'}</span>
-                              </td>
-                              <td className="p-2 font-mono text-[11px]">
-                                {d.moNumber || '—'} {d.stepCode ? `/ ${d.stepCode}` : ''}
-                              </td>
-                              <td className="p-2 text-[#333333]">{d.reason}</td>
-                              <td className="p-2 text-center font-mono font-bold text-[#bb0000]">
-                                {toPersianDigits(d.durationMinutes)}
-                              </td>
-                              <td className="p-2 text-[10px] font-mono text-[#667085]">
-                                {d.source} ({d.recordedBy})
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <FioriDataTable
+                  columns={sourceDowntimeColumns}
+                  data={data.sourceRecords.downtimeEvents}
+                  rowKey={d => d.id}
+                  emptyState={
+                    <div className="p-4">
+                      <EmptyState
+                        variant="NO_DOWNTIME"
+                        compact
+                        title="هیچ رویداد توقفی ثبت نشده است"
+                        description="در بازه فیلترشده هیچ رویداد توقفی ثبت نشده است."
+                      />
+                    </div>
+                  }
+                />
               )}
 
               {sourceSubTab === 'assignments' && (
-                <div className="overflow-x-auto border border-[#eaecf0] rounded">
-                  <table className="w-full text-xs text-right border-collapse">
-                    <thead>
-                      <tr className="bg-[#f5f7fa] text-[#475467] border-b border-[#e5e7eb]">
-                        <th className="p-2 font-bold">تاریخ تخصیص</th>
-                        <th className="p-2 font-bold">ماشین</th>
-                        <th className="p-2 font-bold">شیفت</th>
-                        <th className="p-2 font-bold">دستور کار / مرحله</th>
-                        <th className="p-2 font-bold text-center">ظرفیت شیفت (دقیقه)</th>
-                        <th className="p-2 font-bold text-center">وضعیت</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#eaecf0]">
-                      {data.sourceRecords.machineAssignments.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="p-6 text-center text-[#666666]">
-                            هیچ تخصیص ماشینی در بازه انتخاب‌شده یافت نشد.
-                          </td>
-                        </tr>
-                      ) : (
-                        data.sourceRecords.machineAssignments.map(a => (
-                          <tr key={a.id} className="hover:bg-[#fafafa]">
-                            <td className="p-2 font-mono">{a.assignedDate}</td>
-                            <td className="p-2 font-mono font-bold">{a.machineCode} — {a.machineName}</td>
-                            <td className="p-2">{a.shiftName}</td>
-                            <td className="p-2 font-mono">{a.moNumber} / {a.stepCode}</td>
-                            <td className="p-2 text-center font-mono">{toPersianDigits(a.productiveMinutes)}</td>
-                            <td className="p-2 text-center font-mono text-[11px]">{a.status}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <FioriDataTable
+                  columns={sourceAssignmentColumns}
+                  data={data.sourceRecords.machineAssignments}
+                  rowKey={a => a.id}
+                  emptyState={
+                    <div className="p-4">
+                      <EmptyState
+                        variant="FILTER_NO_MATCH"
+                        compact
+                        title="هیچ تخصیص ماشینی یافت نشد"
+                        description="هیچ تخصیص ماشینی در بازه انتخاب‌شده یافت نشد."
+                      />
+                    </div>
+                  }
+                />
               )}
             </div>
           )}
@@ -1355,24 +1809,24 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
       {/* Drill-Down Drawer for Machine or Operation */}
       {drilldown && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex justify-end"
+          className="fixed inset-0 z-50 bg-[#1d2d3e]/45 backdrop-blur-[1px] flex justify-end no-print"
           onClick={() => setDrilldown(null)}
         >
           <div
-            className="w-full max-w-2xl bg-white h-full shadow-2xl overflow-y-auto p-5 space-y-4"
+            className="w-full max-w-2xl bg-[var(--fiori-bg-surface)] border-r border-[var(--fiori-border-default)] h-full shadow-[var(--fiori-shadow-dialog)] overflow-y-auto p-5 space-y-4"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between border-b border-[#e5e7eb] pb-3">
+            <div className="flex items-start justify-between border-b border-[var(--fiori-border-subtle)] pb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-[#007cc0]" />
-                  <h3 className="text-sm font-bold text-[#333333]">
+                  <BarChart3 className="w-4 h-4 text-[var(--fiori-brand)]" />
+                  <h3 className="text-sm font-semibold text-[var(--fiori-text-primary)]">
                     {drilldown.kind === 'MACHINE'
                       ? `ریز سوابق عملکرد ماشین ${drilldown.row.machineCode} — ${drilldown.row.machineName}`
                       : `ریز سوابق عملیات ${drilldown.row.moNumber} / ${drilldown.row.stepCode}`}
                   </h3>
                 </div>
-                <p className="text-xs text-[#666666] mt-0.5">
+                <p className="text-xs text-[var(--fiori-text-secondary)] mt-0.5">
                   {drilldown.kind === 'MACHINE'
                     ? `${drilldown.row.hallLocation} • وضعیت: ${drilldown.row.status}`
                     : `${drilldown.row.partName} (${drilldown.row.partCode})`}
@@ -1381,35 +1835,36 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
               <button
                 type="button"
                 onClick={() => setDrilldown(null)}
-                className="p-1 rounded hover:bg-[#f2f4f7] text-[#666666] cursor-pointer"
+                aria-label="بستن جزئیات"
+                className="p-1.5 rounded-[var(--fiori-radius-sm)] hover:bg-[var(--fiori-bg-hover)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Drilldown KPIs */}
-            <div className="grid grid-cols-4 gap-2 text-center text-xs">
-              <div className="p-2.5 rounded bg-[#f8fafc] border border-[#e5e7eb]">
-                <span className="text-[#667085] block">Availability</span>
-                <strong className={`font-mono text-base ${getOeeValueColor(drilldown.row.availabilityPercent)}`}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+              <div className="p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)]">
+                <span className="text-[var(--fiori-text-secondary)] block">Availability</span>
+                <strong className={`font-mono text-base tabular-nums ${getOeeValueColor(drilldown.row.availabilityPercent)}`}>
                   {formatPercentOrNull(drilldown.row.availabilityPercent)}
                 </strong>
               </div>
-              <div className="p-2.5 rounded bg-[#f8fafc] border border-[#e5e7eb]">
-                <span className="text-[#667085] block">Performance</span>
-                <strong className={`font-mono text-base ${getOeeValueColor(drilldown.row.performancePercent)}`}>
+              <div className="p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)]">
+                <span className="text-[var(--fiori-text-secondary)] block">Performance</span>
+                <strong className={`font-mono text-base tabular-nums ${getOeeValueColor(drilldown.row.performancePercent)}`}>
                   {formatPercentOrNull(drilldown.row.performancePercent)}
                 </strong>
               </div>
-              <div className="p-2.5 rounded bg-[#f8fafc] border border-[#e5e7eb]">
-                <span className="text-[#667085] block">Quality</span>
-                <strong className={`font-mono text-base ${getOeeValueColor(drilldown.row.qualityPercent)}`}>
+              <div className="p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)]">
+                <span className="text-[var(--fiori-text-secondary)] block">Quality</span>
+                <strong className={`font-mono text-base tabular-nums ${getOeeValueColor(drilldown.row.qualityPercent)}`}>
                   {formatPercentOrNull(drilldown.row.qualityPercent)}
                 </strong>
               </div>
-              <div className="p-2.5 rounded bg-[#f8fafc] border border-[#e5e7eb]">
-                <span className="text-[#667085] block">OEE</span>
-                <strong className={`font-mono text-base ${getOeeValueColor(drilldown.row.oeePercent)}`}>
+              <div className="p-2.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)]">
+                <span className="text-[var(--fiori-text-secondary)] block">OEE</span>
+                <strong className={`font-mono text-base tabular-nums ${getOeeValueColor(drilldown.row.oeePercent)}`}>
                   {formatPercentOrNull(drilldown.row.oeePercent)}
                 </strong>
               </div>
@@ -1417,40 +1872,52 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
 
             {/* Data Quality Warnings for this entity */}
             {drilldown.row.dataQualityIssues.length > 0 && (
-              <div className="p-3 rounded bg-[#fffcf5] border border-[#e9730c]/30 text-xs space-y-1">
-                <div className="font-bold text-[#b45309] flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4" />
-                  هشدارها و ورودی‌های ناقص این رکورد
-                </div>
-                <ul className="list-disc pr-5 text-[11px] text-[#475467] space-y-0.5">
+              <FioriMessageStrip
+                tone="warning"
+                compact
+                title="هشدارها و ورودی‌های ناقص این رکورد"
+              >
+                <ul className="list-disc pr-5 text-[11px] text-[var(--fiori-text-secondary)] space-y-0.5 mt-1">
                   {drilldown.row.dataQualityIssues.map((iss, i) => (
                     <li key={`${iss.code}-${i}`}>{iss.messageFa}</li>
                   ))}
                 </ul>
-              </div>
+              </FioriMessageStrip>
             )}
 
             {/* Source Production Reports */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-[#333333]">
+              <h4 className="text-xs font-semibold text-[var(--fiori-text-primary)]">
                 گزارش‌های تولید منبع ({toPersianDigits(drilldownRecords.reports.length)})
               </h4>
               {drilldownRecords.reports.length === 0 ? (
-                <p className="text-xs text-[#666666] bg-[#fafafa] p-3 rounded border border-[#eaecf0]">
-                  گزارش تولیدی برای این ردیف ثبت نشده است.
-                </p>
+                <EmptyState
+                  variant="NO_DATA"
+                  compact
+                  title="گزارش تولیدی ثبت نشده است"
+                  description="گزارش تولیدی برای این ردیف ثبت نشده است."
+                />
               ) : (
                 <div className="space-y-1.5">
                   {drilldownRecords.reports.map(r => (
-                    <div key={r.id} className="p-2.5 rounded border border-[#eaecf0] bg-[#fafafa] text-xs space-y-1">
+                    <div
+                      key={r.id}
+                      className="p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-subtle)] bg-[var(--fiori-bg-subtle)] text-xs space-y-1"
+                    >
                       <div className="flex items-center justify-between font-mono">
-                        <strong className="text-[#007cc0]">{r.reportNumber}</strong>
-                        <span className="text-[#667085]">{r.dateKey} • {r.shiftName}</span>
+                        <strong className="fiori-ltr-code text-[var(--fiori-brand)]">{r.reportNumber}</strong>
+                        <span className="text-[var(--fiori-text-secondary)]">
+                          <span className="fiori-ltr-code">{r.dateKey}</span> • {r.shiftName}
+                        </span>
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                        <span>{r.moNumber} / {r.stepCode} ({r.partName})</span>
-                        <span className="font-mono">
-                          سالم: <strong className="text-[#107e3e]">{formatNumber(r.goodQty)}</strong> | ضایعات: <strong className="text-[#bb0000]">{formatNumber(r.scrapQty + r.rejectedQty)}</strong> | کارکرد: <strong>{toPersianDigits(r.runTimeMinutes)} د</strong>
+                        <span>
+                          <span className="fiori-ltr-code font-mono">{r.moNumber} / {r.stepCode}</span> ({r.partName})
+                        </span>
+                        <span className="font-mono tabular-nums">
+                          سالم: <strong className="text-[var(--fiori-positive)]">{formatNumber(r.goodQty)}</strong> | ضایعات:{' '}
+                          <strong className="text-[var(--fiori-negative)]">{formatNumber(r.scrapQty + r.rejectedQty)}</strong> | کارکرد:{' '}
+                          <strong>{toPersianDigits(r.runTimeMinutes)} د</strong>
                         </span>
                       </div>
                     </div>
@@ -1461,29 +1928,36 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
 
             {/* Source Downtime Events */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-[#333333]">
+              <h4 className="text-xs font-semibold text-[var(--fiori-text-primary)]">
                 رویدادهای توقف منبع ({toPersianDigits(drilldownRecords.downtimes.length)})
               </h4>
               {drilldownRecords.downtimes.length === 0 ? (
-                <p className="text-xs text-[#666666] bg-[#fafafa] p-3 rounded border border-[#eaecf0]">
-                  رویداد توقفی برای این ردیف ثبت نشده است.
-                </p>
+                <EmptyState
+                  variant="NO_DOWNTIME"
+                  compact
+                  title="رویداد توقفی ثبت نشده است"
+                  description="رویداد توقفی برای این ردیف ثبت نشده است."
+                />
               ) : (
                 <div className="space-y-1.5">
                   {drilldownRecords.downtimes.map(d => {
                     const cat = DOWNTIME_CATEGORY_META[d.category];
                     return (
-                      <div key={d.id} className="p-2.5 rounded border border-[#eaecf0] bg-[#fafafa] text-xs flex items-center justify-between gap-2">
-                        <div>
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ml-2 ${cat.badgeClass}`}>
-                            {cat.labelFa}
-                          </span>
-                          <span className="font-medium text-[#333333]">{d.reason}</span>
-                          <div className="text-[10px] text-[#667085] mt-0.5 font-mono">
-                            {d.dateKey} • {d.source} • {d.recordedBy}
+                      <div
+                        key={d.id}
+                        className="p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-subtle)] bg-[var(--fiori-bg-subtle)] text-xs flex items-center justify-between gap-2"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <FioriObjectStatus tone={cat.tone} label={cat.labelFa} />
+                            <span className="font-medium text-[var(--fiori-text-primary)]">{d.reason}</span>
+                          </div>
+                          <div className="text-[10px] text-[var(--fiori-text-muted)] font-mono">
+                            <span className="fiori-ltr-code">{d.dateKey}</span> •{' '}
+                            <span className="fiori-ltr-code">{d.source}</span> • {d.recordedBy}
                           </div>
                         </div>
-                        <span className="font-mono font-bold text-[#bb0000] shrink-0">
+                        <span className="font-mono font-semibold text-[var(--fiori-negative)] shrink-0 tabular-nums">
                           {toPersianDigits(d.durationMinutes)} دقیقه
                         </span>
                       </div>
@@ -1495,6 +1969,6 @@ export const OeeModuleView: React.FC<OeeModuleViewProps> = () => {
           </div>
         </div>
       )}
-    </div>
+    </FioriDynamicPage>
   );
 };
