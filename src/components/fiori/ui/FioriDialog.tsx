@@ -2,16 +2,17 @@ import React, { useEffect, useId } from 'react';
 import { X } from 'lucide-react';
 
 export type FioriDialogSize = 'sm' | 'md' | 'lg' | 'xl';
-export type FioriDialogTone = 'default' | 'brand' | 'warning' | 'danger';
+export type FioriDialogTone = 'default' | 'brand' | 'positive' | 'warning' | 'danger';
 
 export interface FioriDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: React.ReactNode;
   subtitle?: React.ReactNode;
   icon?: React.ReactNode;
   tone?: FioriDialogTone;
   size?: FioriDialogSize;
+  headerActions?: React.ReactNode;
   footer?: React.ReactNode;
   children: React.ReactNode;
   closeOnBackdrop?: boolean;
@@ -31,6 +32,8 @@ const ICON_TONE_MAP: Record<FioriDialogTone, string> = {
     'bg-[var(--fiori-neutral-bg)] text-[var(--fiori-neutral)] border-[var(--fiori-neutral-border)]',
   brand:
     'bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border-[var(--fiori-brand-border)]',
+  positive:
+    'bg-[var(--fiori-positive-bg)] text-[var(--fiori-positive)] border-[var(--fiori-positive-border)]',
   warning:
     'bg-[var(--fiori-critical-bg)] text-[var(--fiori-critical)] border-[var(--fiori-critical-border)]',
   danger:
@@ -45,6 +48,7 @@ export const FioriDialog: React.FC<FioriDialogProps> = ({
   icon,
   tone = 'default',
   size = 'md',
+  headerActions,
   footer,
   children,
   closeOnBackdrop = true,
@@ -107,17 +111,20 @@ export const FioriDialog: React.FC<FioriDialogProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (!disableClose) onClose();
-            }}
-            disabled={disableClose}
-            aria-label="بستن پنجره"
-            className="p-1.5 rounded-[var(--fiori-radius-sm)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-bg-hover)] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {headerActions}
+            <button
+              type="button"
+              onClick={() => {
+                if (!disableClose) onClose();
+              }}
+              disabled={disableClose}
+              aria-label="بستن پنجره"
+              className="p-1.5 rounded-[var(--fiori-radius-sm)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-bg-hover)] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed fiori-focus-ring"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Dialog Body */}

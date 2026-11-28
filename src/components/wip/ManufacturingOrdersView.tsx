@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Layers,
-  Search,
   Plus,
   Play,
   CheckCircle2,
@@ -10,20 +9,20 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  MapPin,
+  Cpu,
 } from 'lucide-react';
 import {
   ManufacturingOrder,
   ManufacturingOperation,
 } from '../../types/productionWip';
-import {
-  formatNumber,
-  toPersianDigits,
-} from '../../utils/formatters';
+import { formatNumber, toPersianDigits } from '../../utils/formatters';
 import { TableSkeleton } from '../ui/Skeleton';
 import { useErpRouter } from '../../context/RouterContext';
 import { usePersistedExpandMap } from '../../hooks/usePersistedCollapse';
 import {
   FioriDynamicPage,
+  FioriFilterBar,
   FioriObjectStatus,
   FioriToolbar,
 } from '../fiori/ui';
@@ -106,14 +105,14 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
                 <button
                   type="button"
                   onClick={() => expandAllMos(filteredOrders.map(o => o.id))}
-                  className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer whitespace-nowrap"
+                  className="sap-btn-standard px-2.5 py-1 text-[11px] whitespace-nowrap"
                 >
                   باز کردن همه
                 </button>
                 <button
                   type="button"
                   onClick={collapseAllMos}
-                  className="sap-btn-standard px-2.5 py-1 text-[11px] cursor-pointer whitespace-nowrap"
+                  className="sap-btn-standard px-2.5 py-1 text-[11px] whitespace-nowrap"
                 >
                   بستن همه
                 </button>
@@ -136,10 +135,11 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
           const completedOpsCount = mo.operations.filter(o => o.status === 'COMPLETED').length;
           const activeOp =
             mo.operations.find(o => o.inProgressQty > 0) ||
-            mo.operations.find(o => o.waitingInputQty > 0) ||
             mo.operations.find(o => o.readyForTransferQty > 0) ||
+            mo.operations.find(o => o.waitingInputQty > 0) ||
             mo.operations.find(o => o.status !== 'COMPLETED');
           const totalWaiting = mo.operations.reduce((s, o) => s + (o.waitingInputQty || 0), 0);
+          const totalInProgress = mo.operations.reduce((s, o) => s + (o.inProgressQty || 0), 0);
           const totalReady = mo.operations.reduce((s, o) => s + (o.readyForTransferQty || 0), 0);
           const statusInfo = statusMeta[mo.status] || { label: mo.status, tone: 'neutral' as const };
 
@@ -163,10 +163,46 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
               : finalPct;
           const progressPct = Math.max(finalPct, opPct);
 
+          // Determine single clearest next action for this MO header
+          const shortOpCode = activeOp ? activeOp.stepCode.split('_')[0] : '';
+          const nextActionBtn = activeOp ? (
+            activeOp.inProgressQty > 0 ? (
+              <button
+                type="button"
+                onClick={() => onOpenProduction(activeOp)}
+                className="fiori-btn-positive inline-flex items-center gap-1 px-2.5 py-1 text-xs whitespace-nowrap"
+                title={`ثبت تولید مرحله ${activeOp.stepCode} (${activeOp.stepName})`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>ثبت تولید ({shortOpCode})</span>
+              </button>
+            ) : activeOp.readyForTransferQty > 0 ? (
+              <button
+                type="button"
+                onClick={() => onOpenTransfer(mo, activeOp)}
+                className="sap-btn-emphasized inline-flex items-center gap-1 px-2.5 py-1 text-xs whitespace-nowrap"
+                title={`انتقال از مرحله ${activeOp.stepCode} (${activeOp.stepName})`}
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span>انتقال ({shortOpCode})</span>
+              </button>
+            ) : activeOp.waitingInputQty > 0 ? (
+              <button
+                type="button"
+                onClick={() => onOpenInput(activeOp)}
+                className="sap-btn-emphasized inline-flex items-center gap-1 px-2.5 py-1 text-xs whitespace-nowrap"
+                title={`شروع کار مرحله ${activeOp.stepCode} (${activeOp.stepName})`}
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>شروع کار ({shortOpCode})</span>
+              </button>
+            ) : null
+          ) : null;
+
           return (
             <div
               key={mo.id}
-              className={`bg-[var(--fiori-bg-surface)] border rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] transition-all ${
+              className={`bg-[var(--fiori-bg-surface)] border rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] transition-colors ${
                 isExpanded
                   ? 'border-[var(--fiori-brand)]'
                   : 'border-[var(--fiori-border-default)] hover:border-[var(--fiori-border-strong)]'
@@ -174,11 +210,11 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
             >
               {/* Header Row */}
               <div className="p-3 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="p-2 bg-[var(--fiori-info-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-info-border)] rounded-[var(--fiori-radius-sm)] shrink-0">
+                <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                  <div className="p-2 bg-[var(--fiori-info-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-info-border)] rounded-[var(--fiori-radius-sm)] shrink-0 mt-0.5">
                     <Layers className="w-4 h-4" />
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
@@ -189,32 +225,53 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
                         {mo.moNumber}
                       </button>
                       <FioriObjectStatus tone={statusInfo.tone} label={statusInfo.label} size="sm" />
-                      <FioriObjectStatus tone="neutral" label={`نسخه مسیر ${mo.routingVersion}`} size="sm" />
-                      <span className="text-xs font-bold text-[var(--fiori-text-primary)] mr-1">{mo.partName}</span>
+                      <span className="text-xs font-bold text-[var(--fiori-text-primary)]">{mo.partName}</span>
+                      <button
+                        type="button"
+                        onClick={() => traceDocument(mo.partCode, 'INVENTORY_LEDGER')}
+                        className="sap-doc-link fiori-ltr-code font-mono text-[11px]"
+                      >
+                        ({mo.partCode})
+                      </button>
+                    </div>
+
+                    {/* Current Operation & Location + Quantitative Summary */}
+                    <div className="text-xs text-[var(--fiori-text-secondary)] flex items-center gap-x-3 gap-y-1.5 flex-wrap tabular-nums">
                       {activeOp && (
-                        <span className="text-[11px] text-[var(--fiori-brand)] font-medium">
-                          · ایستگاه جاری: <strong className="fiori-ltr-code font-mono">{activeOp.stepCode}</strong> ({activeOp.stepName})
+                        <span className="inline-flex items-center gap-1 text-[var(--fiori-text-primary)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] px-1.5 py-0.5 text-[11px] flex-wrap">
+                          <MapPin className="w-3 h-3 text-[var(--fiori-brand)] shrink-0" />
+                          <span>ایستگاه جاری:</span>
+                          <strong className="fiori-ltr-code font-mono text-[var(--fiori-brand)]">{activeOp.stepCode}</strong>
+                          <span>({activeOp.stepName})</span>
+                          {activeOp.warehouseLocation && (
+                            <span className="fiori-ltr-code font-mono text-[10px] text-[var(--fiori-text-secondary)]">
+                              • {activeOp.warehouseLocation}
+                            </span>
+                          )}
                         </span>
                       )}
-                    </div>
-                    <div className="text-xs text-[var(--fiori-text-secondary)] mt-1 flex items-center gap-3 flex-wrap tabular-nums">
-                      <span>
-                        کد قطعه:{' '}
-                        <button
-                          type="button"
-                          onClick={() => traceDocument(mo.partCode, 'INVENTORY_LEDGER')}
-                          className="sap-doc-link fiori-ltr-code font-mono font-bold"
-                        >
-                          {mo.partCode}
-                        </button>
+                      <span className="whitespace-nowrap">
+                        هدف: <strong className="font-mono text-[var(--fiori-text-primary)]">{formatNumber(mo.targetQuantity)}</strong>
                       </span>
-                      <span>هدف: <strong className="font-mono text-[var(--fiori-positive)]">{formatNumber(mo.targetQuantity)}</strong></span>
-                      <span>ورودی: <strong className="font-mono text-[var(--fiori-brand)]">{formatNumber(mo.initialInputQuantity)}</strong></span>
-                      <span>صف/آماده: <strong className="font-mono text-[var(--fiori-warning)]">{formatNumber(totalWaiting)}</strong> / <strong className="font-mono text-[var(--fiori-positive)]">{formatNumber(totalReady)}</strong></span>
-                      <span>تکمیل: <strong className="font-mono text-[var(--fiori-text-primary)]">{formatNumber(mo.completedQuantity)}</strong></span>
-                      <span>ضایعات: <strong className="font-mono text-[var(--fiori-negative)]">{formatNumber(mo.totalScrapQuantity)}</strong></span>
-                      <span className="inline-flex items-center gap-1.5 min-w-[140px]">
-                        <span className="w-20 h-1.5 bg-[var(--fiori-border-subtle)] rounded-[var(--fiori-radius-sm)] overflow-hidden inline-block">
+                      <span className="whitespace-nowrap">
+                        صف: <strong className="font-mono text-[var(--fiori-critical)]">{formatNumber(totalWaiting)}</strong>
+                      </span>
+                      <span className="whitespace-nowrap">
+                        پای دستگاه: <strong className="font-mono text-[var(--fiori-brand)]">{formatNumber(totalInProgress)}</strong>
+                      </span>
+                      <span className="whitespace-nowrap">
+                        آماده انتقال: <strong className="font-mono text-[var(--fiori-positive)]">{formatNumber(totalReady)}</strong>
+                      </span>
+                      <span className="whitespace-nowrap">
+                        تکمیل: <strong className="font-mono text-[var(--fiori-positive)]">{formatNumber(mo.completedQuantity)}</strong>
+                      </span>
+                      {mo.totalScrapQuantity > 0 && (
+                        <span className="whitespace-nowrap">
+                          ضایعات: <strong className="font-mono text-[var(--fiori-negative)]">{formatNumber(mo.totalScrapQuantity)}</strong>
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                        <span className="w-16 h-1.5 bg-[var(--fiori-border-subtle)] rounded-full overflow-hidden inline-block">
                           <span
                             className={`block h-full ${progressPct >= 100 ? 'bg-[var(--fiori-positive)]' : 'bg-[var(--fiori-brand)]'}`}
                             style={{ width: `${progressPct}%` }}
@@ -228,50 +285,53 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
                   </div>
                 </div>
 
-                {/* Top Right Action & Toggle */}
-                <div className="flex items-center gap-2 flex-wrap self-end md:self-center">
+                {/* Primary + Secondary Actions */}
+                <div className="flex items-center gap-1.5 flex-wrap self-end lg:self-center shrink-0">
+                  {nextActionBtn}
+
                   <button
                     type="button"
                     onClick={() => onOpenReconciliation(mo.id)}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-[var(--fiori-positive-bg)] hover:opacity-90 text-[var(--fiori-positive)] border border-[var(--fiori-positive-border)] rounded-[var(--fiori-radius-sm)] text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0"
+                    className="sap-btn-standard inline-flex items-center gap-1 px-2.5 py-1 text-xs"
                     title="مشاهده گواهی موازنه پایستگی قطعات"
                   >
-                    <Scale className="w-3.5 h-3.5" />
-                    <span>موازنه و بازرسی تراز</span>
+                    <Scale className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
+                    <span>موازنه تراز</span>
                   </button>
 
                   {onRequestDeleteRollback && (
                     <button
                       type="button"
                       onClick={() => onRequestDeleteRollback(mo)}
-                      className="flex items-center gap-1.5 px-3 py-1 bg-[var(--fiori-negative-bg)] hover:opacity-90 text-[var(--fiori-negative)] border border-[var(--fiori-negative-border)] rounded-[var(--fiori-radius-sm)] text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0"
+                      className="fiori-btn-danger-outline inline-flex items-center gap-1 px-2 py-1 text-xs"
                       title="حذف دستور تولید به همراه زیرمجموعه‌ها و بازگشت کامل موجودی مصرفی به انبار"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>حذف کامل و بازگشت موجودی</span>
+                      <span className="hidden sm:inline">حذف و بازگشت</span>
                     </button>
                   )}
 
                   <button
                     type="button"
                     onClick={() => toggleMoExpanded(mo.id)}
-                    className="sap-btn-standard flex items-center gap-1 px-3 py-1 text-xs whitespace-nowrap shrink-0 cursor-pointer"
+                    className="sap-btn-standard inline-flex items-center gap-1 px-2.5 py-1 text-xs"
                   >
-                    <span>{isExpanded ? 'بستن مراحل' : 'مشاهده مراحل'}</span>
+                    <span>{isExpanded ? 'بستن مراحل' : `مراحل (${toPersianDigits(mo.operations.length)})`}</span>
                     {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
 
-              {/* Expanded Operations Timeline & Cards */}
+              {/* Expanded Operations Sequence & Cards */}
               {isExpanded && (
-                <div className="border-t border-[var(--fiori-border-default)] p-4 bg-[var(--fiori-bg-subtle)] space-y-3">
+                <div className="border-t border-[var(--fiori-border-default)] p-3.5 bg-[var(--fiori-bg-subtle)] space-y-3">
                   <div className="flex items-center justify-between text-xs text-[var(--fiori-text-secondary)] flex-wrap gap-2">
-                    <div>
-                      مراحل فرآیند ساخت ({toPersianDigits(completedOpsCount)} از {toPersianDigits(mo.operations.length)} تکمیل‌شده)
+                    <div className="font-semibold text-[var(--fiori-text-primary)]">
+                      زنجیره عملیات ساخت ({toPersianDigits(completedOpsCount)} از {toPersianDigits(mo.operations.length)} تکمیل‌شده • نسخه مسیر{' '}
+                      <span className="fiori-ltr-code font-mono">{mo.routingVersion}</span>)
                     </div>
-                    <div className="text-[11px] text-[var(--fiori-text-secondary)]">
-                      مبتنی بر قانون پایستگی: قطعات سالم تا پیش از ثبت حواله، در انبار مرحله بعد منظور نمی‌شوند.
+                    <div className="text-[11px]">
+                      قانون پایستگی: قطعات سالم تا پیش از ثبت حواله انتقال، در صف ورودی مرحله بعد منظور نمی‌شوند.
                     </div>
                   </div>
 
@@ -285,20 +345,19 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
                       return (
                         <div
                           key={op.id}
-                          className={`p-3 rounded-[var(--fiori-radius-sm)] border bg-[var(--fiori-bg-surface)] flex flex-col justify-between space-y-2.5 transition-all ${
+                          className={`p-3 rounded-[var(--fiori-radius-sm)] border bg-[var(--fiori-bg-surface)] flex flex-col justify-between space-y-2.5 transition-colors ${
                             hasInProgress
                               ? 'border-[var(--fiori-brand)]'
                               : hasReadyToTransfer
                               ? 'border-[var(--fiori-positive-border)]'
                               : hasWaiting
-                              ? 'border-[var(--fiori-warning-border)]'
-                              : 'border-[var(--fiori-border-default)] opacity-85'
+                              ? 'border-[var(--fiori-critical-border)]'
+                              : 'border-[var(--fiori-border-default)] opacity-90'
                           }`}
                         >
-                          {/* Card Top */}
                           <div>
-                            <div className="flex items-start justify-between gap-1">
-                              <div>
+                            <div className="flex items-start justify-between gap-1.5">
+                              <div className="min-w-0">
                                 <span className="fiori-ltr-code font-mono text-xs font-bold text-[var(--fiori-brand)]">
                                   {op.stepCode}
                                 </span>
@@ -313,33 +372,41 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
                               />
                             </div>
 
-                            <div className="mt-1 text-[10px] text-[var(--fiori-text-secondary)] flex items-center justify-between">
-                              <span className="fiori-ltr-code font-mono text-[var(--fiori-brand)]">{op.warehouseLocation}</span>
-                              {op.machineName && <span className="truncate max-w-[120px]">{op.machineName}</span>}
+                            <div className="mt-1.5 text-[10px] text-[var(--fiori-text-secondary)] flex items-center justify-between gap-2">
+                              <span className="inline-flex items-center gap-1 fiori-ltr-code font-mono text-[var(--fiori-brand)] truncate">
+                                <MapPin className="w-3 h-3 shrink-0" />
+                                {op.warehouseLocation}
+                              </span>
+                              {op.machineName && (
+                                <span className="inline-flex items-center gap-1 truncate max-w-[130px]" title={op.machineName}>
+                                  <Cpu className="w-3 h-3 shrink-0" />
+                                  {op.machineName}
+                                </span>
+                              )}
                             </div>
 
                             {/* Quantitative Breakdown */}
                             <div className="mt-2.5 pt-2 border-t border-[var(--fiori-border-subtle)] grid grid-cols-2 gap-2 text-[11px] tabular-nums">
                               <div>
-                                <span className="text-[var(--fiori-text-secondary)] block text-[10px]">در صف ورودی:</span>
-                                <span className={`font-mono font-bold ${op.waitingInputQty > 0 ? 'text-[var(--fiori-warning)]' : 'text-[var(--fiori-text-muted)]'}`}>
+                                <span className="text-[var(--fiori-text-secondary)] block text-[10px]">در صف ورودی</span>
+                                <span className={`font-mono font-bold ${op.waitingInputQty > 0 ? 'text-[var(--fiori-critical)]' : 'text-[var(--fiori-text-muted)]'}`}>
                                   {formatNumber(op.waitingInputQty)}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[var(--fiori-text-secondary)] block text-[10px]">پای دستگاه:</span>
+                                <span className="text-[var(--fiori-text-secondary)] block text-[10px]">پای دستگاه</span>
                                 <span className={`font-mono font-bold ${op.inProgressQty > 0 ? 'text-[var(--fiori-brand)]' : 'text-[var(--fiori-text-muted)]'}`}>
                                   {formatNumber(op.inProgressQty)}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[var(--fiori-text-secondary)] block text-[10px]">آماده انتقال:</span>
+                                <span className="text-[var(--fiori-text-secondary)] block text-[10px]">آماده انتقال</span>
                                 <span className={`font-mono font-bold ${op.readyForTransferQty > 0 ? 'text-[var(--fiori-positive)]' : 'text-[var(--fiori-text-muted)]'}`}>
                                   {formatNumber(op.readyForTransferQty)}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[var(--fiori-text-secondary)] block text-[10px]">ضایعات ثبتی:</span>
+                                <span className="text-[var(--fiori-text-secondary)] block text-[10px]">ضایعات ثبتی</span>
                                 <span className={`font-mono font-bold ${op.scrapQty > 0 ? 'text-[var(--fiori-negative)]' : 'text-[var(--fiori-text-muted)]'}`}>
                                   {formatNumber(op.scrapQty)}
                                 </span>
@@ -353,7 +420,7 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
                               <button
                                 type="button"
                                 onClick={() => onOpenInput(op)}
-                                className="sap-btn-emphasized flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[11px]"
+                                className="sap-btn-emphasized flex-1 inline-flex items-center justify-center gap-1 px-2 py-1 text-[11px]"
                                 title="شروع پردازش و انتقال به پای دستگاه"
                               >
                                 <Play className="w-3 h-3" />
@@ -365,7 +432,7 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
                               <button
                                 type="button"
                                 onClick={() => onOpenProduction(op)}
-                                className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-[var(--fiori-positive)] hover:opacity-90 text-white rounded-[var(--fiori-radius-sm)] text-[11px] font-bold transition-all cursor-pointer"
+                                className="fiori-btn-positive flex-1 inline-flex items-center justify-center gap-1 px-2 py-1 text-[11px]"
                                 title="ثبت قطعات سالم و ضایعات"
                               >
                                 <CheckCircle2 className="w-3 h-3" />
@@ -377,7 +444,7 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
                               <button
                                 type="button"
                                 onClick={() => onOpenTransfer(mo, op)}
-                                className="sap-btn-standard flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[11px] text-[var(--fiori-brand)] border-[var(--fiori-brand)]"
+                                className="sap-btn-standard flex-1 inline-flex items-center justify-center gap-1 px-2 py-1 text-[11px] text-[var(--fiori-brand)] border-[var(--fiori-brand)]"
                                 title="ارسال قطعات به مرحله بعد یا انبار"
                               >
                                 <ArrowRightLeft className="w-3 h-3" />
@@ -387,7 +454,7 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
 
                             {!hasWaiting && !hasInProgress && !hasReadyToTransfer && op.transferredQty > 0 && (
                               <span className="w-full text-center text-[10px] text-[var(--fiori-positive)] font-semibold py-1">
-                                ✓ کلیه قطعات به مرحله بعد ارسال شده‌اند
+                                کلیه قطعات به مرحله بعد ارسال شده‌اند
                               </span>
                             )}
                           </div>
@@ -416,42 +483,31 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
         <button
           type="button"
           onClick={onOpenCreateMo}
-          className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs"
+          className="sap-btn-emphasized inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>صدور دستور کار جدید (MO)</span>
         </button>
       }
       filterBar={
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5 flex-1">
-            <div className="relative min-w-[240px] flex-1">
-              <Search className="w-3.5 h-3.5 text-[var(--fiori-text-muted)] absolute right-2.5 top-2" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="جستجوی شماره دستور (MO)، کد یا عنوان قطعه..."
-                className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] pr-8 pl-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
-              />
-            </div>
-
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
-            >
-              <option value="ALL">همه وضعیت‌ها</option>
-              <option value="IN_PROGRESS">در جریان ساخت (In-Progress)</option>
-              <option value="RELEASED">صادرشده (Released)</option>
-              <option value="COMPLETED">تکمیل‌شده (Completed)</option>
-            </select>
-          </div>
-
-          <div className="text-xs text-[var(--fiori-text-secondary)] tabular-nums">
-            تعداد دستورها: <strong className="text-[var(--fiori-text-primary)] font-mono">{toPersianDigits(filteredOrders.length)}</strong>
-          </div>
-        </div>
+        <FioriFilterBar
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="جستجوی شماره دستور (MO)، کد یا عنوان قطعه..."
+          segments={[
+            { id: 'ALL', label: 'همه', count: orders.length },
+            { id: 'IN_PROGRESS', label: 'در جریان ساخت', count: orders.filter(o => o.status === 'IN_PROGRESS').length },
+            { id: 'RELEASED', label: 'صادرشده', count: orders.filter(o => o.status === 'RELEASED').length },
+            { id: 'COMPLETED', label: 'تکمیل‌شده', count: orders.filter(o => o.status === 'COMPLETED').length },
+          ]}
+          activeSegment={statusFilter}
+          onSegmentChange={setStatusFilter}
+          hasActiveFilters={(statusFilter !== 'ALL' ? 1 : 0) + (searchTerm.trim() ? 1 : 0) > 0}
+          onReset={() => {
+            setSearchTerm('');
+            setStatusFilter('ALL');
+          }}
+        />
       }
       activeFiltersCount={(statusFilter !== 'ALL' ? 1 : 0) + (searchTerm.trim() ? 1 : 0)}
       onResetFilters={() => {
@@ -463,4 +519,3 @@ export const ManufacturingOrdersView: React.FC<ManufacturingOrdersViewProps> = (
     </FioriDynamicPage>
   );
 };
-

@@ -1,16 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  CheckCircle2,
-  X,
-  AlertTriangle,
-  RotateCcw,
-  ShieldAlert,
-  AlertCircle,
-  FileCheck,
-} from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { ManufacturingOperation } from '../../types/productionWip';
 import { DynamicSelect } from '../common/DynamicSelect';
-import { formatNumber, toPersianDigits } from '../../utils/formatters';
+import { formatNumber } from '../../utils/formatters';
+import { FioriDialog, FioriMessageStrip } from '../fiori/ui';
 
 interface OperationProductionModalProps {
   isOpen: boolean;
@@ -46,14 +39,19 @@ export const OperationProductionModal: React.FC<OperationProductionModalProps> =
     if (!isOpen || !operation) return;
     let cancelled = false;
     setContextLoading(true);
+    setErrorMsg(null);
     fetch(`/api/wip/production-posting-context?wipMoId=${encodeURIComponent(operation.moId)}`)
       .then(response => response.json())
       .then(result => {
         if (cancelled) return;
         if (!result.success) throw new Error(result.error || 'خطا در دریافت اطلاعات ثبت تولید');
         setPostingContext(result.data);
-        const matchedById = result.data.manufacturingOrders?.find((m: any) => m.id === operation.moId);
-        const matchedByNumber = result.data.manufacturingOrders?.find((m: any) => m.moNumber === operation.moNumber);
+        const matchedById = result.data.manufacturingOrders?.find(
+          (m: any) => m.id === operation.moId
+        );
+        const matchedByNumber = result.data.manufacturingOrders?.find(
+          (m: any) => m.moNumber === operation.moNumber
+        );
         setRelationalManufacturingOrderId(
           matchedById?.id ||
             matchedByNumber?.id ||
@@ -70,7 +68,9 @@ export const OperationProductionModal: React.FC<OperationProductionModalProps> =
       .finally(() => {
         if (!cancelled) setContextLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, operation?.moId]);
 
   useEffect(() => {
@@ -78,16 +78,21 @@ export const OperationProductionModal: React.FC<OperationProductionModalProps> =
   }, [isOpen]);
 
   const selectedRelationalOrder = useMemo(
-    () => postingContext?.manufacturingOrders?.find((row: any) => row.id === relationalManufacturingOrderId),
-    [postingContext, relationalManufacturingOrderId],
+    () =>
+      postingContext?.manufacturingOrders?.find(
+        (row: any) => row.id === relationalManufacturingOrderId
+      ),
+    [postingContext, relationalManufacturingOrderId]
   );
   const selectedRelationalOperation = useMemo(
-    () => selectedRelationalOrder?.operations?.find((row: any) =>
-      row.stepNumber === operation?.stepNumber && row.operation?.processType === operation?.processType
-    ),
-    [selectedRelationalOrder, operation?.stepNumber, operation?.processType],
+    () =>
+      selectedRelationalOrder?.operations?.find(
+        (row: any) =>
+          row.stepNumber === operation?.stepNumber &&
+          row.operation?.processType === operation?.processType
+      ),
+    [selectedRelationalOrder, operation?.stepNumber, operation?.processType]
   );
-
 
   if (!isOpen || !operation) return null;
 
@@ -106,13 +111,19 @@ export const OperationProductionModal: React.FC<OperationProductionModalProps> =
     e.preventDefault();
 
     if (totalAccounted <= 0) {
-      setErrorMsg('حداقل یکی از مقادیر تولید سالم، ضایعات، دوباره‌کاری یا نامنطبق باید بزرگتر از صفر باشد.');
+      setErrorMsg(
+        'حداقل یکی از مقادیر تولید سالم، ضایعات، دوباره‌کاری یا نامنطبق باید بزرگتر از صفر باشد.'
+      );
       return;
     }
 
     if (totalAccounted > effectiveAvailableTotal) {
       setErrorMsg(
-        `مجموع قطعات اعلام‌شده (${formatNumber(totalAccounted)}) از مجموع موجودی قابل پردازش ایستگاه (${formatNumber(effectiveAvailableTotal)}) بیشتر است.`
+        `مجموع قطعات اعلام‌شده (${formatNumber(
+          totalAccounted
+        )}) از مجموع موجودی قابل پردازش ایستگاه (${formatNumber(
+          effectiveAvailableTotal
+        )}) بیشتر است.`
       );
       return;
     }
@@ -126,10 +137,16 @@ export const OperationProductionModal: React.FC<OperationProductionModalProps> =
       return;
     }
     if (selectedRelationalOrder && !selectedRelationalOperation) {
-      setErrorMsg('برای این مرحله، عملیات متناظر با شماره مرحله و نوع فرایند در دستور ساخت انتخابی پیدا نشد.');
+      setErrorMsg(
+        'برای این مرحله، عملیات متناظر با شماره مرحله و نوع فرایند در دستور ساخت انتخابی پیدا نشد.'
+      );
       return;
     }
-    if (selectedRelationalOperation && !selectedRelationalOperation.plannedMachineId && !relationalMachineId) {
+    if (
+      selectedRelationalOperation &&
+      !selectedRelationalOperation.plannedMachineId &&
+      !relationalMachineId
+    ) {
       setErrorMsg('برای عملیات بدون ماشین برنامه‌ریزی‌شده، انتخاب ماشین واقعی الزامی است.');
       return;
     }
@@ -138,9 +155,11 @@ export const OperationProductionModal: React.FC<OperationProductionModalProps> =
     setErrorMsg(null);
 
     try {
-      const submissionKey = idempotencyKey || (typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `WIP-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      const submissionKey =
+        idempotencyKey ||
+        (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `WIP-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       setIdempotencyKey(submissionKey);
       const res = await onSubmit({
         moId: operation.moId,
@@ -150,7 +169,10 @@ export const OperationProductionModal: React.FC<OperationProductionModalProps> =
         reworkQty: rework,
         rejectedQty: rejected,
         scrapReason: scrap > 0 ? scrapReason : undefined,
-        operatorName: operatorName.trim() || postingContext?.users?.find((user: any) => user.id === createdByUserId)?.fullName || 'اپراتور مسئول خط',
+        operatorName:
+          operatorName.trim() ||
+          postingContext?.users?.find((user: any) => user.id === createdByUserId)?.fullName ||
+          'اپراتور مسئول خط',
         notes: notes.trim(),
         relationalManufacturingOrderId,
         shiftId,
@@ -174,228 +196,306 @@ export const OperationProductionModal: React.FC<OperationProductionModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#333333]/40 backdrop-blur-xs">
-      <div className="bg-white border border-[#d9d9d9] rounded-md max-w-xl w-full p-5 space-y-4 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[#d9d9d9] pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-[#eef8f2] text-[#107e3e] border border-[#b7dfc5] rounded">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[#333333]">
-                ثبت خروجی تولید و کنترل کیفیت ({operation.stepCode})
-              </h3>
-              <p className="text-xs text-[#666666]">
-                تفکیک قطعی تولید سالم، ضایعات، دوباره‌کاری و قرنطینه - دستور {operation.moNumber}
-              </p>
-            </div>
-          </div>
+    <FioriDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-1.5 flex-wrap">
+          <span>ثبت خروجی تولید و کنترل کیفیت</span>
+          <span className="fiori-ltr-code font-mono text-[var(--fiori-positive)]">
+            ({operation.stepCode})
+          </span>
+        </span>
+      }
+      subtitle={
+        <span>
+          {operation.stepName} · دستور{' '}
+          <span className="fiori-ltr-code font-mono font-semibold text-[var(--fiori-brand)]">
+            {operation.moNumber}
+          </span>
+        </span>
+      }
+      icon={<CheckCircle2 className="w-4 h-4" />}
+      tone="positive"
+      size="lg"
+      disableClose={isSubmitting}
+      footer={
+        <>
           <button
+            type="button"
             onClick={onClose}
-            className="text-[#666666] hover:text-[#333333] p-1 rounded hover:bg-[#f5f5f5] cursor-pointer"
+            disabled={isSubmitting}
+            className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            انصراف
           </button>
+          <button
+            type="submit"
+            form="op-production-form"
+            disabled={
+              isSubmitting ||
+              contextLoading ||
+              totalAccounted <= 0 ||
+              totalAccounted > effectiveAvailableTotal ||
+              !relationalManufacturingOrderId ||
+              !shiftId ||
+              !createdByUserId
+            }
+            className="fiori-btn-positive inline-flex items-center gap-1.5 px-4 py-1.5 text-xs cursor-pointer disabled:opacity-50"
+          >
+            <CheckCircle2 className={`w-3.5 h-3.5 ${isSubmitting ? 'animate-spin' : ''}`} />
+            <span>{isSubmitting ? 'در حال ثبت...' : 'ثبت قطعی تولید و کاردکس'}</span>
+          </button>
+        </>
+      }
+    >
+      {errorMsg && (
+        <FioriMessageStrip tone="error" compact onClose={() => setErrorMsg(null)}>
+          {errorMsg}
+        </FioriMessageStrip>
+      )}
+
+      {/* Current Station Balance Summary */}
+      <div className="p-3 bg-[var(--fiori-bg-subtle)] rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div>
+          <span className="text-[var(--fiori-text-secondary)] text-[11px] block">
+            موجودی قابل پردازش ایستگاه (پای دستگاه: {formatNumber(inProgressTotal)} + صف ورودی:{' '}
+            {formatNumber(waitingTotal)})
+          </span>
+          <span className="font-mono font-semibold text-[var(--fiori-text-primary)] text-base tabular-nums">
+            {formatNumber(effectiveAvailableTotal)}{' '}
+            <span className="text-xs font-normal text-[var(--fiori-text-muted)]">عدد</span>
+          </span>
+        </div>
+        <div className="text-left">
+          <span className="text-[var(--fiori-text-secondary)] text-[11px] block">
+            مانده پس از ثبت این فرم
+          </span>
+          <span
+            className={`font-mono font-semibold text-base tabular-nums ${
+              remainingInProgress >= 0
+                ? 'text-[var(--fiori-brand)]'
+                : 'text-[var(--fiori-negative)]'
+            }`}
+          >
+            {formatNumber(remainingInProgress)}{' '}
+            <span className="text-xs font-normal text-[var(--fiori-text-muted)]">عدد</span>
+          </span>
+        </div>
+      </div>
+
+      <form id="op-production-form" onSubmit={handleSubmit} className="space-y-4 text-xs">
+        {/* Posting Context */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+          <div className="space-y-1">
+            <label className="font-semibold text-[var(--fiori-text-primary)] block">
+              دستور ساخت متناظر در دیتابیس <span className="text-[var(--fiori-negative)]">*</span>
+            </label>
+            <select
+              value={relationalManufacturingOrderId}
+              onChange={e => setRelationalManufacturingOrderId(e.target.value)}
+              disabled={contextLoading || isSubmitting}
+              className="fiori-input w-full p-2"
+            >
+              <option value="">انتخاب دستور ساخت...</option>
+              {(postingContext?.manufacturingOrders || []).map((row: any) => (
+                <option key={row.id} value={row.id}>
+                  {row.moNumber} — {row.part?.partNumber} ({row.part?.name})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="font-semibold text-[var(--fiori-text-primary)] block">
+              شیفت تولید <span className="text-[var(--fiori-negative)]">*</span>
+            </label>
+            <select
+              value={shiftId}
+              onChange={e => setShiftId(e.target.value)}
+              disabled={contextLoading || isSubmitting}
+              className="fiori-input w-full p-2"
+            >
+              <option value="">انتخاب شیفت...</option>
+              {(postingContext?.shifts || []).map((row: any) => (
+                <option key={row.id} value={row.id}>
+                  {row.name} ({row.startTime} تا {row.endTime})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="font-semibold text-[var(--fiori-text-primary)] block">
+              کاربر ثبت‌کننده <span className="text-[var(--fiori-negative)]">*</span>
+            </label>
+            <select
+              value={createdByUserId}
+              onChange={e => setCreatedByUserId(e.target.value)}
+              disabled={contextLoading || isSubmitting}
+              className="fiori-input w-full p-2"
+            >
+              <option value="">انتخاب کاربر...</option>
+              {(postingContext?.users || []).map((row: any) => (
+                <option key={row.id} value={row.id}>
+                  {row.fullName}
+                  {row.personnelCode ? ` — ${row.personnelCode}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedRelationalOperation && !selectedRelationalOperation.plannedMachineId && (
+            <div className="space-y-1">
+              <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                ماشین واقعی عملیات <span className="text-[var(--fiori-negative)]">*</span>
+              </label>
+              <select
+                value={relationalMachineId}
+                onChange={e => setRelationalMachineId(e.target.value)}
+                disabled={contextLoading || isSubmitting}
+                className="fiori-input w-full p-2"
+              >
+                <option value="">انتخاب ماشین...</option>
+                {(postingContext?.machines || []).map((row: any) => (
+                  <option key={row.id} value={row.id}>
+                    {row.code} — {row.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {contextLoading && (
+            <p className="text-[11px] text-[var(--fiori-text-secondary)] sm:col-span-2">
+              در حال دریافت شیفت‌ها، کاربران و دستورهای ساخت...
+            </p>
+          )}
+          {!contextLoading && postingContext?.manufacturingOrders?.length === 0 && (
+            <p className="text-[11px] text-[var(--fiori-negative)] sm:col-span-2">
+              برای این کد قطعه دستور ساخت فعالی در دیتابیس یافت نشد؛ ابتدا از طریق «برنامه‌ریزی MRP ←
+              پیشنهاد برنامه» یا «مدیریت دستورات ساخت (MO)» دستور ساخت صادر نمایید.
+            </p>
+          )}
         </div>
 
-        {errorMsg && (
-          <div className="p-3 bg-[#fde8e8] border border-[#f5b8b8] rounded text-xs text-[#bb0000] flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
+        {/* 4 Output Quantity Buckets */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="space-y-1 bg-[var(--fiori-positive-bg)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-positive-border)]">
+            <label className="text-[11px] font-semibold text-[var(--fiori-positive)] block">
+              تولید سالم <span className="text-[var(--fiori-negative)]">*</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={goodQty}
+              onChange={e => setGoodQty(e.target.value)}
+              placeholder="0"
+              className="fiori-input w-full p-2 font-mono font-semibold text-left"
+            />
+            <span className="text-[10px] text-[var(--fiori-text-secondary)] block">
+              انتقال به مرحله بعدی
+            </span>
+          </div>
+
+          <div className="space-y-1 bg-[var(--fiori-negative-bg)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-negative-border)]">
+            <label className="text-[11px] font-semibold text-[var(--fiori-negative)] block">
+              ضایعات قطعی
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={scrapQty}
+              onChange={e => setScrapQty(e.target.value)}
+              placeholder="0"
+              className="fiori-input w-full p-2 font-mono font-semibold text-left"
+            />
+            <span className="text-[10px] text-[var(--fiori-text-secondary)] block">
+              پرت غیرقابل بازیافت
+            </span>
+          </div>
+
+          <div className="space-y-1 bg-[var(--fiori-critical-bg)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-critical-border)]">
+            <label className="text-[11px] font-semibold text-[var(--fiori-critical)] block">
+              دوباره‌کاری
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={reworkQty}
+              onChange={e => setReworkQty(e.target.value)}
+              placeholder="0"
+              className="fiori-input w-full p-2 font-mono font-semibold text-left"
+            />
+            <span className="text-[10px] text-[var(--fiori-text-secondary)] block">
+              نیاز به اصلاح
+            </span>
+          </div>
+
+          <div className="space-y-1 bg-[var(--fiori-brand-bg)] p-2.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-brand-border)]">
+            <label className="text-[11px] font-semibold text-[var(--fiori-brand)] block">
+              نامنطبق / قرنطینه
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={rejectedQty}
+              onChange={e => setRejectedQty(e.target.value)}
+              placeholder="0"
+              className="fiori-input w-full p-2 font-mono font-semibold text-left"
+            />
+            <span className="text-[10px] text-[var(--fiori-text-secondary)] block">
+              در انتظار تصمیم QC
+            </span>
+          </div>
+        </div>
+
+        {/* Scrap Reason (Required if scrap > 0) */}
+        {scrap > 0 && (
+          <div className="p-3 bg-[var(--fiori-negative-bg)] border border-[var(--fiori-negative-border)] rounded-[var(--fiori-radius-sm)]">
+            <DynamicSelect
+              categoryCode="SCRAP_REASON"
+              label="علت فنی ضایعات (الزام مهندسی کنترل کیفیت)"
+              value={scrapReason}
+              valueField="value"
+              onChange={(val, item) => setScrapReason(item?.value || val)}
+              required
+              allowAddOption={true}
+              placeholder="-- انتخاب علت ضایعات از پایگاه داده --"
+              selectClassName="bg-white border-[var(--fiori-negative-border)]"
+            />
           </div>
         )}
 
-        {/* In-Progress Status Card */}
-        <div className="p-3 bg-[#fafafa] rounded border border-[#d9d9d9] flex items-center justify-between text-xs">
-          <div>
-            <span className="text-[#666666] text-[11px] block">
-              موجودی قابل پردازش ایستگاه (پای دستگاه: {formatNumber(inProgressTotal)} + صف ورودی: {formatNumber(waitingTotal)}):
-            </span>
-            <span className="font-mono font-bold text-[#333333] text-base">
-              {formatNumber(effectiveAvailableTotal)} <span className="text-xs font-normal text-[#666666]">PCS</span>
-            </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="font-semibold text-[var(--fiori-text-primary)] block">
+              اپراتور / سرپرست ثبت‌کننده
+            </label>
+            <input
+              type="text"
+              value={operatorName}
+              onChange={e => setOperatorName(e.target.value)}
+              placeholder="نام اپراتور شیفت"
+              className="fiori-input w-full p-2"
+            />
           </div>
-          <div className="text-left">
-            <span className="text-[#666666] text-[11px] block">مانده پس از ثبت این فرم:</span>
-            <span className={`font-mono font-bold text-base ${remainingInProgress >= 0 ? 'text-[#007cc0]' : 'text-[#bb0000]'}`}>
-              {formatNumber(remainingInProgress)} <span className="text-xs font-normal text-[#666666]">PCS</span>
-            </span>
+
+          <div className="space-y-1">
+            <label className="font-semibold text-[var(--fiori-text-primary)] block">
+              توضیحات و بازرسی
+            </label>
+            <input
+              type="text"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="شرح بازرسی چشمی و تلرانس..."
+              className="fiori-input w-full p-2"
+            />
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-[#fafafa] border border-[#d9d9d9] rounded">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#333333]">دستور ساخت متناظر در دیتابیس</label>
-              <select value={relationalManufacturingOrderId} onChange={e => setRelationalManufacturingOrderId(e.target.value)} disabled={contextLoading || isSubmitting} className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]">
-                <option value="">انتخاب دستور ساخت...</option>
-                {(postingContext?.manufacturingOrders || []).map((row: any) => (
-                  <option key={row.id} value={row.id}>{row.moNumber} — {row.part?.partNumber} ({row.part?.name})</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#333333]">شیفت تولید</label>
-              <select value={shiftId} onChange={e => setShiftId(e.target.value)} disabled={contextLoading || isSubmitting} className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]">
-                <option value="">انتخاب شیفت...</option>
-                {(postingContext?.shifts || []).map((row: any) => (
-                  <option key={row.id} value={row.id}>{row.name} ({row.startTime} تا {row.endTime})</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#333333]">کاربر ثبت‌کننده</label>
-              <select value={createdByUserId} onChange={e => setCreatedByUserId(e.target.value)} disabled={contextLoading || isSubmitting} className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]">
-                <option value="">انتخاب کاربر...</option>
-                {(postingContext?.users || []).map((row: any) => (
-                  <option key={row.id} value={row.id}>{row.fullName}{row.personnelCode ? ` — ${row.personnelCode}` : ''}</option>
-                ))}
-              </select>
-            </div>
-            {selectedRelationalOperation && !selectedRelationalOperation.plannedMachineId && (
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[#333333]">ماشین واقعی عملیات</label>
-                <select value={relationalMachineId} onChange={e => setRelationalMachineId(e.target.value)} disabled={contextLoading || isSubmitting} className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]">
-                  <option value="">انتخاب ماشین...</option>
-                  {(postingContext?.machines || []).map((row: any) => (
-                    <option key={row.id} value={row.id}>{row.code} — {row.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {contextLoading && <p className="text-xs text-[#666666]">در حال دریافت شیفت‌ها، کاربران و دستورهای ساخت...</p>}
-            {!contextLoading && postingContext?.manufacturingOrders?.length === 0 && (
-              <p className="text-xs text-[#bb0000] sm:col-span-2">برای این کد قطعه دستور ساخت فعالی در دیتابیس یافت نشد؛ ابتدا از طریق «برنامه‌ریزی MRP ← پیشنهاد برنامه» یا «مدیریت دستورات ساخت (MO)» دستور ساخت صادر نمایید.</p>
-            )}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* 1. Good Qty */}
-            <div className="space-y-1 bg-[#eef8f2] p-2.5 rounded border border-[#b7dfc5]">
-              <label className="text-[11px] font-bold text-[#107e3e] block">
-                تولید سالم (Good) <span className="text-[#bb0000]">*</span>
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={goodQty}
-                onChange={e => setGoodQty(e.target.value)}
-                placeholder="0"
-                className="w-full bg-white border border-[#107e3e]/50 rounded p-2 text-xs text-[#333333] font-mono font-bold text-left focus:outline-none focus:border-[#107e3e]"
-              />
-              <span className="text-[10px] text-[#666666] block">آماده ارسال بعدی</span>
-            </div>
-
-            {/* 2. Scrap Qty */}
-            <div className="space-y-1 bg-[#fde8e8] p-2.5 rounded border border-[#f5b8b8]">
-              <label className="text-[11px] font-bold text-[#bb0000] block">ضایعات قطعی (Scrap)</label>
-              <input
-                type="number"
-                min="0"
-                value={scrapQty}
-                onChange={e => setScrapQty(e.target.value)}
-                placeholder="0"
-                className="w-full bg-white border border-[#bb0000]/50 rounded p-2 text-xs text-[#333333] font-mono font-bold text-left focus:outline-none focus:border-[#bb0000]"
-              />
-              <span className="text-[10px] text-[#666666] block">پرت غیرقابل بازیافت</span>
-            </div>
-
-            {/* 3. Rework Qty */}
-            <div className="space-y-1 bg-[#fff5eb] p-2.5 rounded border border-[#f5d0a9]">
-              <label className="text-[11px] font-bold text-[#e9730c] block">دوباره‌کاری (Rework)</label>
-              <input
-                type="number"
-                min="0"
-                value={reworkQty}
-                onChange={e => setReworkQty(e.target.value)}
-                placeholder="0"
-                className="w-full bg-white border border-[#e9730c]/50 rounded p-2 text-xs text-[#333333] font-mono font-bold text-left focus:outline-none focus:border-[#e9730c]"
-              />
-              <span className="text-[10px] text-[#666666] block">نیاز به اصلاح</span>
-            </div>
-
-            {/* 4. Rejected Qty */}
-            <div className="space-y-1 bg-[#e5f3fa] p-2.5 rounded border border-[#b3d7ff]">
-              <label className="text-[11px] font-bold text-[#007cc0] block">نامنطبق / قرنطینه</label>
-              <input
-                type="number"
-                min="0"
-                value={rejectedQty}
-                onChange={e => setRejectedQty(e.target.value)}
-                placeholder="0"
-                className="w-full bg-white border border-[#007cc0]/50 rounded p-2 text-xs text-[#333333] font-mono font-bold text-left focus:outline-none focus:border-[#007cc0]"
-              />
-              <span className="text-[10px] text-[#666666] block">در انتظار تصمیم QC</span>
-            </div>
-          </div>
-
-          {/* Scrap Reason (Required if scrap > 0) */}
-          {scrap > 0 && (
-            <div className="space-y-1.5 p-3 bg-[#fde8e8] border border-[#f5b8b8] rounded">
-              <DynamicSelect
-                categoryCode="SCRAP_REASON"
-                label="علت فنی ضایعات (الزام مهندسی کیفیت از دیتابیس MasterItem)"
-                value={scrapReason}
-                valueField="value"
-                onChange={(val, item) => setScrapReason(item?.value || val)}
-                required
-                allowAddOption={true}
-                placeholder="-- انتخاب علت ضایعات از پایگاه داده --"
-                selectClassName="bg-white border-[#f5b8b8]"
-              />
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#333333]">اپراتور / سرپرست ثبت‌کننده</label>
-              <input
-                type="text"
-                value={operatorName}
-                onChange={e => setOperatorName(e.target.value)}
-                placeholder="نام اپراتور شیفت"
-                className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#333333]">توضیحات و بازرسی</label>
-              <input
-                type="text"
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder="شرح بازرسی چشمی و تلرانس..."
-                className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-              />
-            </div>
-          </div>
-
-          <div className="p-2.5 bg-[#fff5eb] rounded border border-[#f5d0a9] text-[11px] text-[#333333] flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-[#e9730c] shrink-0 mt-0.5" />
-            <span>
-              <strong>ثبت اتمیک:</strong> گزارش تولید، کسر موجودی مرحله جاری، ورود سالم به مرحله بعد و ثبت ضایعات/دوباره‌کاری/مردودی با هم ثبت می‌شوند؛ مرحله مقصد نیازی به تأیید دریافت ندارد.
-            </span>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#d9d9d9]">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="sap-btn-standard px-4 py-1.5 text-xs font-medium cursor-pointer"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || contextLoading || totalAccounted <= 0 || totalAccounted > effectiveAvailableTotal || !relationalManufacturingOrderId || !shiftId || !createdByUserId}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-[#107e3e] hover:bg-[#0c6631] text-white rounded text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-            >
-              <CheckCircle2 className={`w-4 h-4 ${isSubmitting ? 'animate-spin' : ''}`} />
-              <span>ثبت قطعی تولید و کاردکس</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <FioriMessageStrip tone="warning" compact>
+          <strong>ثبت اتمیک:</strong> گزارش تولید، کسر موجودی مرحله جاری، ورود سالم به مرحله بعد و
+          ثبت ضایعات/دوباره‌کاری/مردودی همزمان ثبت می‌شوند؛ مرحله مقصد نیازی به تأیید دریافت ندارد.
+        </FioriMessageStrip>
+      </form>
+    </FioriDialog>
   );
 };

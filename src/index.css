@@ -6,37 +6,24 @@
 }
 
 :root {
-  --sapBackgroundColor: #f0f0f0;
-  --sapHeaderBackground: #ffffff;
-  --sapBrandColor: #007cc0;
-  --sapBrandHover: #006299;
-  --sapLinkColor: #007cc0;
-  --sapSelectionBg: #e5f3fa;
-  --sapSurfaceColor: #ffffff;
-  --sapTableHeaderBg: #ffffff;
-  --sapBorderColor: #d9d9d9;
-  --sapSubtleBorder: #e8e8e8;
-  --sapTextPrimary: #333333;
-  --sapTextSecondary: #666666;
-
   /* =========================================================================
-     SAP Horizon Semantic Design Token Layer (Phase 1 Foundation)
-     Backward-compatible with legacy --sap* tokens above
+     SAP Fiori Horizon Semantic Design Token Layer (Single Source of Truth)
      ========================================================================= */
   --fiori-bg-canvas: #f5f6f7;
   --fiori-bg-surface: #ffffff;
   --fiori-bg-subtle: #f7f8fa;
   --fiori-bg-hover: #eff2f5;
-  --fiori-bg-selected: #e5f3fa;
+  --fiori-bg-selected: #e5f1ff;
 
   --fiori-border-default: #d9dee3;
   --fiori-border-subtle: #eaeef2;
-  --fiori-border-input: #b8c2cc;
+  --fiori-border-strong: #c2ccd6;
+  --fiori-border-input: #b2becb;
   --fiori-border-focus: #0070f2;
 
   --fiori-text-primary: #1d2d3e;
   --fiori-text-secondary: #556b82;
-  --fiori-text-muted: #758696;
+  --fiori-text-muted: #708294;
 
   --fiori-brand: #0070f2;
   --fiori-brand-hover: #0057d2;
@@ -44,6 +31,7 @@
   --fiori-brand-border: #b3d4ff;
 
   --fiori-positive: #188918;
+  --fiori-positive-hover: #137013;
   --fiori-positive-bg: #eef8f0;
   --fiori-positive-border: #a7ddb0;
 
@@ -51,7 +39,13 @@
   --fiori-critical-bg: #fff5ea;
   --fiori-critical-border: #f5cb9c;
 
+  /* Backward-compatible warning aliases -> critical */
+  --fiori-warning: var(--fiori-critical);
+  --fiori-warning-bg: var(--fiori-critical-bg);
+  --fiori-warning-border: var(--fiori-critical-border);
+
   --fiori-negative: #cc1919;
+  --fiori-negative-hover: #a81414;
   --fiori-negative-bg: #ffefef;
   --fiori-negative-border: #f7baba;
 
@@ -64,20 +58,34 @@
   --fiori-neutral-border: #d5dbe1;
 
   --fiori-radius-sm: 0.25rem;
-  --fiori-radius-md: 0.375rem;
-  --fiori-radius-lg: 0.5rem;
+  --fiori-radius-md: 0.5rem;
+  --fiori-radius-lg: 0.625rem;
 
-  --fiori-shadow-card: 0 1px 2px rgba(29, 45, 62, 0.05), 0 0 0 1px rgba(29, 45, 62, 0.03);
+  --fiori-shadow-card: 0 1px 2px rgba(29, 45, 62, 0.05), 0 0 0 1px rgba(29, 45, 62, 0.02);
   --fiori-shadow-popover: 0 8px 24px rgba(29, 45, 62, 0.14);
   --fiori-shadow-dialog: 0 20px 44px rgba(29, 45, 62, 0.22);
+
+  /* Legacy --sap* aliases mapped directly to Horizon tokens */
+  --sapBackgroundColor: var(--fiori-bg-canvas);
+  --sapHeaderBackground: var(--fiori-bg-surface);
+  --sapBrandColor: var(--fiori-brand);
+  --sapBrandHover: var(--fiori-brand-hover);
+  --sapLinkColor: var(--fiori-brand);
+  --sapSelectionBg: var(--fiori-bg-selected);
+  --sapSurfaceColor: var(--fiori-bg-surface);
+  --sapTableHeaderBg: var(--fiori-bg-subtle);
+  --sapBorderColor: var(--fiori-border-default);
+  --sapSubtleBorder: var(--fiori-border-subtle);
+  --sapTextPrimary: var(--fiori-text-primary);
+  --sapTextSecondary: var(--fiori-text-secondary);
 }
 
 @layer base {
   html,
   body {
     font-family: var(--font-sans);
-    background-color: var(--sapBackgroundColor);
-    color: var(--sapTextPrimary);
+    background-color: var(--fiori-bg-canvas);
+    color: var(--fiori-text-primary);
     font-weight: 400;
     letter-spacing: 0 !important;
     line-height: 1.5;
@@ -99,7 +107,7 @@
     font-feature-settings: "tnum" on, "lnum" on;
   }
 
-  /* SAP HANA Fiori typography calibration for Persian UI */
+  /* SAP Fiori Horizon typography calibration for Persian UI */
   .font-black,
   .font-extrabold {
     font-weight: 600 !important;
@@ -109,26 +117,25 @@
     font-weight: 500 !important;
   }
 
-  /* SAP HANA crisp hairline border & clean card radius */
+  /* SAP Fiori crisp hairline border & clean card radius */
   .border-slate-200,
   .border-slate-200\/90,
   .border-slate-200\/80,
   .border-slate-200\/60,
   .border-slate-300 {
-    border-color: #d9d9d9 !important;
+    border-color: var(--fiori-border-default) !important;
   }
 
   .rounded-2xl {
-    border-radius: 0.375rem !important;
+    border-radius: var(--fiori-radius-md) !important;
   }
 
   .rounded-xl {
-    border-radius: 0.375rem !important;
+    border-radius: var(--fiori-radius-md) !important;
   }
 
   /* =====================================================================
-     SAP HANA COMPACT DENSITY TABLES (sapUiSizeCompact)
-     Uniform compact row heights, #ffffff header backgrounds, #333333 text
+     SAP FIORI HORIZON COMPACT DENSITY TABLES (sapUiSizeCompact)
      ===================================================================== */
   table {
     border-collapse: collapse;
@@ -136,64 +143,64 @@
   }
 
   table thead {
-    border-bottom: 1px solid var(--sapBorderColor) !important;
+    border-bottom: 1px solid var(--fiori-border-default) !important;
   }
 
   table thead tr {
-    height: 2.125rem;
+    height: 2.25rem;
   }
 
   table thead th {
-    background-color: var(--sapTableHeaderBg) !important;
-    color: var(--sapTextPrimary) !important;
+    background-color: var(--fiori-bg-subtle) !important;
+    color: var(--fiori-text-secondary) !important;
     font-weight: 600 !important;
     font-size: 0.72rem;
     line-height: 1.25;
-    padding: 0.4rem 0.625rem !important;
-    border-bottom: 1px solid var(--sapBorderColor);
+    padding: 0.45rem 0.65rem !important;
+    border-bottom: 1px solid var(--fiori-border-default);
     vertical-align: middle;
   }
 
   table tbody tr {
-    height: 2rem;
-    border-bottom: 1px solid var(--sapSubtleBorder);
+    height: 2.15rem;
+    border-bottom: 1px solid var(--fiori-border-subtle);
     transition: background-color 120ms ease;
   }
 
   table tbody tr:hover {
-    background-color: var(--sapSelectionBg);
+    background-color: var(--fiori-bg-hover);
   }
 
   table tbody td {
-    color: var(--sapTextPrimary);
+    color: var(--fiori-text-primary);
     font-size: 0.75rem;
-    line-height: 1.3;
-    padding: 0.375rem 0.625rem !important;
+    line-height: 1.35;
+    padding: 0.42rem 0.65rem !important;
     vertical-align: middle;
   }
 }
 
-/* SAP HANA Fiori UI utility classes */
+/* SAP Fiori Horizon UI utility classes */
 .sap-card {
-  background-color: var(--sapSurfaceColor);
-  border: 1px solid var(--sapBorderColor);
-  border-radius: 0.375rem;
-  box-shadow: 0 1px 2px rgba(51, 51, 51, 0.04);
+  background-color: var(--fiori-bg-surface);
+  border: 1px solid var(--fiori-border-default);
+  border-radius: var(--fiori-radius-md);
+  box-shadow: var(--fiori-shadow-card);
 }
 
 .sap-table-compact th,
 .sap-table-compact td {
-  padding: 0.35rem 0.6rem !important;
+  padding: 0.4rem 0.625rem !important;
   font-size: 0.74rem;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .sap-icon-tab-bar {
   display: flex;
   align-items: stretch;
-  gap: 0.25rem;
-  background-color: var(--sapHeaderBackground);
-  border-bottom: 1px solid var(--sapBorderColor);
+  gap: 0.125rem;
+  background-color: var(--fiori-bg-surface);
+  border-bottom: 1px solid var(--fiori-border-default);
   overflow-x: auto;
 }
 
@@ -201,96 +208,164 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.55rem 0.85rem;
+  gap: 0.4rem;
+  padding: 0.55rem 0.8rem;
   font-size: 0.75rem;
-  color: var(--sapTextSecondary);
-  border-bottom: 3px solid transparent;
+  font-weight: 500;
+  color: var(--fiori-text-secondary);
+  border-bottom: 2px solid transparent;
   white-space: nowrap;
   cursor: pointer;
-  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
 
 .sap-icon-tab:hover {
-  color: var(--sapTextPrimary);
-  background-color: #f5f5f5;
+  color: var(--fiori-text-primary);
+  background-color: var(--fiori-bg-hover);
 }
 
 .sap-icon-tab-active {
-  color: var(--sapBrandColor) !important;
+  color: var(--fiori-brand) !important;
   font-weight: 600 !important;
-  border-bottom-color: var(--sapBrandColor) !important;
-  background-color: var(--sapSelectionBg);
+  border-bottom-color: var(--fiori-brand) !important;
+  background-color: transparent;
 }
 
 .sap-btn-emphasized {
-  background-color: var(--sapBrandColor);
+  background-color: var(--fiori-brand);
   color: #ffffff;
-  border: 1px solid var(--sapBrandColor);
-  border-radius: 0.25rem;
+  border: 1px solid var(--fiori-brand);
+  border-radius: var(--fiori-radius-sm);
   font-weight: 500;
-  transition: background-color 150ms ease, border-color 150ms ease;
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 
-.sap-btn-emphasized:hover {
-  background-color: var(--sapBrandHover);
-  border-color: var(--sapBrandHover);
+.sap-btn-emphasized:hover:not(:disabled) {
+  background-color: var(--fiori-brand-hover);
+  border-color: var(--fiori-brand-hover);
+}
+
+.sap-btn-emphasized:focus-visible {
+  outline: 2px solid var(--fiori-border-focus);
+  outline-offset: 1px;
 }
 
 .sap-btn-standard {
-  background-color: #ffffff;
-  color: var(--sapBrandColor);
-  border: 1px solid #bfbfbf;
-  border-radius: 0.25rem;
+  background-color: var(--fiori-bg-surface);
+  color: var(--fiori-text-primary);
+  border: 1px solid var(--fiori-border-input);
+  border-radius: var(--fiori-radius-sm);
   font-weight: 500;
-  transition: background-color 150ms ease, border-color 150ms ease;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
-.sap-btn-standard:hover {
-  background-color: var(--sapSelectionBg);
-  border-color: var(--sapBrandColor);
+.sap-btn-standard:hover:not(:disabled) {
+  background-color: var(--fiori-brand-bg);
+  border-color: var(--fiori-brand);
+  color: var(--fiori-brand);
+}
+
+.sap-btn-standard:focus-visible {
+  outline: 2px solid var(--fiori-border-focus);
+  outline-offset: 1px;
+}
+
+.fiori-btn-positive {
+  background-color: var(--fiori-positive);
+  color: #ffffff;
+  border: 1px solid var(--fiori-positive);
+  border-radius: var(--fiori-radius-sm);
+  font-weight: 500;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.fiori-btn-positive:hover:not(:disabled) {
+  background-color: var(--fiori-positive-hover);
+  border-color: var(--fiori-positive-hover);
+}
+
+.fiori-btn-danger {
+  background-color: var(--fiori-negative);
+  color: #ffffff;
+  border: 1px solid var(--fiori-negative);
+  border-radius: var(--fiori-radius-sm);
+  font-weight: 500;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.fiori-btn-danger:hover:not(:disabled) {
+  background-color: var(--fiori-negative-hover);
+  border-color: var(--fiori-negative-hover);
+}
+
+.fiori-btn-danger-outline {
+  background-color: var(--fiori-bg-surface);
+  color: var(--fiori-negative);
+  border: 1px solid var(--fiori-negative-border);
+  border-radius: var(--fiori-radius-sm);
+  font-weight: 500;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.fiori-btn-danger-outline:hover:not(:disabled) {
+  background-color: var(--fiori-negative-bg);
+  border-color: var(--fiori-negative);
+}
+
+.fiori-btn-ghost {
+  background-color: transparent;
+  color: var(--fiori-text-secondary);
+  border: 1px solid transparent;
+  border-radius: var(--fiori-radius-sm);
+  font-weight: 500;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.fiori-btn-ghost:hover:not(:disabled) {
+  background-color: var(--fiori-bg-hover);
+  color: var(--fiori-text-primary);
 }
 
 .sap-doc-link {
-  color: var(--sapLinkColor);
+  color: var(--fiori-brand);
   font-family: var(--font-mono);
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
-  border-bottom: 1px dashed rgba(0, 124, 192, 0.45);
+  border-bottom: 1px dashed rgba(0, 112, 242, 0.42);
   transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
 }
 
 .sap-doc-link:hover {
-  color: var(--sapBrandHover);
-  border-bottom-color: var(--sapBrandHover);
-  background-color: var(--sapSelectionBg);
+  color: var(--fiori-brand-hover);
+  border-bottom-color: var(--fiori-brand-hover);
+  background-color: var(--fiori-brand-bg);
 }
 
 /* SAP Fiori Launchpad Smart Tile & ALP / Object Page Patterns */
 .fiori-tile {
-  background-color: var(--sapSurfaceColor);
-  border: 1px solid var(--sapBorderColor);
-  border-radius: 0.375rem;
-  box-shadow: 0 1px 2px rgba(51, 51, 51, 0.04);
+  background-color: var(--fiori-bg-surface);
+  border: 1px solid var(--fiori-border-default);
+  border-radius: var(--fiori-radius-md);
+  box-shadow: var(--fiori-shadow-card);
   transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
 
 .fiori-tile:hover {
-  border-color: var(--sapBrandColor);
-  box-shadow: 0 3px 10px rgba(0, 124, 192, 0.12);
+  border-color: var(--fiori-brand);
+  box-shadow: 0 3px 10px rgba(0, 112, 242, 0.12);
 }
 
 .fiori-alp-filterbar {
-  background-color: var(--sapSurfaceColor);
-  border: 1px solid var(--sapBorderColor);
-  border-radius: 0.375rem;
+  background-color: var(--fiori-bg-surface);
+  border: 1px solid var(--fiori-border-default);
+  border-radius: var(--fiori-radius-md);
   padding: 0.75rem 1rem;
 }
 
 .fiori-object-header {
-  background-color: var(--sapHeaderBackground);
-  border-bottom: 1px solid var(--sapBorderColor);
+  background-color: var(--fiori-bg-surface);
+  border-bottom: 1px solid var(--fiori-border-default);
   padding: 1rem 1.25rem;
 }
 
@@ -327,6 +402,12 @@
   outline: none;
   border-color: var(--fiori-border-focus);
   box-shadow: 0 0 0 2px rgba(0, 112, 242, 0.14);
+}
+
+.fiori-input:disabled {
+  background-color: var(--fiori-bg-subtle);
+  color: var(--fiori-text-muted);
+  cursor: not-allowed;
 }
 
 /* Minimal SAP scrollbars */

@@ -1,7 +1,6 @@
 import React, { Suspense, useMemo, useState } from 'react';
 import {
   ArrowRight,
-  Home,
   Map,
   ChevronLeft,
   Layers,
@@ -301,14 +300,14 @@ export const MoLifecycleGuideStrip: React.FC<{ compact?: boolean }> = ({ compact
   const router = useErpRouter();
 
   return (
-    <div className="bg-white border border-[#d9d9d9] rounded-md px-3 py-2" dir="rtl">
+    <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] px-3 py-2 shadow-[var(--fiori-shadow-card)]" dir="rtl">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-[#1d2d3e]">
-          <Map className="w-3.5 h-3.5 text-[#007cc0]" />
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--fiori-text-primary)]">
+          <Map className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
           <span>نقشه مسیر چرخه دستور تولید (از تعریف BOM تا انبار و ابطال امن)</span>
         </div>
         {!compact && (
-          <span className="text-[11px] text-[#556b82]">
+          <span className="text-[11px] text-[var(--fiori-text-secondary)]">
             برای رفتن مستقیم به هر مرحله، روی کارت آن کلیک کنید
           </span>
         )}
@@ -322,25 +321,29 @@ export const MoLifecycleGuideStrip: React.FC<{ compact?: boolean }> = ({ compact
               key={stage.step}
               type="button"
               onClick={() => router.navigate(stage.subParams)}
-              className={`text-right px-2.5 py-1.5 rounded border transition-colors cursor-pointer flex items-start gap-2 ${
+              className={`text-right px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] border transition-colors cursor-pointer flex items-start gap-2 fiori-focus-ring ${
                 active
-                  ? 'bg-[#e8f2fc] border-[#007cc0] text-[#003b80]'
-                  : 'bg-[#fafafa] border-[#e4e7eb] text-[#32363a] hover:bg-[#f0f6fd] hover:border-[#b3d4fc]'
+                  ? 'bg-[var(--fiori-brand-bg)] border-[var(--fiori-brand)] text-[var(--fiori-brand)]'
+                  : 'bg-[var(--fiori-bg-subtle)] border-[var(--fiori-border-default)] text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-bg-hover)] hover:border-[var(--fiori-brand-border)]'
               }`}
             >
               <span
-                className={`mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold shrink-0 tabular-nums ${
-                  active ? 'bg-[#007cc0] text-white' : 'bg-[#eaecef] text-[#475569]'
+                className={`mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-[var(--fiori-radius-sm)] text-[10px] font-semibold shrink-0 tabular-nums ${
+                  active
+                    ? 'bg-[var(--fiori-brand)] text-white'
+                    : 'bg-[var(--fiori-neutral-bg)] text-[var(--fiori-text-secondary)]'
                 }`}
               >
                 {stage.step}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1 text-[11px] font-bold truncate">
+                <span className="flex items-center gap-1 text-[11px] font-semibold truncate">
                   {stage.icon}
                   <span className="truncate">{stage.title}</span>
                 </span>
-                <span className="block text-[10px] text-[#6a6d70] truncate mt-0.5">{stage.subtitle}</span>
+                <span className="block text-[10px] text-[var(--fiori-text-secondary)] truncate mt-0.5">
+                  {stage.subtitle}
+                </span>
               </span>
             </button>
           );
@@ -361,6 +364,7 @@ export const WorkspaceNavigationBar: React.FC<WorkspaceNavigationBarProps> = ({
 }) => {
   const router = useErpRouter();
   const [showLifecycleMap, setShowLifecycleMap] = useState(false);
+  const [showRelatedMenu, setShowRelatedMenu] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSection, setDrawerSection] = useState<GuideDrawerSectionTab>('ALL');
@@ -434,147 +438,164 @@ export const WorkspaceNavigationBar: React.FC<WorkspaceNavigationBarProps> = ({
 
   return (
     <div className="space-y-2" dir="rtl">
-      {/* Unified SAP Fiori Context Bar: Breadcrumbs + Direct Actions + Contextual Related Fiori Links */}
-      <div className="bg-white border border-[#d9d9d9] rounded-md overflow-hidden">
-        {/* Row 1: Back, Home, Breadcrumbs & Page Tools */}
-        <div className="px-3 py-1.5 flex flex-wrap items-center justify-between gap-2">
-          {/* Right side: Back + Home + Breadcrumbs */}
-          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-            {!isDashboardRoot && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => router.goBack()}
-                  disabled={!router.canGoBack}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border border-[#007cc0] bg-[#f4f8fe] text-[#0057b8] hover:bg-[#e5f0fd] disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                  title={`بازگشت به: ${router.previousEntryLabel}`}
-                >
-                  <ArrowRight className="w-3.5 h-3.5" />
-                  <span className="max-w-[200px] truncate">بازگشت</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.navigate({
-                      tab: 'dashboard',
-                      moId: null,
-                      timelineMoId: null,
-                      modal: null,
-                      docQuery: null,
-                    })
-                  }
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium border border-[#d9d9d9] bg-white text-[#32363a] hover:bg-[#f5f6f7] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                  title="بازگشت سریع به صفحه اصلی (لانچ‌پد SAP Fiori)"
-                >
-                  <Home className="w-3.5 h-3.5 text-[#556b82]" />
-                  <span className="hidden sm:inline">خانه</span>
-                </button>
-              </>
-            )}
-
-            <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-[11px] text-[#556b82] pr-1">
-              {router.breadcrumbs.map((crumb, idx) => {
-                const isLast = idx === router.breadcrumbs.length - 1;
-                return (
-                  <React.Fragment key={`${crumb.label}-${idx}`}>
-                    {idx > 0 && <ChevronLeft className="w-3 h-3 text-[#9aa5b1] shrink-0" />}
-                    {crumb.onClick && !isLast ? (
-                      <button
-                        type="button"
-                        onClick={crumb.onClick}
-                        className="hover:text-[#007cc0] hover:underline transition-colors whitespace-nowrap cursor-pointer"
-                      >
-                        {crumb.label}
-                      </button>
-                    ) : (
-                      <span className={isLast ? 'font-bold text-[#1d2d3e]' : ''}>{crumb.label}</span>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Left side: Universal Direct Page Link Copy + Lifecycle Map + Compact Page Guide */}
-          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+      {/* Compact Single-Row SAP Fiori Horizon Context Strip */}
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] px-3 py-1.5 flex flex-wrap items-center justify-between gap-2">
+        {/* Right side: Back + Breadcrumbs */}
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          {!isDashboardRoot && (
             <button
               type="button"
-              onClick={handleCopyDirectLink}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                copiedLink
-                  ? 'bg-[#eef8f2] border-[#a9dfbf] text-[#107e3e]'
-                  : 'bg-white border-[#d9d9d9] text-[#333333] hover:bg-[#f0f6fd] hover:border-[#b3ddf2] hover:text-[#007cc0]'
-              }`}
-              title={`کپی لینک مستقیم این صفحه: ${router.buildShareableUrl()}`}
+              onClick={() => router.goBack()}
+              disabled={!router.canGoBack}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium border border-[var(--fiori-border-input)] bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-brand-bg)] hover:border-[var(--fiori-brand)] hover:text-[var(--fiori-brand)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap shrink-0 cursor-pointer fiori-focus-ring"
+              title={`بازگشت به: ${router.previousEntryLabel}`}
             >
-              {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5 text-[#007cc0]" />}
-              <span>{copiedLink ? 'لینک صفحه کپی شد' : 'کپی لینک صفحه'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+              <span>بازگشت</span>
             </button>
+          )}
 
-            <button
-              type="button"
-              onClick={() => setShowLifecycleMap(prev => !prev)}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                showLifecycleMap
-                  ? 'bg-[#e8f2fc] border-[#007cc0] text-[#0057b8]'
-                  : 'bg-[#fafafa] border-[#d9d9d9] text-[#32363a] hover:bg-[#f0f2f5]'
-              }`}
-              title="نمایش نقشه مراحل چرخه دستور تولید (BOM -> MRP -> صدور MO -> کارگاه WIP -> انبار)"
-            >
-              <Map className="w-3.5 h-3.5" />
-              <span>{showLifecycleMap ? 'بستن نقشه تولید' : 'مسیر تولید'}</span>
-            </button>
-
-            {guideEntry && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => openGuide('SCENARIOS')}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold border border-[#b7dfc4] bg-[#f1f8f3] hover:bg-[#e4f3e8] text-[#107e3e] whitespace-nowrap shrink-0 cursor-pointer"
-                  title="مشاهده سناریوهای عملیاتی این صفحه"
-                >
-                  <Workflow className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">
-                    سناریوها ({toPersianDigits(guideEntry.scenarios.length)})
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openGuide('ALL')}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold border border-[#b3ddf2] bg-[#e5f3fa] hover:bg-[#d2eaf7] text-[#007cc0] whitespace-nowrap shrink-0 cursor-pointer"
-                  title={`آموزش کامل «${guideEntry.title}» و کاربرد همه دکمه‌ها`}
-                >
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  <span>آموزش این صفحه</span>
-                </button>
-              </>
-            )}
-          </div>
+          <nav
+            aria-label="Breadcrumb"
+            className="flex flex-wrap items-center gap-1 text-[11px] text-[var(--fiori-text-secondary)] pr-0.5"
+          >
+            {router.breadcrumbs.map((crumb, idx) => {
+              const isLast = idx === router.breadcrumbs.length - 1;
+              return (
+                <React.Fragment key={`${crumb.label}-${idx}`}>
+                  {idx > 0 && <ChevronLeft className="w-3 h-3 text-[var(--fiori-text-muted)] shrink-0" />}
+                  {crumb.onClick && !isLast ? (
+                    <button
+                      type="button"
+                      onClick={crumb.onClick}
+                      className="hover:text-[var(--fiori-brand)] hover:underline transition-colors whitespace-nowrap cursor-pointer"
+                    >
+                      {crumb.label}
+                    </button>
+                  ) : (
+                    <span className={isLast ? 'font-semibold text-[var(--fiori-text-primary)]' : ''}>
+                      {crumb.label}
+                    </span>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Row 2: Contextual SAP Fiori Related-Pages Links Strip (Master Data/BOM, Inventory, Production PP, WIP, etc.) */}
-        {relatedLinks.length > 0 && (
-          <div className="px-3 py-1 bg-[#f8fafc] border-t border-[#e8edf2] flex items-center gap-1.5 overflow-x-auto text-[11px]">
-            <span className="inline-flex items-center gap-1 text-[#556b82] font-semibold whitespace-nowrap shrink-0 pl-1">
-              <Compass className="w-3 h-3 text-[#007cc0]" />
-              <span>لینک‌های مرتبط:</span>
-            </span>
-            {relatedLinks.map(link => (
+        {/* Left side: Compact Contextual Actions */}
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+          {relatedLinks.length > 0 && (
+            <div className="relative">
               <button
-                key={link.label}
                 type="button"
-                onClick={() => router.navigate(link.params)}
-                title={link.title || link.label}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-[#d8e1ea] hover:border-[#007cc0] hover:bg-[#e8f3fc] hover:text-[#0057b8] text-[#2c3e50] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                onClick={() => setShowRelatedMenu(prev => !prev)}
+                aria-expanded={showRelatedMenu}
+                aria-haspopup="menu"
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium border transition-colors whitespace-nowrap shrink-0 cursor-pointer fiori-focus-ring ${
+                  showRelatedMenu
+                    ? 'bg-[var(--fiori-brand-bg)] border-[var(--fiori-brand)] text-[var(--fiori-brand)]'
+                    : 'bg-[var(--fiori-bg-surface)] border-[var(--fiori-border-default)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-brand)] hover:border-[var(--fiori-brand-border)] hover:bg-[var(--fiori-brand-bg)]'
+                }`}
+                title="لینک‌های مرتبط با این ماژول"
               >
-                {link.icon}
-                <span>{link.label}</span>
+                <Compass className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                <span>لینک‌های مرتبط</span>
+                <span className="px-1 rounded bg-[var(--fiori-neutral-bg)] text-[10px] font-mono tabular-nums text-[var(--fiori-text-secondary)]">
+                  {toPersianDigits(relatedLinks.length)}
+                </span>
               </button>
-            ))}
-          </div>
-        )}
+
+              {showRelatedMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setShowRelatedMenu(false)}
+                    aria-hidden="true"
+                  />
+                  <div
+                    role="menu"
+                    className="absolute left-0 top-full mt-1.5 w-64 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-popover)] p-1.5 z-40 space-y-0.5"
+                  >
+                    <div className="px-2 py-1 text-[10px] font-semibold text-[var(--fiori-text-muted)] border-b border-[var(--fiori-border-subtle)] mb-1">
+                      صفحات مرتبط این ماژول
+                    </div>
+                    {relatedLinks.map(link => (
+                      <button
+                        key={link.label}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowRelatedMenu(false);
+                          router.navigate(link.params);
+                        }}
+                        title={link.title || link.label}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-[var(--fiori-radius-sm)] text-right text-[11px] font-medium text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-brand-bg)] hover:text-[var(--fiori-brand)] transition-colors cursor-pointer"
+                      >
+                        {link.icon}
+                        <span className="truncate">{link.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowLifecycleMap(prev => !prev)}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium border transition-colors whitespace-nowrap shrink-0 cursor-pointer fiori-focus-ring ${
+              showLifecycleMap
+                ? 'bg-[var(--fiori-brand-bg)] border-[var(--fiori-brand)] text-[var(--fiori-brand)]'
+                : 'bg-[var(--fiori-bg-surface)] border-[var(--fiori-border-default)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-text-primary)] hover:bg-[var(--fiori-bg-hover)]'
+            }`}
+            title="نمایش نقشه مراحل چرخه دستور تولید (BOM -> MRP -> صدور MO -> کارگاه WIP -> انبار)"
+          >
+            <Map className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{showLifecycleMap ? 'بستن نقشه' : 'مسیر تولید'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopyDirectLink}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium border transition-colors whitespace-nowrap shrink-0 cursor-pointer fiori-focus-ring ${
+              copiedLink
+                ? 'bg-[var(--fiori-positive-bg)] border-[var(--fiori-positive-border)] text-[var(--fiori-positive)]'
+                : 'bg-[var(--fiori-bg-surface)] border-[var(--fiori-border-default)] text-[var(--fiori-text-secondary)] hover:bg-[var(--fiori-brand-bg)] hover:border-[var(--fiori-brand-border)] hover:text-[var(--fiori-brand)]'
+            }`}
+            title={`کپی لینک مستقیم این صفحه: ${router.buildShareableUrl()}`}
+          >
+            {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
+            <span className="hidden xl:inline">{copiedLink ? 'کپی شد' : 'لینک صفحه'}</span>
+          </button>
+
+          {guideEntry && (
+            <>
+              <button
+                type="button"
+                onClick={() => openGuide('SCENARIOS')}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium border border-[var(--fiori-positive-border)] bg-[var(--fiori-positive-bg)] hover:opacity-90 text-[var(--fiori-positive)] whitespace-nowrap shrink-0 cursor-pointer fiori-focus-ring"
+                title="مشاهده سناریوهای عملیاتی این صفحه"
+              >
+                <Workflow className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">
+                  سناریوها ({toPersianDigits(guideEntry.scenarios.length)})
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openGuide('ALL')}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-semibold border border-[var(--fiori-brand-border)] bg-[var(--fiori-brand-bg)] hover:bg-[var(--fiori-bg-selected)] text-[var(--fiori-brand)] whitespace-nowrap shrink-0 cursor-pointer fiori-focus-ring"
+                title={`آموزش کامل «${guideEntry.title}» و کاربرد همه دکمه‌ها`}
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>آموزش</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {showLifecycleMap && <MoLifecycleGuideStrip />}

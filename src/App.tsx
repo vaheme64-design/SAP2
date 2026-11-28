@@ -1267,34 +1267,32 @@ function AppContent() {
           {/* 4. Production */}
           {activeTab === 'production' && (
             <div className="space-y-3">
-              <div className="sap-card px-2 flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProductionViewMode('ERP_WORKBENCH');
-                      router.navigate({ tab: 'production', productionViewMode: 'ERP_WORKBENCH' });
-                    }}
-                    className={`sap-icon-tab ${
-                      productionViewMode === 'ERP_WORKBENCH' ? 'sap-icon-tab-active' : ''
-                    }`}
-                  >
-                    میز کار و برنامه تولید (PP)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProductionViewMode('VOUCHERS');
-                      router.navigate({ tab: 'production', productionViewMode: 'VOUCHERS' });
-                    }}
-                    className={`sap-icon-tab ${
-                      productionViewMode === 'VOUCHERS' ? 'sap-icon-tab-active' : ''
-                    }`}
-                  >
-                    ثبت قبض تکی کارگاه (MIGO)
-                  </button>
+              {productionViewMode === 'VOUCHERS' && (
+                <div className="sap-card px-2 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductionViewMode('ERP_WORKBENCH');
+                        router.navigate({ tab: 'production', productionViewMode: 'ERP_WORKBENCH' });
+                      }}
+                      className="sap-icon-tab"
+                    >
+                      میز کار و برنامه تولید (PP)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductionViewMode('VOUCHERS');
+                        router.navigate({ tab: 'production', productionViewMode: 'VOUCHERS' });
+                      }}
+                      className="sap-icon-tab sap-icon-tab-active"
+                    >
+                      ثبت قبض تکی کارگاه (MIGO)
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {productionViewMode === 'ERP_WORKBENCH' ? (
                 <ErpProductionWorkbenchView
@@ -1305,6 +1303,10 @@ function AppContent() {
                   onModuleTabChange={tab => {
                     setActiveProductionModuleTab(tab);
                     router.navigate({ productionModuleTab: tab });
+                  }}
+                  onOpenVouchers={() => {
+                    setProductionViewMode('VOUCHERS');
+                    router.navigate({ tab: 'production', productionViewMode: 'VOUCHERS' });
                   }}
                   initialMoId={router.route.moId}
                   onMoSelect={moId => {

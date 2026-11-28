@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Layers,
   Plus,
-  Search,
   RefreshCw,
   Trash2,
   CheckCircle2,
@@ -13,16 +12,22 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   FileCheck,
+  FileText,
   GitBranch,
-  X,
   PackagePlus,
   ListTree,
   Warehouse,
 } from 'lucide-react';
 import { Part, Routing } from '../../types/inventory';
-import { ManufacturingOrder, ManufacturingOperation, ManufacturingOrderStatus } from '../../types/productionWip';
+import {
+  ManufacturingOrder,
+  ManufacturingOperation,
+  ManufacturingOrderStatus,
+} from '../../types/productionWip';
 import { formatNumber, toPersianDigits } from '../../utils/formatters';
+import { formatToJalali } from '../../utils/jalali';
 import { getActiveFactoryUser } from '../../utils/userDirectoryStorage';
 import { useErpRouter } from '../../context/RouterContext';
 import { CreateMoModal } from '../wip/CreateMoModal';
@@ -33,6 +38,8 @@ import {
   FioriDataTable,
   FioriDialog,
   FioriDynamicPage,
+  FioriFilterBar,
+  FioriKpiStrip,
   FioriMessageStrip,
   FioriObjectStatus,
   FioriToolbar,
@@ -45,29 +52,77 @@ interface ManufacturingOrdersManagementViewProps {
   parts: Part[];
   routings: Routing[];
   onRefreshData?: () => void;
+  onOpenVouchers?: () => void;
 }
 
-const STATUS_LABELS: Record<string, { label: string; tone: FioriStatusTone }> = {
-  PLANNED: { label: 'برنامه‌ریزی‌شده (PLANNED)', tone: 'neutral' },
-  RELEASED: { label: 'آزادشده / آماده تولید (RELEASED)', tone: 'brand' },
-  IN_PROGRESS: { label: 'در حال تولید (IN_PROGRESS)', tone: 'critical' },
-  COMPLETED: { label: 'تکمیل‌شده (COMPLETED)', tone: 'positive' },
-  CLOSED: { label: 'بسته‌شده (CLOSED)', tone: 'neutral' },
-  ON_HOLD: { label: 'متوقف / هولد (ON_HOLD)', tone: 'negative' },
+const STATUS_META: Record<string, { label: string; shortLabel: string; tone: FioriStatusTone }> = {
+  PLANNED: { label: 'برنامه‌ریزی‌شده', shortLabel: 'برنامه‌ریزی', tone: 'neutral' },
+  RELEASED: { label: 'آماده تولید', shortLabel: 'آزادشده', tone: 'brand' },
+  IN_PROGRESS: { label: 'در حال تولید', shortLabel: 'در حال ساخت', tone: 'critical' },
+  COMPLETED: { label: 'تکمیل‌شده', shortLabel: 'تکمیل‌شده', tone: 'positive' },
+  CLOSED: { label: 'بسته‌شده', shortLabel: 'بسته‌شده', tone: 'neutral' },
+  ON_HOLD: { label: 'متوقف / هولد', shortLabel: 'متوقف', tone: 'negative' },
 };
+
+function getOrderMetrics(mo: ManufacturingOrder) {
+  const sortedOps = [...(mo.operations || [])].sort((a, b) => a.stepNumber - b.stepNumber);
+  const totalOps = sortedOps.length;
+  const completedOps = sortedOps.filter(o => o.status === 'COMPLETED').length;
+  const activeOp =
+    sortedOps.find(o => o.inProgressQty > 0) ||
+    sortedOps.find(o => o.waitingInputQty > 0) ||
+    sortedOps.find(o => o.readyForTransferQty > 0) ||
+    sortedOps.find(o => o.status !== 'COMPLETED');
+  const totalWaiting = sortedOps.reduce((s, o) => s + (o.waitingInputQty || 0), 0);
+  const totalInProgress = sortedOps.reduce((s, o) => s + (o.inProgressQty || 0), 0);
+  const remainingQty = Math.max(0, (mo.targetQuantity || 0) - (mo.completedQuantity || 0));
+  const finalCompletionPct =
+    mo.targetQuantity > 0
+      ? Math.min(100, Math.round(((mo.completedQuantity || 0) / mo.targetQuantity) * 100))
+      : 0;
+  const opWeightedPct =
+    totalOps > 0 && mo.targetQuantity > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (sortedOps.reduce(
+              (sum, o) => sum + Math.min(1, (o.goodOutputQty || 0) / mo.targetQuantity),
+              0
+            ) /
+              totalOps) *
+              100
+          )
+        )
+      : finalCompletionPct;
+  const displayProgressPct = Math.max(finalCompletionPct, opWeightedPct);
+
+  return {
+    sortedOps,
+    totalOps,
+    completedOps,
+    activeOp,
+    totalWaiting,
+    totalInProgress,
+    remainingQty,
+    displayProgressPct,
+  };
+}
 
 export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersManagementViewProps> = ({
   parts,
   routings,
   onRefreshData,
+  onOpenVouchers,
 }) => {
   const router = useErpRouter();
   const [orders, setOrders] = useState<ManufacturingOrder[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ALL' | ManufacturingOrderStatus>('ALL');
   const [searchQuery, setSearchQuery] = useState(() => router.route.docQuery || '');
   const [showGuide, , toggleGuide] = usePersistedOpen('mo_mgmt_guide_open', false);
   const {
+    map: expandedMoCardsMap,
     isExpanded: isMoCardExpanded,
     toggle: toggleMoCard,
     expandAll: expandAllMoCards,
@@ -80,8 +135,13 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
       setSearchQuery(router.route.docQuery);
     }
   }, [router.route.docQuery]);
+
   const [isVisualGuideOpen, setIsVisualGuideOpen] = useState(false);
-  const [notice, setNotice] = useState<{ type: 'success' | 'warning' | 'error'; title: string; detail: string } | null>(null);
+  const [notice, setNotice] = useState<{
+    type: 'success' | 'warning' | 'error';
+    title: string;
+    detail: string;
+  } | null>(null);
 
   // Modals state
   const [isCreateMoOpen, setIsCreateMoOpen] = useState(false);
@@ -100,20 +160,27 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
   const [deleteTargetOrder, setDeleteTargetOrder] = useState<ManufacturingOrder | null>(null);
   const [rollbackPreview, setRollbackPreview] = useState<any>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [deleteReason, setDeleteReason] = useState('حذف دستور ساخت غیرضروری و بازگشت مواد مصرفی به انبار');
+  const [deleteReason, setDeleteReason] = useState(
+    'حذف دستور ساخت غیرضروری و بازگشت مواد مصرفی به انبار'
+  );
   const [cascadeSubMos, setCascadeSubMos] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const res = await fetch('/api/wip/manufacturing-orders');
       const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'دریافت فهرست دستورات ساخت با خطا مواجه شد.');
+      }
+      if (Array.isArray(json.data)) {
         setOrders(json.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch manufacturing orders:', err);
+      setFetchError(err?.message || 'خطا در برقراری ارتباط با سرور برای دریافت دستورات ساخت.');
     } finally {
       setLoading(false);
     }
@@ -147,7 +214,8 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
       if (statusFilter !== 'ALL' && order.status !== statusFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
-        const matchMo = order.moNumber.toLowerCase().includes(q) || order.id.toLowerCase().includes(q);
+        const matchMo =
+          order.moNumber.toLowerCase().includes(q) || order.id.toLowerCase().includes(q);
         const matchPart =
           order.partCode.toLowerCase().includes(q) || order.partName.toLowerCase().includes(q);
         const matchParent = (order.parentMoNumber || '').toLowerCase().includes(q);
@@ -159,12 +227,26 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
 
   const kpis = useMemo(() => {
     const totalOrders = orders.length;
-    const activeOrders = orders.filter(o => o.status === 'IN_PROGRESS' || o.status === 'RELEASED').length;
+    const activeOrders = orders.filter(
+      o => o.status === 'IN_PROGRESS' || o.status === 'RELEASED'
+    ).length;
     const completedOrders = orders.filter(o => o.status === 'COMPLETED').length;
     const totalTarget = orders.reduce((acc, o) => acc + (o.targetQuantity || 0), 0);
     const totalCompleted = orders.reduce((acc, o) => acc + (o.completedQuantity || 0), 0);
-    const overallProgressPct = totalTarget > 0 ? Math.min(100, Math.round((totalCompleted / totalTarget) * 100)) : 0;
-    return { totalOrders, activeOrders, completedOrders, totalTarget, totalCompleted, overallProgressPct };
+    const totalRemaining = Math.max(0, totalTarget - totalCompleted);
+    const totalScrap = orders.reduce((acc, o) => acc + (o.totalScrapQuantity || 0), 0);
+    const overallProgressPct =
+      totalTarget > 0 ? Math.min(100, Math.round((totalCompleted / totalTarget) * 100)) : 0;
+    return {
+      totalOrders,
+      activeOrders,
+      completedOrders,
+      totalTarget,
+      totalCompleted,
+      totalRemaining,
+      totalScrap,
+      overallProgressPct,
+    };
   }, [orders]);
 
   useEffect(() => {
@@ -220,7 +302,9 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
   };
 
   // Register OP Production handler
-  const handleRegisterOpProduction = async (payload: any): Promise<{ success: boolean; error?: string }> => {
+  const handleRegisterOpProduction = async (
+    payload: any
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch('/api/wip/operations/production', {
         method: 'POST',
@@ -240,7 +324,9 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
       setNotice({
         type: 'success',
         title: `ثبت خروجی تولید و کنترل کیفیت با موفقیت انجام شد`,
-        detail: json.message || 'آمار تولید سالم، کسر خودکار مواد (Backflush) و انتقال به مرحله بعد ثبت شد.',
+        detail:
+          json.message ||
+          'آمار تولید سالم، کسر خودکار مواد (Backflush) و انتقال به مرحله بعد ثبت شد.',
       });
       return { success: true };
     } catch (err: any) {
@@ -257,20 +343,27 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
 
     setIsLoadingMaterial(true);
     try {
-      const firstOp = [...loadMaterialOrder.operations].sort((a, b) => a.stepNumber - b.stepNumber)[0];
+      const firstOp = [...loadMaterialOrder.operations].sort(
+        (a, b) => a.stepNumber - b.stepNumber
+      )[0];
       const activeUser = getActiveFactoryUser();
-      const res = await fetch(`/api/wip/manufacturing-orders/${encodeURIComponent(loadMaterialOrder.id)}/load-material`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          operationId: firstOp?.id,
-          quantity: qty,
-          sourceStockBalanceId: loadMaterialSourceId,
-          expectedVersion: loadMaterialOrder.version,
-          operatorName: activeUser.displayName,
-          notes: loadMaterialNotes.trim() || `تغذیه سرکلاف / شیت ورودی به ${firstOp?.stepCode || 'OP10'}`,
-        }),
-      });
+      const res = await fetch(
+        `/api/wip/manufacturing-orders/${encodeURIComponent(loadMaterialOrder.id)}/load-material`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            operationId: firstOp?.id,
+            quantity: qty,
+            sourceStockBalanceId: loadMaterialSourceId,
+            expectedVersion: loadMaterialOrder.version,
+            operatorName: activeUser.displayName,
+            notes:
+              loadMaterialNotes.trim() ||
+              `تغذیه سرکلاف / شیت ورودی به ${firstOp?.stepCode || 'OP10'}`,
+          }),
+        }
+      );
       const json = await res.json();
       if (!res.ok || !json.success) {
         if (res.status === 409 || json.conflict) {
@@ -285,7 +378,9 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
         setNotice({
           type: 'success',
           title: `بارگذاری سرکلاف / مواد اولیه برای دستور «${loadMaterialOrder.moNumber}» ثبت شد`,
-          detail: `تعداد ${formatNumber(qty)} قطعه در صف ورودی ایستگاه ${firstOp?.stepCode || 'OP10'} قرار گرفت و آماده ثبت خروجی است.`,
+          detail: `تعداد ${formatNumber(qty)} قطعه در صف ورودی ایستگاه ${
+            firstOp?.stepCode || 'OP10'
+          } قرار گرفت و آماده ثبت خروجی است.`,
         });
         setLoadMaterialOrder(null);
         setLoadMaterialSourceId('');
@@ -311,7 +406,9 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
     setRollbackPreview(null);
     try {
       const res = await fetch(
-        `/api/wip/manufacturing-orders/${encodeURIComponent(order.id)}/rollback-preview?cascadeSubMos=true`
+        `/api/wip/manufacturing-orders/${encodeURIComponent(
+          order.id
+        )}/rollback-preview?cascadeSubMos=true`
       );
       const json = await res.json();
       if (json.success) {
@@ -333,16 +430,19 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
     setIsDeleting(true);
     try {
       const activeUser = getActiveFactoryUser();
-      const res = await fetch(`/api/wip/manufacturing-orders/${encodeURIComponent(deleteTargetOrder.id)}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cascadeSubMos,
-          reason: deleteReason.trim(),
-          userId: activeUser.uid,
-          userName: activeUser.displayName,
-        }),
-      });
+      const res = await fetch(
+        `/api/wip/manufacturing-orders/${encodeURIComponent(deleteTargetOrder.id)}`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cascadeSubMos,
+            reason: deleteReason.trim(),
+            userId: activeUser.uid,
+            userName: activeUser.displayName,
+          }),
+        }
+      );
       const json = await res.json();
       if (!res.ok || !json.success) {
         setNotice({
@@ -354,7 +454,9 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
         setNotice({
           type: 'success',
           title: `دستور ساخت «${deleteTargetOrder.moNumber}» با موفقیت حذف و موجودی به انبار بازگردانده شد`,
-          detail: json.message || 'کلیه حواله‌های مصرف مرتبط ابطال و موجودی رول/قطعات به انبار بازگشت.',
+          detail:
+            json.message ||
+            'کلیه حواله‌های مصرف مرتبط ابطال و موجودی رول/قطعات به انبار بازگشت.',
         });
         setDeleteTargetOrder(null);
         await fetchOrders();
@@ -380,10 +482,716 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
     if (router.route.docQuery) router.clearDocQuery();
   };
 
+  const openLoadMaterialDialog = useCallback((mo: ManufacturingOrder) => {
+    setLoadMaterialOrder(mo);
+    setLoadMaterialQty(String(mo.targetQuantity || 500));
+    setLoadMaterialNotes('');
+  }, []);
+
+  // Master Table Columns (SAP Fiori Horizon List Report — sized to fit 1440px with expanded sidebar without horizontal clipping)
+  const moColumns = useMemo<FioriTableColumn<ManufacturingOrder>[]>(
+    () => [
+      {
+        key: 'moNumber',
+        header: 'شماره دستور ساخت (MO)',
+        sortable: true,
+        sortValue: mo => mo.moNumber,
+        width: '9.5rem',
+        nowrap: true,
+        render: mo => {
+          const expanded = isMoCardExpanded(mo.id);
+          return (
+            <div className="flex items-start gap-1.5">
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  toggleMoCard(mo.id);
+                }}
+                aria-expanded={expanded}
+                aria-label={expanded ? 'بستن مراحل دستور ساخت' : 'مشاهده مراحل دستور ساخت'}
+                className="p-0.5 mt-0.5 rounded-[var(--fiori-radius-sm)] text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-brand)] hover:bg-[var(--fiori-brand-bg)] cursor-pointer shrink-0 fiori-focus-ring"
+              >
+                {expanded ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                ) : (
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <div className="min-w-0 space-y-0.5">
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    toggleMoCard(mo.id);
+                  }}
+                  className="font-mono font-semibold text-xs text-[var(--fiori-brand)] hover:underline fiori-ltr-code cursor-pointer block text-left"
+                >
+                  {mo.moNumber}
+                </button>
+                <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-[var(--fiori-text-muted)]">
+                  {mo.startDate && (
+                    <span className="font-mono tabular-nums">
+                      {toPersianDigits(formatToJalali(mo.startDate))}
+                    </span>
+                  )}
+                  {mo.parentMoNumber && (
+                    <span className="px-1 py-0.2 rounded bg-[var(--fiori-critical-bg)] text-[var(--fiori-critical)] border border-[var(--fiori-critical-border)]">
+                      فرعیِ <span className="fiori-ltr-code font-mono">{mo.parentMoNumber}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'partName',
+        header: 'قطعه و کد فنی',
+        sortable: true,
+        sortValue: mo => mo.partName,
+        render: mo => (
+          <div className="min-w-[130px] max-w-[195px]">
+            <div
+              className="font-semibold text-[var(--fiori-text-primary)] truncate"
+              title={mo.partName}
+            >
+              {mo.partName}
+            </div>
+            <div className="text-[10px] text-[var(--fiori-text-secondary)] mt-0.5 flex items-center gap-1.5">
+              <span className="fiori-ltr-code font-mono">{mo.partCode}</span>
+              {mo.routingVersion && (
+                <>
+                  <span>·</span>
+                  <span>مسیر نسخه {mo.routingVersion}</span>
+                </>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'وضعیت',
+        sortable: true,
+        sortValue: mo => mo.status,
+        width: '6.25rem',
+        nowrap: true,
+        render: mo => {
+          const meta = STATUS_META[mo.status] || {
+            label: mo.status,
+            shortLabel: mo.status,
+            tone: 'neutral' as FioriStatusTone,
+          };
+          return <FioriObjectStatus tone={meta.tone} label={meta.label} icon size="sm" />;
+        },
+      },
+      {
+        key: 'activeOp',
+        header: 'ایستگاه فعال و وضعیت خط',
+        hideBelow: 'md',
+        render: mo => {
+          const { activeOp, completedOps, totalOps, totalWaiting, totalInProgress } =
+            getOrderMetrics(mo);
+          return (
+            <div className="space-y-0.5 min-w-[120px] max-w-[165px]">
+              {activeOp ? (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="px-1.5 py-0.2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-brand-border)] font-mono font-semibold text-[10px] fiori-ltr-code shrink-0">
+                    {activeOp.stepCode}
+                  </span>
+                  <span
+                    className="text-[var(--fiori-text-primary)] truncate max-w-[115px]"
+                    title={activeOp.stepName}
+                  >
+                    {activeOp.stepName}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[var(--fiori-positive)] font-medium text-[11px]">
+                  همه ایستگاه‌ها تکمیل شد
+                </span>
+              )}
+              <div className="flex items-center gap-2 text-[10px] text-[var(--fiori-text-secondary)]">
+                <span>
+                  {toPersianDigits(completedOps)}/{toPersianDigits(totalOps)} مرحله
+                </span>
+                {totalWaiting > 0 && (
+                  <span className="text-[var(--fiori-brand)] font-mono tabular-nums">
+                    صف: {formatNumber(totalWaiting)}
+                  </span>
+                )}
+                {totalInProgress > 0 && (
+                  <span className="text-[var(--fiori-critical)] font-mono tabular-nums">
+                    در خط: {formatNumber(totalInProgress)}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'quantities',
+        header: 'تولید / هدف / مانده',
+        sortable: true,
+        sortValue: mo => mo.targetQuantity || 0,
+        align: 'left',
+        width: '8rem',
+        nowrap: true,
+        render: mo => {
+          const { remainingQty } = getOrderMetrics(mo);
+          return (
+            <div className="space-y-0.5 font-mono tabular-nums text-left">
+              <div className="text-xs">
+                <strong className="text-[var(--fiori-positive)]">
+                  {formatNumber(mo.completedQuantity || 0)}
+                </strong>
+                <span className="text-[var(--fiori-text-muted)]">
+                  {' '}
+                  / {formatNumber(mo.targetQuantity || 0)}
+                </span>
+              </div>
+              <div className="flex items-center justify-end gap-2 text-[10px]">
+                <span className="text-[var(--fiori-text-secondary)]">
+                  مانده: {formatNumber(remainingQty)}
+                </span>
+                {(mo.totalScrapQuantity || 0) > 0 && (
+                  <span className="text-[var(--fiori-negative)]">
+                    ضایعات: {formatNumber(mo.totalScrapQuantity)}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'progress',
+        header: 'پیشرفت',
+        sortable: true,
+        sortValue: mo => getOrderMetrics(mo).displayProgressPct,
+        width: '4.5rem',
+        hideBelow: 'sm',
+        render: mo => {
+          const { displayProgressPct } = getOrderMetrics(mo);
+          return (
+            <div className="space-y-1 min-w-[52px]">
+              <div className="flex items-center justify-between text-[11px] font-mono tabular-nums">
+                <span
+                  className={
+                    displayProgressPct >= 100
+                      ? 'text-[var(--fiori-positive)] font-semibold'
+                      : 'text-[var(--fiori-text-primary)] font-semibold'
+                  }
+                >
+                  {toPersianDigits(displayProgressPct)}٪
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-[var(--fiori-neutral-bg)] rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all ${
+                    displayProgressPct >= 100
+                      ? 'bg-[var(--fiori-positive)]'
+                      : 'bg-[var(--fiori-brand)]'
+                  }`}
+                  style={{ width: `${displayProgressPct}%` }}
+                />
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'actions',
+        header: 'اقدامات عملیاتی',
+        align: 'left',
+        nowrap: true,
+        render: mo => {
+          const { activeOp, totalWaiting, totalInProgress } = getOrderMetrics(mo);
+          const canProduceActive =
+            activeOp && (activeOp.inProgressQty || 0) + (activeOp.waitingInputQty || 0) > 0;
+          const needsInitialMaterial =
+            mo.status !== 'COMPLETED' &&
+            mo.status !== 'CANCELLED' &&
+            totalWaiting === 0 &&
+            totalInProgress === 0 &&
+            (mo.completedQuantity || 0) < (mo.targetQuantity || 0);
+          const shortOpCode = activeOp ? activeOp.stepCode.split('_')[0] : '';
+
+          return (
+            <div
+              className="flex items-center justify-end gap-1"
+              onClick={e => e.stopPropagation()}
+            >
+              {canProduceActive && activeOp ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveProdOp(activeOp)}
+                  className="fiori-btn-positive px-2 py-1 text-[11px] inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                  title={`ثبت خروجی تولید و QC برای ایستگاه ${activeOp.stepCode} (${activeOp.stepName})`}
+                >
+                  <Play className="w-3 h-3" />
+                  <span>ثبت تولید ({shortOpCode})</span>
+                </button>
+              ) : needsInitialMaterial ? (
+                <button
+                  type="button"
+                  onClick={() => openLoadMaterialDialog(mo)}
+                  className="sap-btn-emphasized px-2 py-1 text-[11px] inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                  title="تغذیه سرکلاف یا شیت ورودی به ایستگاه اول (OP10)"
+                >
+                  <PackagePlus className="w-3 h-3" />
+                  <span>شارژ OP10</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => toggleMoCard(mo.id)}
+                  className="sap-btn-standard px-2 py-1 text-[11px] inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                >
+                  <span>مراحل</span>
+                </button>
+              )}
+
+              {!needsInitialMaterial && mo.status !== 'COMPLETED' && mo.status !== 'CANCELLED' && (
+                <button
+                  type="button"
+                  onClick={() => openLoadMaterialDialog(mo)}
+                  className="sap-btn-standard p-1.5 text-[var(--fiori-brand)] cursor-pointer"
+                  title="بارگذاری سرکلاف / مواد اولیه به OP10"
+                  aria-label="بارگذاری سرکلاف / مواد اولیه به OP10"
+                >
+                  <PackagePlus className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.navigate({
+                    tab: 'wip',
+                    wipSubTab: 'UNIFIED_DIRECTORY',
+                    moId: mo.id,
+                  })
+                }
+                className="sap-btn-standard p-1.5 text-[var(--fiori-text-secondary)] cursor-pointer"
+                title="رهگیری پرونده کامل در کارتابل WIP"
+                aria-label="رهگیری در کارتابل WIP"
+              >
+                <GitBranch className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.navigate({
+                    tab: 'master_data',
+                    masterSubSection: 'BOM',
+                    docQuery: mo.partCode,
+                  })
+                }
+                className="sap-btn-standard p-1.5 text-[var(--fiori-text-secondary)] cursor-pointer hidden 2xl:inline-flex"
+                title="مشاهده درخت محصول (BOM)"
+                aria-label="مشاهده درخت محصول BOM"
+              >
+                <ListTree className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.navigate({
+                    tab: 'inventory',
+                    inventorySubTab: 'INQUIRY',
+                    docQuery: mo.partCode,
+                  })
+                }
+                className="sap-btn-standard p-1.5 text-[var(--fiori-positive)] cursor-pointer hidden 2xl:inline-flex"
+                title="کاردکس و موجودی انبار قطعه"
+                aria-label="کاردکس انبار"
+              >
+                <Warehouse className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenDeleteModal(mo)}
+                className="fiori-btn-danger-outline p-1.5 cursor-pointer"
+                title="حذف دستور ساخت و بازگشت موجودی به انبار"
+                aria-label="حذف و بازگشت موجودی"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          );
+        },
+      },
+    ],
+    [isMoCardExpanded, toggleMoCard, openLoadMaterialDialog, router]
+  );
+
+  // Expanded Row Detail Renderer (Operation Flow Chain + Operations Table)
+  const renderExpandedMoRow = useCallback(
+    (mo: ManufacturingOrder) => {
+      const { sortedOps } = getOrderMetrics(mo);
+
+      const opColumns: FioriTableColumn<ManufacturingOperation>[] = [
+        {
+          key: 'stepCode',
+          header: 'ایستگاه (OP)',
+          width: '8.5rem',
+          nowrap: true,
+          render: (op, idx) => (
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono font-semibold text-[var(--fiori-text-primary)] fiori-ltr-code">
+                {op.stepCode}
+              </span>
+              {idx === 0 && <FioriObjectStatus tone="brand" label="ورودی" size="sm" />}
+              {idx === sortedOps.length - 1 && (
+                <FioriObjectStatus tone="positive" label="نهایی" size="sm" />
+              )}
+            </div>
+          ),
+        },
+        {
+          key: 'stepName',
+          header: 'شرح عملیات',
+          render: op => (
+            <span className="font-medium text-[var(--fiori-text-primary)]">{op.stepName}</span>
+          ),
+        },
+        {
+          key: 'machineName',
+          header: 'دستگاه / موقعیت فیزیکی',
+          hideBelow: 'sm',
+          render: op => (
+            <div className="text-[11px]">
+              <div className="text-[var(--fiori-text-primary)]">
+                {op.machineName || 'ایستگاه استاندارد'}
+              </div>
+              {op.warehouseLocation && (
+                <div className="text-[10px] text-[var(--fiori-text-muted)] font-mono fiori-ltr-code">
+                  {op.warehouseLocation}
+                </div>
+              )}
+            </div>
+          ),
+        },
+        {
+          key: 'status',
+          header: 'وضعیت',
+          width: '7.5rem',
+          render: op => (
+            <FioriObjectStatus
+              tone={
+                op.status === 'COMPLETED'
+                  ? 'positive'
+                  : op.status === 'IN_PROGRESS'
+                  ? 'critical'
+                  : op.status === 'READY'
+                  ? 'brand'
+                  : 'neutral'
+              }
+              label={
+                op.status === 'COMPLETED'
+                  ? 'تکمیل‌شده'
+                  : op.status === 'IN_PROGRESS'
+                  ? 'در حال تولید'
+                  : op.status === 'READY'
+                  ? 'آماده شروع'
+                  : 'در انتظار'
+              }
+              size="sm"
+            />
+          ),
+        },
+        {
+          key: 'waitingInputQty',
+          header: 'صف ورودی',
+          align: 'left',
+          isMono: true,
+          width: '5.5rem',
+          render: op => (
+            <span
+              className={
+                (op.waitingInputQty || 0) > 0
+                  ? 'font-semibold text-[var(--fiori-brand)]'
+                  : 'text-[var(--fiori-text-muted)]'
+              }
+            >
+              {formatNumber(op.waitingInputQty || 0)}
+            </span>
+          ),
+        },
+        {
+          key: 'inProgressQty',
+          header: 'پای دستگاه',
+          align: 'left',
+          isMono: true,
+          width: '5.5rem',
+          render: op => (
+            <span
+              className={
+                (op.inProgressQty || 0) > 0
+                  ? 'font-semibold text-[var(--fiori-critical)]'
+                  : 'text-[var(--fiori-text-muted)]'
+              }
+            >
+              {formatNumber(op.inProgressQty || 0)}
+            </span>
+          ),
+        },
+        {
+          key: 'output',
+          header: 'سالم / هدف',
+          align: 'left',
+          isMono: true,
+          width: '7rem',
+          render: op => (
+            <span>
+              <strong className="text-[var(--fiori-positive)]">
+                {formatNumber(op.goodOutputQty || 0)}
+              </strong>
+              <span className="text-[var(--fiori-text-muted)]">
+                {' '}
+                / {formatNumber(mo.targetQuantity)}
+              </span>
+            </span>
+          ),
+        },
+        {
+          key: 'scrapQty',
+          header: 'ضایعات',
+          align: 'left',
+          isMono: true,
+          width: '5rem',
+          render: op => (
+            <span
+              className={
+                (op.scrapQty || 0) > 0
+                  ? 'font-semibold text-[var(--fiori-negative)]'
+                  : 'text-[var(--fiori-text-muted)]'
+              }
+            >
+              {formatNumber(op.scrapQty || 0)}
+            </span>
+          ),
+        },
+        {
+          key: 'actions',
+          header: 'ثبت عملیات',
+          align: 'left',
+          width: '9.5rem',
+          nowrap: true,
+          render: op => {
+            const availableToProduce = (op.inProgressQty || 0) + (op.waitingInputQty || 0);
+            return (
+              <button
+                type="button"
+                onClick={() => setActiveProdOp(op)}
+                className={`px-2.5 py-1 text-[11px] inline-flex items-center gap-1 cursor-pointer whitespace-nowrap ${
+                  availableToProduce > 0 ? 'fiori-btn-positive' : 'sap-btn-standard'
+                }`}
+              >
+                <Play className="w-3 h-3" />
+                <span>ثبت خروجی و QC</span>
+              </button>
+            );
+          },
+        },
+      ];
+
+      return (
+        <div className="p-3.5 space-y-3 border-t border-[var(--fiori-border-default)] bg-[var(--fiori-bg-subtle)]">
+          {/* Context Metadata + Operation Sequence Flow */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+            {/* Visual Operation Flow Strip */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-semibold text-[var(--fiori-text-secondary)] ml-1">
+                زنجیره مراحل:
+              </span>
+              {sortedOps.map((op, idx) => {
+                const isDone = op.status === 'COMPLETED';
+                const isActive =
+                  !isDone && ((op.inProgressQty || 0) > 0 || (op.waitingInputQty || 0) > 0);
+                return (
+                  <React.Fragment key={op.id}>
+                    {idx > 0 && (
+                      <ChevronLeft className="w-3 h-3 text-[var(--fiori-text-muted)] shrink-0" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveProdOp(op)}
+                      title={`${op.stepCode} — ${op.stepName} | صف: ${formatNumber(
+                        op.waitingInputQty || 0
+                      )} | در حال ساخت: ${formatNumber(op.inProgressQty || 0)} | سالم: ${formatNumber(
+                        op.goodOutputQty || 0
+                      )}`}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--fiori-radius-sm)] border text-[10px] font-medium cursor-pointer transition-colors ${
+                        isDone
+                          ? 'bg-[var(--fiori-positive-bg)] border-[var(--fiori-positive-border)] text-[var(--fiori-positive)]'
+                          : isActive
+                          ? 'bg-[var(--fiori-brand-bg)] border-[var(--fiori-brand)] text-[var(--fiori-brand)] font-semibold'
+                          : 'bg-[var(--fiori-bg-surface)] border-[var(--fiori-border-default)] text-[var(--fiori-text-secondary)] hover:border-[var(--fiori-brand-border)]'
+                      }`}
+                    >
+                      <span className="fiori-ltr-code font-mono">{op.stepCode}</span>
+                      <span className="font-mono tabular-nums opacity-85">
+                        ({formatNumber(op.goodOutputQty || 0)})
+                      </span>
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            {/* Quick Contextual Links & Secondary Info */}
+            <div className="flex items-center gap-2 flex-wrap text-[11px] text-[var(--fiori-text-secondary)]">
+              <span>
+                ورودی خط:{' '}
+                <strong className="font-mono text-[var(--fiori-text-primary)]">
+                  {formatNumber(mo.initialInputQuantity || 0)}
+                </strong>
+              </span>
+              {mo.dueDate && (
+                <>
+                  <span>·</span>
+                  <span>
+                    موعد تحویل:{' '}
+                    <strong className="font-mono tabular-nums text-[var(--fiori-text-primary)]">
+                      {toPersianDigits(formatToJalali(mo.dueDate))}
+                    </strong>
+                  </span>
+                </>
+              )}
+              {mo.notes && (
+                <>
+                  <span>·</span>
+                  <span className="text-[var(--fiori-text-primary)]">{mo.notes}</span>
+                </>
+              )}
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() =>
+                  router.navigate({
+                    tab: 'master_data',
+                    masterSubSection: 'BOM',
+                    docQuery: mo.partCode,
+                  })
+                }
+                className="sap-doc-link inline-flex items-center gap-1 text-[11px]"
+              >
+                <ListTree className="w-3 h-3" />
+                <span>درخت محصول (BOM)</span>
+              </button>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() =>
+                  router.navigate({
+                    tab: 'inventory',
+                    inventorySubTab: 'INQUIRY',
+                    docQuery: mo.partCode,
+                  })
+                }
+                className="sap-doc-link inline-flex items-center gap-1 text-[11px]"
+              >
+                <Warehouse className="w-3 h-3" />
+                <span>کاردکس انبار</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Operations Table */}
+          <FioriDataTable
+            columns={opColumns}
+            data={sortedOps}
+            rowKey={op => op.id}
+            bordered
+            emptyState={<EmptyState variant="NO_DATA" title="مرحله عملیاتی یافت نشد" compact />}
+          />
+        </div>
+      );
+    },
+    [router]
+  );
+
+  const kpiItems = useMemo(
+    () => [
+      {
+        id: 'total',
+        label: 'کل دستورات ساخت',
+        value: toPersianDigits(kpis.totalOrders),
+        unit: 'دستور',
+        tone: 'neutral' as FioriStatusTone,
+        active: statusFilter === 'ALL',
+        onClick: () => setStatusFilter('ALL'),
+        title: 'نمایش همه دستورات ساخت',
+      },
+      {
+        id: 'active',
+        label: 'فعال و در خط تولید',
+        value: toPersianDigits(kpis.activeOrders),
+        unit: 'دستور',
+        subtext: `${toPersianDigits(statusCounts.IN_PROGRESS || 0)} در حال ساخت · ${toPersianDigits(
+          statusCounts.RELEASED || 0
+        )} آماده`,
+        tone: 'brand' as FioriStatusTone,
+        active: statusFilter === 'IN_PROGRESS',
+        onClick: () =>
+          setStatusFilter(prev => (prev === 'IN_PROGRESS' ? 'ALL' : 'IN_PROGRESS')),
+        title: 'فیلتر دستورات در حال تولید',
+      },
+      {
+        id: 'completed',
+        label: 'دستورات تکمیل‌شده',
+        value: toPersianDigits(kpis.completedOrders),
+        unit: 'تکمیل',
+        tone: 'positive' as FioriStatusTone,
+        active: statusFilter === 'COMPLETED',
+        onClick: () =>
+          setStatusFilter(prev => (prev === 'COMPLETED' ? 'ALL' : 'COMPLETED')),
+        title: 'فیلتر دستورات تکمیل‌شده',
+      },
+      {
+        id: 'quantities',
+        label: 'تولیدشده / هدف کل',
+        value: `${formatNumber(kpis.totalCompleted)} / ${formatNumber(kpis.totalTarget)}`,
+        unit: 'عدد',
+        subtext: `مانده: ${formatNumber(kpis.totalRemaining)} · ضایعات: ${formatNumber(
+          kpis.totalScrap
+        )}`,
+        tone: 'neutral' as FioriStatusTone,
+      },
+      {
+        id: 'progress',
+        label: 'تحقق کلی برنامه',
+        value: `${toPersianDigits(kpis.overallProgressPct)}٪`,
+        progressPercent: kpis.overallProgressPct,
+        tone: 'positive' as FioriStatusTone,
+      },
+    ],
+    [kpis, statusCounts, statusFilter]
+  );
+
+  const filterSegments = useMemo(
+    () => [
+      { id: 'ALL', label: 'همه', count: statusCounts.ALL || 0 },
+      { id: 'RELEASED', label: 'آماده تولید', count: statusCounts.RELEASED || 0 },
+      { id: 'IN_PROGRESS', label: 'در حال تولید', count: statusCounts.IN_PROGRESS || 0 },
+      { id: 'COMPLETED', label: 'تکمیل‌شده', count: statusCounts.COMPLETED || 0 },
+      { id: 'PLANNED', label: 'برنامه‌ریزی‌شده', count: statusCounts.PLANNED || 0 },
+    ],
+    [statusCounts]
+  );
+
   return (
     <FioriDynamicPage
-      title="مدیریت دستورات ساخت (MO)، شارژ سرکلاف OP10 و کنترل مراحل تولید"
-      subtitle="صدور دستور ساخت، پیگیری موجودی صف و پای دستگاه در ایستگاه‌های مسیر، ثبت خروجی/ضایعات و ابطال معکوس انبار"
+      title="مدیریت دستورات ساخت (MO)"
+      subtitle="صدور و رهگیری دستورات ساخت، شارژ سرکلاف OP10، ثبت خروجی ایستگاه‌ها و ابطال معکوس انبار"
       status={
         <FioriObjectStatus
           tone={kpis.activeOrders > 0 ? 'positive' : 'neutral'}
@@ -396,19 +1204,30 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
       onResetFilters={handleResetFilters}
       headerActions={
         <div className="flex items-center gap-2 flex-wrap">
+          {onOpenVouchers && (
+            <button
+              type="button"
+              onClick={onOpenVouchers}
+              className="sap-btn-standard px-2.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              title="ثبت قبض تکی کارگاه (MIGO)"
+            >
+              <FileText className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)]" />
+              <span>قبض تکی (MIGO)</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsVisualGuideOpen(true)}
-            className="sap-btn-standard px-2.5 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer text-[var(--fiori-brand)]"
+            className="sap-btn-standard px-2.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>راهنمای تصویری گام‌به‌گام</span>
+            <BookOpen className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+            <span>راهنمای تصویری</span>
           </button>
           <button
             type="button"
             onClick={fetchOrders}
             disabled={loading}
-            className="sap-btn-standard px-2.5 py-1.5 text-xs inline-flex items-center gap-1 cursor-pointer"
+            className="sap-btn-standard px-2.5 py-1.5 text-xs inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>بروزرسانی</span>
@@ -416,259 +1235,41 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
           <button
             type="button"
             onClick={() => setIsCreateMoOpen(true)}
-            className="sap-btn-emphasized px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+            className="sap-btn-emphasized px-3 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>صدور دستور ساخت جدید (MO)</span>
           </button>
         </div>
       }
-      kpiStrip={
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3">
-            <span className="text-[11px] text-[var(--fiori-text-secondary)] block">کل دستورات ساخت (MO)</span>
-            <span className="text-lg font-bold font-mono tabular-nums text-[var(--fiori-text-primary)] mt-0.5 block">
-              {toPersianDigits(kpis.totalOrders)} <span className="text-xs font-normal text-[var(--fiori-text-secondary)]">دستور</span>
-            </span>
-          </div>
-          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3">
-            <span className="text-[11px] text-[var(--fiori-text-secondary)] block">دستورات فعال و در جریان</span>
-            <span className="text-lg font-bold font-mono tabular-nums text-[var(--fiori-brand)] mt-0.5 block">
-              {toPersianDigits(kpis.activeOrders)} <span className="text-xs font-normal text-[var(--fiori-text-secondary)]">در خط</span>
-            </span>
-          </div>
-          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3">
-            <span className="text-[11px] text-[var(--fiori-text-secondary)] block">دستورات تکمیل‌شده</span>
-            <span className="text-lg font-bold font-mono tabular-nums text-[var(--fiori-positive)] mt-0.5 block">
-              {toPersianDigits(kpis.completedOrders)} <span className="text-xs font-normal text-[var(--fiori-text-secondary)]">تکمیل</span>
-            </span>
-          </div>
-          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3">
-            <span className="text-[11px] text-[var(--fiori-text-secondary)] block">مجموع تیراژ هدف / تکمیل‌شده</span>
-            <span className="text-sm font-bold font-mono tabular-nums text-[var(--fiori-text-primary)] mt-1 block">
-              {formatNumber(kpis.totalCompleted)} / {formatNumber(kpis.totalTarget)}{' '}
-              <span className="text-[11px] font-normal text-[var(--fiori-text-secondary)]">PCS</span>
-            </span>
-          </div>
-          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3 col-span-2 sm:col-span-1">
-            <div className="flex items-center justify-between text-[11px] text-[var(--fiori-text-secondary)]">
-              <span>پیشرفت کل دستورات</span>
-              <span className="font-mono font-bold tabular-nums text-[var(--fiori-positive)]">
-                {toPersianDigits(kpis.overallProgressPct)}٪
-              </span>
-            </div>
-            <div className="w-full h-2 bg-[var(--fiori-border-subtle)] rounded-[var(--fiori-radius-sm)] overflow-hidden mt-2">
-              <div
-                className="h-full bg-[var(--fiori-positive)] transition-all"
-                style={{ width: `${kpis.overallProgressPct}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      }
+      kpiStrip={<FioriKpiStrip items={kpiItems} loading={loading && orders.length === 0} columns={5} />}
       filterBar={
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Status Filter Buttons */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {[
-              { id: 'ALL' as const, label: 'همه دستورات' },
-              { id: 'RELEASED' as const, label: 'آماده تولید (RELEASED)' },
-              { id: 'IN_PROGRESS' as const, label: 'در حال تولید (IN_PROGRESS)' },
-              { id: 'COMPLETED' as const, label: 'تکمیل‌شده (COMPLETED)' },
-              { id: 'PLANNED' as const, label: 'برنامه‌ریزی‌شده (PLANNED)' },
-            ].map(st => {
-              const active = statusFilter === st.id;
-              const count = statusCounts[st.id] || 0;
-              return (
-                <button
-                  key={st.id}
-                  type="button"
-                  onClick={() => setStatusFilter(st.id)}
-                  className={`px-3 py-1.5 rounded-[var(--fiori-radius-sm)] text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${
-                    active
-                      ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)]'
-                      : 'bg-white text-[var(--fiori-text-primary)] border-[var(--fiori-border-input)] hover:bg-[var(--fiori-bg-hover)]'
-                  }`}
-                >
-                  <span>{st.label}</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded-[var(--fiori-radius-sm)] text-[10px] font-mono ${
-                      active ? 'bg-white/20 text-white' : 'bg-[var(--fiori-bg-subtle)] text-[var(--fiori-text-secondary)]'
-                    }`}
-                  >
-                    {toPersianDigits(count)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Search */}
-          <div className="relative min-w-[240px] flex-1 sm:flex-initial">
-            <Search className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)] absolute right-2.5 top-2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="جستجوی شماره MO، کد یا نام قطعه..."
-              className="w-full bg-white border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] pr-8 pl-7 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  if (router.route.docQuery) router.clearDocQuery();
-                }}
-                title="پاک‌کردن فیلتر جستجو"
-                className="absolute left-2 top-1.5 text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-negative)] cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
+        <FioriFilterBar
+          searchValue={searchQuery}
+          onSearchChange={val => {
+            setSearchQuery(val);
+            if (!val && router.route.docQuery) router.clearDocQuery();
+          }}
+          searchPlaceholder="جستجوی شماره MO، کد یا نام قطعه، دستور مادر..."
+          searchAriaLabel="جستجو در دستورات ساخت"
+          segments={filterSegments}
+          activeSegment={statusFilter}
+          onSegmentChange={id => setStatusFilter(id as 'ALL' | ManufacturingOrderStatus)}
+          hasActiveFilters={activeFiltersCount > 0}
+          onReset={handleResetFilters}
+        />
       }
     >
-      {/* STEP-BY-STEP INTERACTIVE USER GUIDE FOR COIL ISSUE, MO & OP10 FIX */}
-      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-brand-border)] rounded-[var(--fiori-radius-md)] overflow-hidden">
-        <div className="px-3.5 py-2 bg-[var(--fiori-brand-bg)]/60 border-b border-[var(--fiori-brand-border)]/60 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <BookOpen className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
-            <span className="text-xs font-bold text-[var(--fiori-text-primary)] truncate">
-              راهنمای گام‌به‌گام صدور سرکلاف، تعریف دستور ساخت (MO) معتبر و رفع خطای OP10
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={toggleGuide}
-            className="text-[11px] font-semibold text-[var(--fiori-brand)] flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-brand-border)] hover:bg-[var(--fiori-brand-bg)] cursor-pointer shrink-0"
-          >
-            <span>{showGuide ? 'بستن خلاصه متنی' : 'خلاصه ۴ گام'}</span>
-            {showGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-        </div>
-
-        {showGuide && (
-          <div className="p-3.5 space-y-3 text-xs">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-              {/* STEP 1 */}
-              <div className="p-3 bg-white border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] space-y-2 flex flex-col justify-between">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <FioriObjectStatus tone="brand" label="گام ۱: صدور سرکلاف تولید (رول ورق)" size="sm" />
-                    <Disc className="w-4 h-4 text-[var(--fiori-brand)]" />
-                  </div>
-                  <h4 className="font-bold text-[var(--fiori-text-primary)]">سر کلاف تولید از کجا صادر می‌شود؟</h4>
-                  <p className="text-[11px] text-[var(--fiori-text-secondary)] leading-5">
-                    ۱. از <strong>«انبار و کیفیت (MM/QM) ← رول‌های ورق و کویل‌پک»</strong>، رول ورق با شماره ذوب (Heat Number) ثبت و آزاد می‌شود.
-                    <br />
-                    ۲. برای ارسال سرکلاف پای دستگاه برش (<code>OP10_SLIT</code>)، در جدول رول‌ها دکمه <strong>«ثبت مصرف/برش کلاف»</strong> را بزنید <strong>یا</strong> در همین صفحه روی کارت دستور ساخت، دکمه <strong>«بارگذاری سرکلاف / مواد به OP10»</strong> را کلیک کنید.
-                    <br />
-                    ۳. همچنین هنگام ثبت خروجی سالم در <code>OP10_SLIT</code>، سیستم به صورت خودکار وزن ورق مصرفی را از سرکلاف فعال کسر می‌کند (سند <code>ISS-WIP-*</code>).
-                  </p>
-                </div>
-                <div className="pt-2 border-t border-[var(--fiori-border-subtle)] flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => router.navigate({ tab: 'inventory', inventorySubTab: 'COILS' })}
-                    className="sap-btn-standard px-2.5 py-1 text-[11px] font-semibold flex items-center gap-1 cursor-pointer text-[var(--fiori-brand)]"
-                  >
-                    <Disc className="w-3.5 h-3.5" />
-                    <span>مدیریت رول‌های ورق و صدور سرکلاف</span>
-                    <ArrowUpRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-
-              {/* STEP 2 */}
-              <div className="p-3 bg-white border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] space-y-2 flex flex-col justify-between">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <FioriObjectStatus tone="positive" label="گام ۲: تعریف دستور ساخت (MO) معتبر" size="sm" />
-                    <Cpu className="w-4 h-4 text-[var(--fiori-positive)]" />
-                  </div>
-                  <h4 className="font-bold text-[var(--fiori-text-primary)]">چگونه از MRP یا میز کار دستور ساخت بسازیم؟</h4>
-                  <p className="text-[11px] text-[var(--fiori-text-secondary)] leading-5">
-                    <strong>مسیر اول (اتوماتیک از MRP):</strong> به <strong>«برنامه‌ریزی و MRP ← پیشنهاد برنامه و پرس‌ها»</strong> بروید، پیشنهاد تولید قطعه را انتخاب کرده و روی <strong>«تأیید پیشنهاد و صدور فوری دستور کار (MO)»</strong> کلیک کنید.
-                    <br />
-                    <strong>مسیر دوم (مستقیم از میز کار تولید):</strong> روی دکمه <strong>«+ صدور دستور ساخت جدید (MO)»</strong> کلیک کنید، قطعه و تیراژ هدف را انتخاب و ثبت نمایید.
-                  </p>
-                </div>
-                <div className="pt-2 border-t border-[var(--fiori-border-subtle)] flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => router.navigate({ tab: 'planning', planningSubTab: 'recommendations' })}
-                    className="sap-btn-standard px-2 py-1 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Cpu className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
-                    <span>صدور MO از پیشنهاد MRP</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsCreateMoOpen(true)}
-                    className="sap-btn-emphasized px-2.5 py-1 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>صدور فوری MO جدید</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* STEP 3 */}
-              <div className="p-3 bg-white border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] space-y-2 flex flex-col justify-between">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <FioriObjectStatus tone="critical" label="گام ۳: ثبت خروجی تولید و QC (OP10_SLIT)" size="sm" />
-                    <FileCheck className="w-4 h-4 text-[var(--fiori-critical)]" />
-                  </div>
-                  <h4 className="font-bold text-[var(--fiori-text-primary)]">چرا خطای دستور ساخت در OP10 رخ می‌داد و چگونه رفع شد؟</h4>
-                  <p className="text-[11px] text-[var(--fiori-text-secondary)] leading-5">
-                    خطای <em>«برای این کد قطعه دستور ساخت relational متناظر پیدا نشد»</em> زمانی رخ می‌داد که جدول ارتباطی دیتابیس با دستور ساخت جاری همگام نبود.
-                    <br />
-                    اکنون با کلیک روی <strong>«ثبت خروجی و QC»</strong> در هر مرحله (<code>OP10_SLIT</code> تا مرحله نهایی)، دستور ساخت متناظر، شیفت و اپراتور به صورت <strong>خودکار</strong> انتخاب می‌شوند.
-                  </p>
-                </div>
-                <div className="pt-2 border-t border-[var(--fiori-border-subtle)] text-[11px] text-[var(--fiori-positive)] font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>همگام‌سازی خودکار دستور ساخت، شیفت و کسر کلاف فعال است</span>
-                </div>
-              </div>
-
-              {/* STEP 4 */}
-              <div className="p-3 bg-white border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] space-y-2 flex flex-col justify-between">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <FioriObjectStatus tone="negative" label="گام ۴: رهگیری پیشرفت و حذف دستورات ساخت" size="sm" />
-                    <Trash2 className="w-4 h-4 text-[var(--fiori-negative)]" />
-                  </div>
-                  <h4 className="font-bold text-[var(--fiori-text-primary)]">کجا دستورات تولید را ببینم، رهگیری و حذف کنم؟</h4>
-                  <p className="text-[11px] text-[var(--fiori-text-secondary)] leading-5">
-                    در جدول زیر تمام دستورات ساخت (<code>MO</code>) به همراه <strong>فیلتر وضعیت</strong>، <strong>درصد پیشرفت</strong> و وضعیت لحظه‌ای هر ایستگاه نمایش داده می‌شوند.
-                    <br />
-                    برای حذف هر دستور ساخت غیرضروری، روی دکمه <strong>«حذف و بازگشت موجودی»</strong> کلیک کنید تا تمام حواله‌های مصرف و دستورات فرعی معکوس شوند.
-                  </p>
-                </div>
-                <div className="pt-2 border-t border-[var(--fiori-border-subtle)] flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => router.navigate({ tab: 'wip', wipSubTab: 'UNIFIED_DIRECTORY' })}
-                    className="sap-btn-standard px-2.5 py-1 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <GitBranch className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
-                    <span>مشاهده نمای درختی کارتابل WIP</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* FEEDBACK BANNER */}
       {notice && (
         <FioriMessageStrip
-          tone={notice.type === 'error' ? 'error' : notice.type === 'warning' ? 'warning' : 'success'}
+          tone={
+            notice.type === 'error'
+              ? 'error'
+              : notice.type === 'warning'
+              ? 'warning'
+              : 'success'
+          }
           title={notice.title}
           onClose={() => setNotice(null)}
         >
@@ -676,28 +1277,36 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
         </FioriMessageStrip>
       )}
 
-      {/* MANUFACTURING ORDERS LIST & PER-OPERATION PROGRESS */}
-      {filteredOrders.length === 0 ? (
-        <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-6">
-          <EmptyState
-            variant={activeFiltersCount > 0 ? 'FILTER_NO_MATCH' : 'NO_DATA'}
-            title="هیچ دستور ساختی با فیلتر انتخابی یافت نشد"
-            description="می‌توانید فیلتر وضعیت را پاکسازی کنید یا یک دستور ساخت جدید صادر نمایید."
-            actionLabel={statusFilter !== 'ALL' ? `نمایش همه دستورات (${toPersianDigits(orders.length)})` : 'صدور دستور ساخت جدید (MO)'}
-            onAction={statusFilter !== 'ALL' ? handleResetFilters : () => setIsCreateMoOpen(true)}
-            compact
-          />
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] overflow-hidden">
-            <FioriToolbar
-              variant="table"
-              title={`کل دستورات: ${toPersianDigits(filteredOrders.length)} · بازشده: ${toPersianDigits(
-                expandedMoCardsCount(filteredOrders.map(o => o.id))
-              )}`}
-              startContent={<Layers className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />}
-              endContent={
+      {/* MASTER-DETAIL MANUFACTURING ORDERS TABLE */}
+      <FioriDataTable
+        columns={moColumns}
+        data={filteredOrders}
+        rowKey={mo => mo.id}
+        onRowClick={mo => toggleMoCard(mo.id)}
+        expandedRowKeys={expandedMoCardsMap}
+        renderExpandedRow={renderExpandedMoRow}
+        loading={loading}
+        loadingRows={6}
+        error={fetchError}
+        onRetry={fetchOrders}
+        defaultSortKey="moNumber"
+        defaultSortDirection="desc"
+        toolbar={
+          <FioriToolbar
+            variant="table"
+            title="فهرست دستورات ساخت (MO)"
+            count={filteredOrders.length}
+            countLabel="دستور"
+            startContent={<Layers className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />}
+            subtitle={
+              filteredOrders.length > 0
+                ? `بازشده: ${toPersianDigits(
+                    expandedMoCardsCount(filteredOrders.map(o => o.id))
+                  )} از ${toPersianDigits(filteredOrders.length)} · برای مشاهده جزئیات ایستگاه‌ها روی هر ردیف کلیک کنید`
+                : undefined
+            }
+            endContent={
+              filteredOrders.length > 0 ? (
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -714,384 +1323,160 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
                     بستن همه
                   </button>
                 </div>
+              ) : undefined
+            }
+          />
+        }
+        emptyState={
+          <div className="p-6">
+            <EmptyState
+              variant={activeFiltersCount > 0 ? 'FILTER_NO_MATCH' : 'NO_DATA'}
+              title={
+                activeFiltersCount > 0
+                  ? 'هیچ دستور ساختی با فیلتر انتخابی یافت نشد'
+                  : 'هنوز هیچ دستور ساختی (MO) ثبت نشده است'
               }
+              description={
+                activeFiltersCount > 0
+                  ? 'فیلتر وضعیت یا متن جستجو را پاکسازی کنید تا کل دستورات ساخت نمایش داده شوند.'
+                  : 'برای شروع خط تولید، اولین دستور ساخت را صادر کنید یا از پیشنهادات MRP ایجاد نمایید.'
+              }
+              actionLabel={
+                activeFiltersCount > 0
+                  ? `نمایش همه دستورات (${toPersianDigits(orders.length)})`
+                  : 'صدور دستور ساخت جدید (MO)'
+              }
+              onAction={
+                activeFiltersCount > 0 ? handleResetFilters : () => setIsCreateMoOpen(true)
+              }
+              compact
             />
           </div>
+        }
+      />
 
-          {filteredOrders.map(mo => {
-            const isCardExpanded = isMoCardExpanded(mo.id);
-            const stMeta = STATUS_LABELS[mo.status] || {
-              label: mo.status,
-              tone: 'neutral' as FioriStatusTone,
-            };
-            const sortedOps = [...(mo.operations || [])].sort((a, b) => a.stepNumber - b.stepNumber);
-            const totalOps = sortedOps.length;
-            const completedOps = sortedOps.filter(o => o.status === 'COMPLETED').length;
-            const activeOp =
-              sortedOps.find(o => o.inProgressQty > 0) ||
-              sortedOps.find(o => o.waitingInputQty > 0) ||
-              sortedOps.find(o => o.readyForTransferQty > 0) ||
-              sortedOps.find(o => o.status !== 'COMPLETED');
-            const totalWaiting = sortedOps.reduce((s, o) => s + (o.waitingInputQty || 0), 0);
-            const finalCompletionPct =
-              mo.targetQuantity > 0
-                ? Math.min(100, Math.round(((mo.completedQuantity || 0) / mo.targetQuantity) * 100))
-                : 0;
-            const opWeightedPct =
-              totalOps > 0 && mo.targetQuantity > 0
-                ? Math.min(
-                    100,
-                    Math.round(
-                      (sortedOps.reduce(
-                        (sum, o) => sum + Math.min(1, (o.goodOutputQty || 0) / mo.targetQuantity),
-                        0
-                      ) /
-                        totalOps) *
-                        100
-                    )
-                  )
-                : finalCompletionPct;
-            const displayProgressPct = Math.max(finalCompletionPct, opWeightedPct);
+      {/* SECONDARY COLLAPSIBLE OPERATIONAL GUIDE (BELOW WORKBENCH, NEVER BLOCKING TABLE) */}
+      <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] overflow-hidden">
+        <button
+          type="button"
+          onClick={toggleGuide}
+          aria-expanded={showGuide}
+          className="w-full px-3.5 py-2 bg-[var(--fiori-bg-subtle)] hover:bg-[var(--fiori-bg-hover)] flex items-center justify-between gap-2 text-right cursor-pointer transition-colors"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <BookOpen className="w-3.5 h-3.5 text-[var(--fiori-brand)] shrink-0" />
+            <span className="text-xs font-semibold text-[var(--fiori-text-primary)] truncate">
+              راهنمای ۴ گام عملیاتی: صدور سرکلاف، تعریف دستور ساخت (MO)، ثبت OP10 و حذف معکوس
+            </span>
+          </div>
+          <span className="text-[11px] font-medium text-[var(--fiori-brand)] inline-flex items-center gap-1 shrink-0">
+            <span>{showGuide ? 'بستن راهنما' : 'مشاهده خلاصه ۴ گام'}</span>
+            {showGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </span>
+        </button>
 
-            const opColumns: FioriTableColumn<ManufacturingOperation>[] = [
-              {
-                key: 'stepCode',
-                header: 'کد ایستگاه (OP)',
-                width: '7rem',
-                nowrap: true,
-                render: (op, idx) => (
-                  <div className="flex items-center gap-1">
-                    <span className="font-mono font-bold text-[var(--fiori-text-primary)] fiori-ltr-code">
-                      {op.stepCode}
-                    </span>
-                    {idx === 0 && <FioriObjectStatus tone="brand" label="ورودی سرکلاف" size="sm" />}
-                    {idx === sortedOps.length - 1 && (
-                      <FioriObjectStatus tone="positive" label="نهایی" size="sm" />
-                    )}
+        {showGuide && (
+          <div className="p-3.5 border-t border-[var(--fiori-border-subtle)] text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+              {/* STEP 1 */}
+              <div className="p-3 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] space-y-2 flex flex-col justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <FioriObjectStatus tone="brand" label="گام ۱: سرکلاف (رول ورق)" size="sm" />
+                    <Disc className="w-4 h-4 text-[var(--fiori-brand)]" />
                   </div>
-                ),
-              },
-              {
-                key: 'stepName',
-                header: 'شرح عملیات تولید',
-                render: op => (
-                  <span className="font-medium text-[var(--fiori-text-primary)]">{op.stepName}</span>
-                ),
-              },
-              {
-                key: 'machineName',
-                header: 'دستگاه / ایستگاه کاری',
-                nowrap: true,
-                render: op => (
-                  <span className="text-[var(--fiori-text-secondary)]">
-                    {op.machineName || 'ایستگاه استاندارد'}
-                  </span>
-                ),
-              },
-              {
-                key: 'status',
-                header: 'وضعیت ایستگاه',
-                width: '8rem',
-                render: op => (
-                  <FioriObjectStatus
-                    tone={
-                      op.status === 'COMPLETED'
-                        ? 'positive'
-                        : op.status === 'IN_PROGRESS' || op.status === 'READY'
-                        ? 'brand'
-                        : 'neutral'
-                    }
-                    label={
-                      op.status === 'COMPLETED'
-                        ? 'تکمیل‌شده'
-                        : op.status === 'IN_PROGRESS'
-                        ? 'در حال تولید'
-                        : op.status === 'READY'
-                        ? 'آماده شروع'
-                        : 'در انتظار مرحله قبل'
-                    }
-                    size="sm"
-                  />
-                ),
-              },
-              {
-                key: 'waitingInputQty',
-                header: 'صف ورودی (PCS)',
-                isMono: true,
-                width: '7rem',
-                render: op => (
-                  <span className="font-semibold text-[var(--fiori-brand)]">
-                    {formatNumber(op.waitingInputQty || 0)}
-                  </span>
-                ),
-              },
-              {
-                key: 'inProgressQty',
-                header: 'پای دستگاه (PCS)',
-                isMono: true,
-                width: '7rem',
-                render: op => (
-                  <span className="font-semibold text-[var(--fiori-critical)]">
-                    {formatNumber(op.inProgressQty || 0)}
-                  </span>
-                ),
-              },
-              {
-                key: 'output',
-                header: 'خروجی سالم / هدف',
-                isMono: true,
-                width: '8rem',
-                render: op => (
-                  <span>
-                    <strong className="text-[var(--fiori-positive)]">
-                      {formatNumber(op.goodOutputQty || 0)}
-                    </strong>
-                    <span className="text-[var(--fiori-text-muted)]">
-                      {' '}
-                      / {formatNumber(mo.targetQuantity)}
-                    </span>
-                  </span>
-                ),
-              },
-              {
-                key: 'scrapQty',
-                header: 'ضایعات',
-                isMono: true,
-                width: '6rem',
-                render: op => (
-                  <span className="text-[var(--fiori-negative)]">
-                    {formatNumber(op.scrapQty || 0)}
-                  </span>
-                ),
-              },
-              {
-                key: 'actions',
-                header: 'عملیات ثبت خروجی و QC',
-                align: 'left',
-                width: '11rem',
-                nowrap: true,
-                render: op => {
-                  const availableToProduce = (op.inProgressQty || 0) + (op.waitingInputQty || 0);
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => setActiveProdOp(op)}
-                      className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-bold cursor-pointer inline-flex items-center gap-1 transition ${
-                        availableToProduce > 0
-                          ? 'bg-[var(--fiori-positive)] hover:bg-[#0d6832] text-white'
-                          : 'bg-white hover:bg-[var(--fiori-bg-hover)] text-[var(--fiori-text-primary)] border border-[var(--fiori-border-input)]'
-                      }`}
-                    >
-                      <Play className="w-3 h-3" />
-                      <span>ثبت خروجی و QC ({op.stepCode})</span>
-                    </button>
-                  );
-                },
-              },
-            ];
-
-            return (
-              <div
-                key={mo.id}
-                className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-hidden"
-              >
-                {/* MO Header */}
-                <div
-                  onClick={() => toggleMoCard(mo.id)}
-                  className={`px-4 py-3 bg-[var(--fiori-bg-subtle)] flex flex-col xl:flex-row xl:items-center justify-between gap-3 text-xs cursor-pointer hover:bg-[var(--fiori-bg-hover)] transition-colors ${
-                    isCardExpanded ? 'border-b border-[var(--fiori-border-default)]' : ''
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {isCardExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-[var(--fiori-text-secondary)] shrink-0" />
-                      )}
-                      <span className="font-mono font-bold text-sm text-[var(--fiori-brand)] bg-[var(--fiori-brand-bg)] border border-[var(--fiori-brand-border)] px-2.5 py-0.5 rounded-[var(--fiori-radius-sm)] fiori-ltr-code">
-                        {mo.moNumber}
-                      </span>
-                      <span className="font-bold text-sm text-[var(--fiori-text-primary)]">{mo.partName}</span>
-                      <span className="font-mono text-xs text-[var(--fiori-text-secondary)] bg-white border border-[var(--fiori-border-default)] px-2 py-0.5 rounded-[var(--fiori-radius-sm)]">
-                        کد قطعه: <span className="fiori-ltr-code">{mo.partCode}</span>
-                      </span>
-                      <FioriObjectStatus tone={stMeta.tone} label={stMeta.label} size="sm" />
-                      {mo.parentMoNumber && (
-                        <FioriObjectStatus
-                          tone="critical"
-                          label={`فرعیِ دستور: ${mo.parentMoNumber}`}
-                          size="sm"
-                        />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-[11px] text-[var(--fiori-text-secondary)] flex-wrap">
-                      <span>مسیر فرآیند: نسخه {mo.routingVersion || '1.0'}</span>
-                      <span>·</span>
-                      <span>
-                        مراحل تکمیل‌شده: {toPersianDigits(completedOps)} از {toPersianDigits(totalOps)} ایستگاه
-                      </span>
-                      {activeOp && (
-                        <>
-                          <span>·</span>
-                          <span className="text-[var(--fiori-brand)] font-semibold">
-                            ایستگاه فعال: <span className="font-mono fiori-ltr-code">{activeOp.stepCode}</span> ({activeOp.stepName})
-                          </span>
-                        </>
-                      )}
-                      {totalWaiting > 0 && (
-                        <>
-                          <span>·</span>
-                          <span className="text-[var(--fiori-critical)] font-semibold font-mono tabular-nums">
-                            صف ورودی: {formatNumber(totalWaiting)}
-                          </span>
-                        </>
-                      )}
-                      {mo.startDate && (
-                        <>
-                          <span>·</span>
-                          <span>تاریخ شروع: {mo.startDate}</span>
-                        </>
-                      )}
-                      {mo.notes && (
-                        <>
-                          <span>·</span>
-                          <span className="text-[var(--fiori-text-primary)]">{mo.notes}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Progress & Primary MO Actions */}
-                  <div
-                    className="flex flex-col sm:flex-row sm:items-center gap-3"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {/* Quantities & Progress Bar */}
-                    <div className="min-w-[230px] bg-white border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 space-y-1">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-[var(--fiori-text-secondary)]">
-                          تحقق: <strong className="text-[var(--fiori-positive)] font-mono">{formatNumber(mo.completedQuantity)}</strong> از{' '}
-                          <strong className="text-[var(--fiori-text-primary)] font-mono">{formatNumber(mo.targetQuantity)}</strong> عدد
-                        </span>
-                        <span className="font-mono font-bold text-[var(--fiori-brand)]">
-                          {toPersianDigits(displayProgressPct)}٪
-                        </span>
-                      </div>
-                      <div className="w-full h-2 bg-[var(--fiori-border-subtle)] rounded-[var(--fiori-radius-sm)] overflow-hidden">
-                        <div
-                          className={`h-full transition-all ${
-                            displayProgressPct >= 100 ? 'bg-[var(--fiori-positive)]' : 'bg-[var(--fiori-brand)]'
-                          }`}
-                          style={{ width: `${displayProgressPct}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-[var(--fiori-text-secondary)] font-mono">
-                        <span>ورودی خط: {formatNumber(mo.initialInputQuantity)}</span>
-                        <span className="text-[var(--fiori-negative)]">ضایعات کل: {formatNumber(mo.totalScrapQuantity)}</span>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => toggleMoCard(mo.id)}
-                        className="sap-btn-standard px-2.5 py-1.5 text-[11px] font-semibold flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                      >
-                        <span>{isCardExpanded ? 'بستن مراحل' : 'مشاهده مراحل'}</span>
-                        {isCardExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLoadMaterialOrder(mo);
-                          setLoadMaterialQty(String(mo.targetQuantity || 500));
-                          setLoadMaterialNotes('');
-                        }}
-                        className="sap-btn-standard px-2.5 py-1.5 text-[11px] font-semibold flex items-center gap-1 cursor-pointer text-[var(--fiori-brand)]"
-                        title="تغذیه سرکلاف یا شیت ورودی به ایستگاه اول (OP10)"
-                      >
-                        <PackagePlus className="w-3.5 h-3.5" />
-                        <span>بارگذاری سرکلاف / مواد (OP10)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.navigate({
-                            tab: 'wip',
-                            wipSubTab: 'UNIFIED_DIRECTORY',
-                            moId: mo.id,
-                          })
-                        }
-                        className="sap-btn-standard px-2.5 py-1.5 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
-                        title="مشاهده پرونده کامل و درخت رهگیری در کارتابل WIP"
-                      >
-                        <GitBranch className="w-3.5 h-3.5" />
-                        <span>رهگیری در WIP</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.navigate({
-                            tab: 'master_data',
-                            masterSubSection: 'BOM',
-                            docQuery: mo.partCode,
-                          })
-                        }
-                        className="sap-btn-standard px-2.5 py-1.5 text-[11px] font-semibold flex items-center gap-1 cursor-pointer text-[var(--fiori-brand)]"
-                        title="مشاهده درخت محصول (BOM) مرتبط با این قطعه"
-                      >
-                        <ListTree className="w-3.5 h-3.5" />
-                        <span>درخت محصول (BOM)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.navigate({
-                            tab: 'inventory',
-                            inventorySubTab: 'INQUIRY',
-                            docQuery: mo.partCode,
-                          })
-                        }
-                        className="sap-btn-standard px-2.5 py-1.5 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
-                        title="مشاهده موجودی انبار و کاردکس مرتبط با این قطعه"
-                      >
-                        <Warehouse className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
-                        <span>کاردکس انبار</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDeleteModal(mo)}
-                        className="px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-negative-border)] bg-[var(--fiori-negative-bg)] hover:bg-[#fbd0d0] text-[var(--fiori-negative)] text-[11px] font-bold flex items-center gap-1 cursor-pointer transition"
-                        title="حذف کامل دستور ساخت و بازگشت مواد مصرفی به انبار"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>حذف و بازگشت موجودی</span>
-                      </button>
-                    </div>
-                  </div>
+                  <p className="text-[11px] text-[var(--fiori-text-secondary)] leading-5">
+                    رول ورق در بخش <strong>رول‌های ورق و کویل‌پک</strong> ثبت می‌شود. برای تغذیه ایستگاه برش (
+                    <code className="fiori-ltr-code">OP10_SLIT</code>) از دکمه <strong>شارژ OP10</strong> در هر ردیف استفاده کنید.
+                  </p>
                 </div>
-
-                {/* Operations Table for this MO */}
-                {isCardExpanded && (
-                  <FioriDataTable
-                    columns={opColumns}
-                    data={sortedOps}
-                    rowKey={op => op.id}
-                    bordered={false}
-                    emptyState={<EmptyState variant="NO_DATA" title="مرحله عملیاتی یافت نشد" compact />}
-                  />
-                )}
+                <div className="pt-2 border-t border-[var(--fiori-border-subtle)]">
+                  <button
+                    type="button"
+                    onClick={() => router.navigate({ tab: 'inventory', inventorySubTab: 'COILS' })}
+                    className="sap-btn-standard px-2.5 py-1 text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Disc className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                    <span>مدیریت رول‌های ورق</span>
+                    <ArrowUpRight className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              {/* STEP 2 */}
+              <div className="p-3 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] space-y-2 flex flex-col justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <FioriObjectStatus tone="positive" label="گام ۲: صدور دستور ساخت" size="sm" />
+                    <Cpu className="w-4 h-4 text-[var(--fiori-positive)]" />
+                  </div>
+                  <p className="text-[11px] text-[var(--fiori-text-secondary)] leading-5">
+                    صدور MO هم به‌صورت خودکار از <strong>پیشنهادات MRP</strong> و هم به‌صورت مستقیم از دکمه <strong>صدور دستور ساخت جدید</strong> در بالای صفحه ممکن است.
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-[var(--fiori-border-subtle)] flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => router.navigate({ tab: 'planning', planningSubTab: 'recommendations' })}
+                    className="sap-btn-standard px-2 py-1 text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Cpu className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
+                    <span>پیشنهاد MRP</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateMoOpen(true)}
+                    className="sap-btn-emphasized px-2.5 py-1 text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>صدور MO</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* STEP 3 */}
+              <div className="p-3 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] space-y-2 flex flex-col justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <FioriObjectStatus tone="critical" label="گام ۳: ثبت تولید و QC" size="sm" />
+                    <FileCheck className="w-4 h-4 text-[var(--fiori-critical)]" />
+                  </div>
+                  <p className="text-[11px] text-[var(--fiori-text-secondary)] leading-5">
+                    با ثبت خروجی سالم و ضایعات در هر ایستگاه، کسر مواد، انتقال خودکار به ایستگاه بعدی و کاردکس به‌صورت اتمیک ثبت می‌شود.
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-[var(--fiori-border-subtle)] text-[11px] text-[var(--fiori-positive)] font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>همگام‌سازی خودکار شیفت و کاردکس فعال است</span>
+                </div>
+              </div>
+
+              {/* STEP 4 */}
+              <div className="p-3 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] space-y-2 flex flex-col justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <FioriObjectStatus tone="negative" label="گام ۴: رهگیری و ابطال امن" size="sm" />
+                    <Trash2 className="w-4 h-4 text-[var(--fiori-negative)]" />
+                  </div>
+                  <p className="text-[11px] text-[var(--fiori-text-secondary)] leading-5">
+                    در صورت لغو دستور ساخت، با گزینه حذف معکوس تمام حواله‌های مصرف و دستورات فرعی به‌صورت ایمن به انبار بازگردانده می‌شوند.
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-[var(--fiori-border-subtle)]">
+                  <button
+                    type="button"
+                    onClick={() => router.navigate({ tab: 'wip', wipSubTab: 'UNIFIED_DIRECTORY' })}
+                    className="sap-btn-standard px-2.5 py-1 text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <GitBranch className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                    <span>کارتابل جریان ساخت (WIP)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* MODAL 1: CREATE NEW MANUFACTURING ORDER (MO) */}
       <CreateMoModal
@@ -1114,14 +1499,32 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
       <FioriDialog
         isOpen={Boolean(loadMaterialOrder)}
         onClose={() => setLoadMaterialOrder(null)}
-        title={loadMaterialOrder ? `بارگذاری سرکلاف / شیت ورودی به خط (${loadMaterialOrder.moNumber})` : ''}
-        subtitle={loadMaterialOrder ? `${loadMaterialOrder.partName} (${loadMaterialOrder.partCode})` : undefined}
+        title={
+          loadMaterialOrder ? (
+            <span className="flex items-center gap-1.5 flex-wrap">
+              <span>بارگذاری سرکلاف / شیت ورودی به خط</span>
+              <span className="fiori-ltr-code font-mono text-[var(--fiori-brand)]">
+                ({loadMaterialOrder.moNumber})
+              </span>
+            </span>
+          ) : (
+            ''
+          )
+        }
+        subtitle={
+          loadMaterialOrder ? (
+            <span>
+              {loadMaterialOrder.partName}{' '}
+              <span className="fiori-ltr-code font-mono">({loadMaterialOrder.partCode})</span>
+            </span>
+          ) : undefined
+        }
         icon={<PackagePlus className="w-4 h-4" />}
         tone="brand"
-        size="sm"
+        size="md"
         disableClose={isLoadingMaterial}
         footer={
-          <div className="w-full flex items-center justify-between gap-2">
+          <div className="w-full flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => {
@@ -1130,7 +1533,7 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
               }}
               className="text-[11px] font-semibold text-[var(--fiori-brand)] hover:underline cursor-pointer"
             >
-              رفتن به جدول رول‌های ورق و کویل‌پک ←
+              مدیریت رول‌های ورق و کویل‌پک ←
             </button>
             <div className="flex items-center gap-2">
               <button
@@ -1145,7 +1548,7 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
                 type="submit"
                 form="mo-load-material-form"
                 disabled={isLoadingMaterial || !loadMaterialSourceId}
-                className="sap-btn-emphasized px-4 py-1.5 text-xs font-bold cursor-pointer disabled:opacity-50"
+                className="sap-btn-emphasized px-4 py-1.5 text-xs cursor-pointer disabled:opacity-50"
               >
                 {isLoadingMaterial ? 'در حال ثبت...' : 'تایید و شارژ ورودی OP10'}
               </button>
@@ -1154,58 +1557,78 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
         }
       >
         {loadMaterialOrder && (
-          <form id="mo-load-material-form" onSubmit={handleLoadMaterialSubmit} className="space-y-3.5 text-xs">
+          <form
+            id="mo-load-material-form"
+            onSubmit={handleLoadMaterialSubmit}
+            className="space-y-3.5 text-xs"
+          >
             <FioriMessageStrip tone="info" title="تغذیه ورودی ایستگاه اول (OP10)" compact>
-              با ثبت این فرم، تعداد شیت/بلنک معادل سرکلاف در صف ورودی ایستگاه اول قرار می‌گیرد تا اپراتور بتواند بدون خطای کمبود موجودی، خروجی <code>OP10</code> را ثبت نماید.
+              با ثبت این فرم، تعداد شیت/بلنک معادل سرکلاف در صف ورودی ایستگاه اول قرار می‌گیرد تا
+              اپراتور بتواند خروجی <code className="fiori-ltr-code font-mono">OP10</code> را ثبت
+              نماید.
             </FioriMessageStrip>
 
             <div className="space-y-1">
-              <label className="font-bold text-[var(--fiori-text-primary)] block">
-                منبع موجودی انبار / کلاف (حواله اتمیک انبار) *
+              <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                منبع موجودی انبار / کلاف (حواله اتمیک انبار){' '}
+                <span className="text-[var(--fiori-negative)]">*</span>
               </label>
               <select
                 required
                 value={loadMaterialSourceId}
                 onChange={e => setLoadMaterialSourceId(e.target.value)}
                 disabled={materialSourcesLoading}
-                className="w-full bg-white border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] p-2 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
+                className="fiori-input w-full p-2"
               >
                 <option value="">
-                  {materialSourcesLoading ? 'در حال بارگذاری منابع موجودی انبار...' : '-- انتخاب منبع موجودی آزاد از انبار --'}
+                  {materialSourcesLoading
+                    ? 'در حال بارگذاری منابع موجودی انبار...'
+                    : '-- انتخاب منبع موجودی آزاد از انبار --'}
                 </option>
                 {materialSources.map((src: any) => (
                   <option key={src.id} value={src.id}>
                     {src.partCode} — {src.partName} | {src.warehouseName} ({src.locationCode || '-'})
-                    {src.coilId ? ` | کلاف ${src.coilId}` : src.lotNumber ? ` | لات ${src.lotNumber}` : ''}
-                    {` | آزاد: ${formatNumber(src.quantityAvailable)} ${src.unitSymbol} (${formatNumber(src.weightKgAvailable)} kg)`}
+                    {src.coilId
+                      ? ` | کلاف ${src.coilId}`
+                      : src.lotNumber
+                      ? ` | لات ${src.lotNumber}`
+                      : ''}
+                    {` | آزاد: ${formatNumber(src.quantityAvailable)} ${src.unitSymbol} (${formatNumber(
+                      src.weightKgAvailable
+                    )} kg)`}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="space-y-1">
-              <label className="font-bold text-[var(--fiori-text-primary)] block">
-                تعداد ورودی قابل تولید از سرکلاف / پالت ورق (PCS) *
-              </label>
-              <input
-                type="number"
-                min="1"
-                required
-                value={loadMaterialQty}
-                onChange={e => setLoadMaterialQty(e.target.value)}
-                className="w-full bg-white border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] p-2 font-mono font-bold text-sm text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                  تعداد ورودی قابل تولید (عدد){' '}
+                  <span className="text-[var(--fiori-negative)]">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={loadMaterialQty}
+                  onChange={e => setLoadMaterialQty(e.target.value)}
+                  className="fiori-input w-full p-2 font-mono font-semibold text-sm text-left"
+                />
+              </div>
 
-            <div className="space-y-1">
-              <label className="font-bold text-[var(--fiori-text-primary)] block">شماره کلاف / ذوب یا توضیحات حواله</label>
-              <input
-                type="text"
-                value={loadMaterialNotes}
-                onChange={e => setLoadMaterialNotes(e.target.value)}
-                placeholder="مثال: سرکلاف MOB-DC01A-2.0-1140-A - ذوب HT-DC01A-9921"
-                className="w-full bg-white border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] p-2 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
-              />
+              <div className="space-y-1">
+                <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                  شماره کلاف / ذوب یا توضیحات حواله
+                </label>
+                <input
+                  type="text"
+                  value={loadMaterialNotes}
+                  onChange={e => setLoadMaterialNotes(e.target.value)}
+                  placeholder="مثال: سرکلاف MOB-DC01A - ذوب HT-9921"
+                  className="fiori-input w-full p-2"
+                />
+              </div>
             </div>
           </form>
         )}
@@ -1215,8 +1638,26 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
       <FioriDialog
         isOpen={Boolean(deleteTargetOrder)}
         onClose={() => setDeleteTargetOrder(null)}
-        title={deleteTargetOrder ? `حذف کامل دستور ساخت و بازگشت موجودی به انبار (${deleteTargetOrder.moNumber})` : ''}
-        subtitle={deleteTargetOrder ? `${deleteTargetOrder.partName} (${deleteTargetOrder.partCode})` : undefined}
+        title={
+          deleteTargetOrder ? (
+            <span className="flex items-center gap-1.5 flex-wrap">
+              <span>حذف دستور ساخت و بازگشت موجودی به انبار</span>
+              <span className="fiori-ltr-code font-mono text-[var(--fiori-negative)]">
+                ({deleteTargetOrder.moNumber})
+              </span>
+            </span>
+          ) : (
+            ''
+          )
+        }
+        subtitle={
+          deleteTargetOrder ? (
+            <span>
+              {deleteTargetOrder.partName}{' '}
+              <span className="fiori-ltr-code font-mono">({deleteTargetOrder.partCode})</span>
+            </span>
+          ) : undefined
+        }
         icon={<Trash2 className="w-4 h-4" />}
         tone="danger"
         size="md"
@@ -1234,11 +1675,13 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
             <button
               type="submit"
               form="mo-delete-rollback-form"
-              disabled={isDeleting}
-              className="px-4 py-1.5 bg-[var(--fiori-negative)] hover:bg-[#990000] text-white rounded-[var(--fiori-radius-sm)] text-xs font-bold cursor-pointer inline-flex items-center gap-1.5"
+              disabled={isDeleting || deleteReason.trim().length < 5}
+              className="fiori-btn-danger px-4 py-1.5 text-xs cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>{isDeleting ? 'در حال حذف و بازگشت موجودی...' : 'تایید حذف کامل و بازگشت موجودی'}</span>
+              <span>
+                {isDeleting ? 'در حال حذف و بازگشت موجودی...' : 'تایید حذف و بازگشت موجودی'}
+              </span>
             </button>
           </>
         }
@@ -1255,8 +1698,11 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
                   <div className="space-y-1 text-[11px]">
                     <div>
                       • <strong>دستورات ساخت حذف‌شونده:</strong>{' '}
-                      {(rollbackPreview.mosToDelete || []).map((m: any) => m.moNumber).join(' ، ') ||
-                        deleteTargetOrder.moNumber}
+                      <span className="fiori-ltr-code font-mono">
+                        {(rollbackPreview.mosToDelete || [])
+                          .map((m: any) => m.moNumber)
+                          .join(' , ') || deleteTargetOrder.moNumber}
+                      </span>
                     </div>
                     <div>
                       • <strong>اسناد انبار جهت ابطال معکوس:</strong>{' '}
@@ -1276,21 +1722,27 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
               )
             )}
 
-            <form id="mo-delete-rollback-form" onSubmit={handleConfirmDeleteMo} className="space-y-3">
+            <form
+              id="mo-delete-rollback-form"
+              onSubmit={handleConfirmDeleteMo}
+              className="space-y-3"
+            >
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={cascadeSubMos}
                   onChange={e => setCascadeSubMos(e.target.checked)}
+                  className="accent-[var(--fiori-brand)]"
                 />
-                <span className="font-semibold text-[var(--fiori-text-primary)]">
-                  حذف همزمان دستورات ساخت فرعی وابسته (Sub-MOs) و بازگشت مواد آن‌ها
+                <span className="font-medium text-[var(--fiori-text-primary)]">
+                  حذف همزمان دستورات ساخت فرعی وابسته و بازگشت مواد آن‌ها
                 </span>
               </label>
 
               <div className="space-y-1">
-                <label className="font-bold text-[var(--fiori-text-primary)] block">
-                  علت حذف دستور ساخت (ثبت در لاگ ممیزی) *
+                <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                  علت حذف دستور ساخت (ثبت در لاگ ممیزی){' '}
+                  <span className="text-[var(--fiori-negative)]">*</span>
                 </label>
                 <input
                   type="text"
@@ -1298,7 +1750,7 @@ export const ManufacturingOrdersManagementView: React.FC<ManufacturingOrdersMana
                   minLength={5}
                   value={deleteReason}
                   onChange={e => setDeleteReason(e.target.value)}
-                  className="w-full bg-white border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] p-2 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-negative)]"
+                  className="fiori-input w-full p-2"
                 />
               </div>
             </form>

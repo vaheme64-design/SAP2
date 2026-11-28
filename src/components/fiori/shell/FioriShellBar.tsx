@@ -521,7 +521,7 @@ export const FioriShellBar: React.FC<FioriShellBarProps> = ({
           <button
             type="button"
             onClick={() => onNavigateRoute({ tab: 'inventory', inventorySubTab: 'ALERTS', docQuery: null })}
-            className="hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium transition-colors cursor-pointer bg-[var(--fiori-critical-bg)] hover:bg-[#ffe8cc] text-[var(--fiori-critical)] border border-[var(--fiori-critical-border)] whitespace-nowrap shrink-0 fiori-focus-ring"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded-[var(--fiori-radius-sm)] text-[11px] font-medium transition-colors cursor-pointer bg-[var(--fiori-critical-bg)] hover:opacity-90 text-[var(--fiori-critical)] border border-[var(--fiori-critical-border)] whitespace-nowrap shrink-0 fiori-focus-ring"
             title="مشاهده فهرست اقلام زیر نقطه سفارش"
           >
             <BellRing className="w-3 h-3 shrink-0" />
@@ -548,7 +548,7 @@ export const FioriShellBar: React.FC<FioriShellBarProps> = ({
             {hasPendingNotifications && (
               <span
                 aria-label="اعلان فعال"
-                className="w-2 h-2 rounded-full bg-[#e9730c] border border-white absolute top-1 right-1"
+                className="w-2 h-2 rounded-full bg-[var(--fiori-critical)] border border-white absolute top-1 right-1"
               />
             )}
           </button>

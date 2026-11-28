@@ -209,34 +209,49 @@ export const JalaliDatePicker: React.FC<JalaliDatePickerProps> = ({
           type="button"
           disabled={disabled}
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-full flex items-center justify-between bg-white border rounded px-3 py-1.5 text-xs text-[#333333] transition cursor-pointer text-right ${
-            isOpen ? 'border-[#007cc0] ring-1 ring-[#007cc0]/30' : 'border-[#bfbfbf] hover:border-[#007cc0]'
-          } ${disabled ? 'opacity-60 cursor-not-allowed bg-[#f0f0f0]' : ''}`}
+          className={`w-full flex items-center justify-between bg-[var(--fiori-bg-surface)] border rounded-[var(--fiori-radius-sm)] px-3 py-2 text-xs text-[var(--fiori-text-primary)] transition cursor-pointer text-right ${
+            isOpen
+              ? 'border-[var(--fiori-border-focus)] ring-1 ring-[var(--fiori-brand)]/30'
+              : 'border-[var(--fiori-border-input)] hover:border-[var(--fiori-brand)]'
+          } ${disabled ? 'opacity-60 cursor-not-allowed bg-[var(--fiori-bg-subtle)]' : ''}`}
         >
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#007cc0]" />
-            <span className={manualText ? 'font-mono font-bold text-[#333333]' : 'text-[#888888]'}>
+            <Calendar className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
+            <span
+              className={
+                manualText
+                  ? 'font-mono font-bold text-[var(--fiori-text-primary)] tracking-wide'
+                  : 'text-[var(--fiori-text-muted)]'
+              }
+              dir="ltr"
+            >
               {manualText ? toPersianDigits(manualText) : placeholder}
             </span>
           </div>
-          {manualText && !disabled && (
-            <span
-              onClick={e => {
-                e.stopPropagation();
-                setManualText('');
-                onChange('', '');
-              }}
-              className="text-[#666666] hover:text-[#333333] p-0.5 rounded cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5">
+            {manualText && !disabled && !required && (
+              <span
+                onClick={e => {
+                  e.stopPropagation();
+                  setManualText('');
+                  onChange('', '');
+                }}
+                className="text-[var(--fiori-text-secondary)] hover:text-[var(--fiori-negative)] p-0.5 rounded cursor-pointer"
+                title="پاک کردن تاریخ"
+              >
+                <X className="w-3.5 h-3.5" />
+              </span>
+            )}
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] border border-[var(--fiori-brand-border)]">
+              شمسی
             </span>
-          )}
+          </div>
         </button>
       </div>
 
       {/* Popup Calendar */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 mt-1 right-0 w-72 bg-white border border-[#d9d9d9] rounded-md shadow-xl p-3 space-y-2.5 animate-in fade-in zoom-in-95">
+        <div className="absolute z-50 bottom-full mb-1.5 right-0 w-72 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-xl p-3 space-y-2.5">
           {/* Header Month / Year Selectors */}
           <div className="flex items-center justify-between pb-2 border-b border-[#e8e8e8]">
             <button

@@ -143,6 +143,7 @@ interface ErpProductionWorkbenchViewProps {
   balances?: DetailedStockBalance[];
   initialModuleTab?: ProductionWorkbenchSubTab;
   onModuleTabChange?: (tab: ProductionWorkbenchSubTab) => void;
+  onOpenVouchers?: () => void;
   onRefreshData?: () => void;
   initialMoId?: string | null;
   onMoSelect?: (moId: string | null) => void;
@@ -319,6 +320,7 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
   balances = [],
   initialModuleTab = 'MULTI_PART_SCHEDULER',
   onModuleTabChange,
+  onOpenVouchers,
   onRefreshData,
   initialMoId = null,
   onMoSelect,
@@ -1919,7 +1921,10 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
     <div className="space-y-4 text-right font-sans" dir="rtl">
       {/* ==================================================================== */}
       {/* SAP FIORI WORKSPACE ICON TAB BAR & FILTER BAR                        */}
+      {/* (Hidden on standalone MANUFACTURING_ORDERS_LIST page to avoid        */}
+      {/* duplicating the expanded PP sidebar navigation)                      */}
       {/* ==================================================================== */}
+      {activeModuleTab !== 'MANUFACTURING_ORDERS_LIST' && (
       <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 px-3 border-b border-[var(--fiori-border-subtle)]">
           <div className="sap-icon-tab-bar border-b-0 flex-1">
@@ -1950,11 +1955,22 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
             })}
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0 py-2 lg:py-0 flex-wrap">
+          <div className="flex items-center gap-1.5 shrink-0 py-1.5 lg:py-0 flex-wrap">
+            {onOpenVouchers && (
+              <button
+                type="button"
+                onClick={onOpenVouchers}
+                className="fiori-btn-ghost flex items-center gap-1 px-2 py-1 text-[11px] cursor-pointer whitespace-nowrap"
+                title="ثبت قبض تکی کارگاه (MIGO)"
+              >
+                <FileText className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)]" />
+                <span>قبض تکی (MIGO)</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsVisualMoGuideOpen(true)}
-              className="px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-brand-border)] bg-[var(--fiori-brand-bg)] hover:bg-[#d2eaf7] text-[var(--fiori-brand)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-brand-border)] bg-[var(--fiori-brand-bg)] hover:bg-[var(--fiori-bg-selected)] text-[var(--fiori-brand)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
               title="راهنمای تصویری گام‌به‌گام ثبت دستور ساخت (MO) و رفع خطای متناظر پیدا نشد"
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -1995,7 +2011,7 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
           </div>
         </div>
 
-        {/* Compact Single-Row Search & Filter Bar */}
+        {/* Compact Single-Row Search & Filter Bar (only for schedule-based PP sub-tabs) */}
         {activeModuleTab !== 'SHOP_FLOOR_EXECUTION' && (
         <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2 text-xs items-center bg-[var(--fiori-bg-subtle)]">
           <div className="lg:col-span-5 relative">
@@ -2065,6 +2081,7 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
         </div>
         )}
       </div>
+      )}
 
       {/* Live Toast Notification */}
       {toastNotice && (
@@ -2092,6 +2109,7 @@ export const ErpProductionWorkbenchView: React.FC<ErpProductionWorkbenchViewProp
           parts={parts}
           routings={routings}
           onRefreshData={onRefreshData}
+          onOpenVouchers={onOpenVouchers}
         />
       )}
 

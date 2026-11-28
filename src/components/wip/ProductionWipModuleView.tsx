@@ -5,11 +5,8 @@ import {
   ArrowRightLeft,
   CheckCircle2,
   AlertCircle,
-  GitBranch,
   Plus,
   RefreshCw,
-  Search,
-  Filter,
   Folder,
   ChevronDown,
   ChevronLeft,
@@ -22,6 +19,14 @@ import {
   Trash2,
   ShieldAlert,
   BookOpen,
+  MapPin,
+  Cpu,
+  QrCode,
+  LayoutDashboard,
+  Warehouse,
+  Scale,
+  FileText,
+  PackagePlus,
 } from 'lucide-react';
 import {
   Part,
@@ -32,6 +37,7 @@ import {
   StageInventorySummary,
   ProcessType,
   FACTORY_STAGES,
+  resolveStageDisplayName,
 } from '../../types/inventory';
 import {
   ManufacturingOrder,
@@ -49,7 +55,7 @@ import { OperationInputModal } from './OperationInputModal';
 import { OperationProductionModal } from './OperationProductionModal';
 import { OperationTransferModal } from './OperationTransferModal';
 import { InventoryReportView } from '../InventoryReportView';
-import { WipModuleSkeleton, Skeleton } from '../ui/Skeleton';
+import { WipModuleSkeleton } from '../ui/Skeleton';
 import { TraceabilityInquiryView } from './TraceabilityInquiryView';
 import { useErpRouter } from '../../context/RouterContext';
 import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
@@ -60,6 +66,9 @@ import {
   FioriDataTable,
   FioriDialog,
   FioriDynamicPage,
+  FioriFilterBar,
+  FioriIconTabBar,
+  FioriKpiStrip,
   FioriMessageStrip,
   FioriObjectStatus,
   FioriTableColumn,
@@ -156,6 +165,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
   const { requestConfirm } = useEnterpriseUx();
   const [activeView, setActiveView] = useState<WipViewMode>(initialView || 'UNIFIED_DIRECTORY');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -247,6 +257,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
 
   const loadWipData = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [metricsRes, mosRes, transfersRes, routingsRes] = await Promise.all([
         fetch('/api/wip/dashboard').then(r => r.json()).catch(() => ({ success: false })),
@@ -265,8 +276,13 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
       if (routingsRes.success && Array.isArray(routingsRes.data)) {
         setRoutings(routingsRes.data);
       }
+
+      if (!metricsRes.success && !mosRes.success) {
+        setLoadError('خطا در دریافت داده‌های کار در جریان ساخت از سرور. لطفاً اتصال سرور را بررسی و دوباره تلاش کنید.');
+      }
     } catch (err) {
       console.error('Error loading WIP module data:', err);
+      setLoadError('خطا در ارتباط با سرور برای بارگذاری اطلاعات کار در جریان ساخت (WIP).');
       setNotification({
         type: 'error',
         message: 'خطا در بارگذاری اطلاعات کار در جریان ساخت (WIP)',
@@ -315,6 +331,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
     const STAGE_PROCESS_MAP: Record<string, ProcessType[]> = {
       STAGE_SHEARING: ['SHEARING'],
       STAGE_BLANKING: ['BLANKING'],
+      STAGE_STAMPING: ['BLANKING', 'DRAWING', 'PUNCH_FORM', 'TRIMMING'],
       STAGE_FORMING: ['DRAWING', 'PUNCH_FORM', 'TRIMMING'],
       STAGE_BENDING: ['BENDING'],
       STAGE_SPOT_WELD: ['SPOT_WELD'],
@@ -361,7 +378,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
       if (!stageMetaMap.has(sb.stageId)) {
         stageMetaMap.set(sb.stageId, {
           id: sb.stageId,
-          name: sb.stageName || sb.stageId,
+          name: resolveStageDisplayName(sb.stageId, sb.stageName),
           orderIndex: idxCounter++,
         });
       }
@@ -861,10 +878,28 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
     }
   };
 
+  const pendingTransfersCount = transfers.filter(t => t.status === 'PENDING_APPROVAL').length;
+  const activeFiltersCount =
+    (searchQuery.trim() ? 1 : 0) +
+    (statusFilter !== 'ALL' ? 1 : 0) +
+    (onlyActiveQueue ? 1 : 0);
+
+  const showMoFilterBar =
+    activeView === 'UNIFIED_DIRECTORY' ||
+    activeView === 'ORDERS' ||
+    activeView === 'BOTTLENECK' ||
+    activeView === 'DASHBOARD';
+
+  const resetMoFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('ALL');
+    setOnlyActiveQueue(false);
+  };
+
   return (
     <FioriDynamicPage
       title="قطعات در جریان ساخت و ایستگاه‌ها (WIP)"
-      subtitle="مدیریت یکپارچه دستورهای کار ساخت (MO)، صف ایستگاه‌های پرس و جوش، و حواله‌های انتقال بین مراحل"
+      subtitle="ردیابی موقعیت فعلی قطعات در زنجیره عملیات، مدیریت صف ایستگاه‌های پرس و جوش، و حواله‌های انتقال بین مراحل"
       status={
         metrics?.overallConservationIntegrity ? (
           <FioriObjectStatus
@@ -875,32 +910,24 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
         ) : undefined
       }
       collapsibleFilters={false}
-      activeFiltersCount={
-        (searchQuery.trim() ? 1 : 0) +
-        (statusFilter !== 'ALL' ? 1 : 0) +
-        (onlyActiveQueue ? 1 : 0)
-      }
-      onResetFilters={() => {
-        setSearchQuery('');
-        setStatusFilter('ALL');
-        setOnlyActiveQueue(false);
-      }}
+      activeFiltersCount={showMoFilterBar ? activeFiltersCount : 0}
+      onResetFilters={showMoFilterBar ? resetMoFilters : undefined}
       headerActions={
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
             onClick={() => setIsMoGuideOpen(true)}
-            className="sap-btn-standard inline-flex items-center gap-1.5 text-xs cursor-pointer whitespace-nowrap text-[var(--fiori-brand)]"
+            className="sap-btn-standard inline-flex items-center gap-1.5 px-3 py-1.5 text-xs whitespace-nowrap text-[var(--fiori-brand)]"
             title="راهنمای تصویری ثبت MO، صدور سرکلاف و رفع خطای OP10"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>راهنمای تصویری MO / OP10</span>
+            <span>راهنمای MO / OP10</span>
           </button>
           <button
             type="button"
             onClick={loadWipData}
             disabled={loading}
-            className="sap-btn-standard inline-flex items-center gap-1.5 text-xs cursor-pointer"
+            className="sap-btn-standard inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-[var(--fiori-brand)] ${loading ? 'animate-spin' : ''}`} />
             <span>به‌روزرسانی</span>
@@ -908,155 +935,182 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
           <button
             type="button"
             onClick={() => setIsCreateMoOpen(true)}
-            className="sap-btn-emphasized inline-flex items-center gap-1.5 text-xs cursor-pointer"
+            className="sap-btn-emphasized inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>دستور کار جدید (MO)</span>
           </button>
         </div>
       }
+      tabs={
+        <FioriIconTabBar
+          activeTab={activeView}
+          onChange={id => handleChangeView(id as WipViewMode)}
+          tabs={[
+            {
+              id: 'UNIFIED_DIRECTORY',
+              label: 'جریان یکپارچه عملیات',
+              icon: <Boxes className="w-3.5 h-3.5" />,
+              count: orders.length,
+              badgeTone: 'brand',
+            },
+            {
+              id: 'ORDERS',
+              label: 'کارت‌های دستور کار',
+              icon: <Layers className="w-3.5 h-3.5" />,
+              count: filteredOrders.length,
+              badgeTone: 'neutral',
+            },
+            {
+              id: 'TRANSFERS',
+              label: 'حواله‌های انتقال',
+              icon: <ArrowRightLeft className="w-3.5 h-3.5" />,
+              count: pendingTransfersCount > 0 ? pendingTransfersCount : transfers.length,
+              badgeTone: pendingTransfersCount > 0 ? 'critical' : 'neutral',
+            },
+            {
+              id: 'BOTTLENECK',
+              label: 'گلوگاه ایستگاه‌ها',
+              icon: <Gauge className="w-3.5 h-3.5" />,
+              count: bottleneckAnalysis.criticalCount > 0 ? bottleneckAnalysis.criticalCount : undefined,
+              badgeTone: 'negative',
+            },
+            {
+              id: 'TRACEABILITY',
+              label: 'رهگیری قطعه',
+              icon: <QrCode className="w-3.5 h-3.5" />,
+            },
+            {
+              id: 'STAGES',
+              label: 'موجودی ایستگاه‌ها',
+              icon: <Warehouse className="w-3.5 h-3.5" />,
+            },
+            {
+              id: 'DASHBOARD',
+              label: 'داشبورد تحلیلی',
+              icon: <LayoutDashboard className="w-3.5 h-3.5" />,
+            },
+          ]}
+          endContent={
+            <button
+              type="button"
+              onClick={() =>
+                handleChangeView(activeView === 'BOTTLENECK' ? 'UNIFIED_DIRECTORY' : 'BOTTLENECK')
+              }
+              className={`hidden 2xl:inline-flex px-2.5 py-1 rounded-[var(--fiori-radius-sm)] border text-[11px] font-semibold cursor-pointer items-center gap-1.5 transition-colors tabular-nums whitespace-nowrap ${
+                activeView === 'BOTTLENECK'
+                  ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)]'
+                  : bottleneckAnalysis.criticalCount > 0
+                  ? 'bg-[var(--fiori-negative-bg)] text-[var(--fiori-negative)] border-[var(--fiori-negative-border)]'
+                  : 'bg-[var(--fiori-bg-subtle)] text-[var(--fiori-text-secondary)] border-[var(--fiori-border-default)] hover:text-[var(--fiori-text-primary)]'
+              }`}
+              title="نمایش تحلیلگر زنده گلوگاه ایستگاه‌ها"
+            >
+              <Gauge className="w-3.5 h-3.5" />
+              <span>
+                زمان گذر صف: <strong className="font-mono">{toPersianDigits(bottleneckAnalysis.totalThroughputAllHours)}</strong> ساعت
+              </span>
+            </button>
+          }
+        />
+      }
       kpiStrip={
-        loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <div
-                key={idx}
-                className="bg-[var(--fiori-bg-surface)] p-3 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)] space-y-2"
-              >
-                <div className="flex items-center justify-between">
-                  <Skeleton variant="text" className="w-20 h-3" />
-                  <Skeleton variant="circle" className="w-4 h-4" />
-                </div>
-                <Skeleton variant="block" className="w-16 h-6" />
-                <Skeleton variant="text" className="w-24 h-2.5" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
-              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
-                <span>صف ورودی ایستگاه</span>
-                <Clock className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
-              </div>
-              <div className="text-sm font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums mt-0.5">
-                {formatNumber(metrics?.totalWaitingQty || 0)}
-              </div>
-            </div>
-
-            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
-              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
-                <span>در حال ساخت پای دستگاه</span>
-                <Play className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
-              </div>
-              <div className="text-sm font-bold text-[var(--fiori-brand)] font-mono tabular-nums mt-0.5">
-                {formatNumber(metrics?.totalInProgressQty || 0)}
-              </div>
-            </div>
-
-            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
-              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
-                <span>آماده انتقال به مرحله بعد</span>
-                <CheckCircle2 className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
-              </div>
-              <div className="text-sm font-bold text-[var(--fiori-positive)] font-mono tabular-nums mt-0.5">
-                {formatNumber(metrics?.totalReadyForTransferQty || 0)}
-              </div>
-            </div>
-
-            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
-              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
-                <span>در حال انتقال (حواله باز)</span>
-                <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--fiori-critical)]" />
-              </div>
-              <div className="text-sm font-bold text-[var(--fiori-critical)] font-mono tabular-nums mt-0.5">
-                {formatNumber(metrics?.totalInTransitQty || 0)}
-              </div>
-            </div>
-
-            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
-              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
-                <span>محصول تکمیل‌شده</span>
-                <Layers className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
-              </div>
-              <div className="text-sm font-bold text-[var(--fiori-text-primary)] font-mono tabular-nums mt-0.5">
-                {formatNumber(metrics?.totalCompletedQty || 0)}
-              </div>
-            </div>
-
-            <div className="bg-[var(--fiori-bg-surface)] px-3 py-2 rounded-[var(--fiori-radius-md)] border border-[var(--fiori-border-default)]">
-              <div className="flex items-center justify-between text-[var(--fiori-text-secondary)] text-[11px]">
-                <span>ضایعات و دوباره‌کاری</span>
-                <AlertCircle className="w-3.5 h-3.5 text-[var(--fiori-negative)]" />
-              </div>
-              <div className="text-sm font-bold text-[var(--fiori-negative)] font-mono tabular-nums mt-0.5">
-                {formatNumber(
-                  (metrics?.totalScrapQty || 0) + (metrics?.totalReworkQty || 0)
-                )}
-              </div>
-            </div>
-          </div>
-        )
+        <FioriKpiStrip
+          columns={6}
+          loading={loading && !metrics}
+          items={[
+            {
+              id: 'waiting',
+              label: 'صف ورودی ایستگاه',
+              value: formatNumber(metrics?.totalWaitingQty || 0),
+              unit: 'عدد',
+              icon: <Clock className="w-3.5 h-3.5" />,
+              tone: (metrics?.totalWaitingQty || 0) > 0 ? 'critical' : 'neutral',
+            },
+            {
+              id: 'in-progress',
+              label: 'در حال ساخت پای دستگاه',
+              value: formatNumber(metrics?.totalInProgressQty || 0),
+              unit: 'عدد',
+              icon: <Play className="w-3.5 h-3.5" />,
+              tone: 'brand',
+            },
+            {
+              id: 'ready',
+              label: 'آماده انتقال به مرحله بعد',
+              value: formatNumber(metrics?.totalReadyForTransferQty || 0),
+              unit: 'عدد',
+              icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+              tone: 'positive',
+            },
+            {
+              id: 'in-transit',
+              label: 'در حال انتقال (حواله باز)',
+              value: formatNumber(metrics?.totalInTransitQty || 0),
+              unit: 'عدد',
+              icon: <ArrowRightLeft className="w-3.5 h-3.5" />,
+              tone: (metrics?.totalInTransitQty || 0) > 0 ? 'critical' : 'neutral',
+              onClick: () => handleChangeView('TRANSFERS'),
+            },
+            {
+              id: 'completed',
+              label: 'محصول تکمیل‌شده',
+              value: formatNumber(metrics?.totalCompletedQty || 0),
+              unit: 'عدد',
+              icon: <Layers className="w-3.5 h-3.5" />,
+              tone: 'neutral',
+            },
+            {
+              id: 'scrap',
+              label: 'ضایعات و دوباره‌کاری',
+              value: formatNumber(
+                (metrics?.totalScrapQty || 0) + (metrics?.totalReworkQty || 0)
+              ),
+              unit: 'عدد',
+              icon: <AlertCircle className="w-3.5 h-3.5" />,
+              tone:
+                (metrics?.totalScrapQty || 0) + (metrics?.totalReworkQty || 0) > 0
+                  ? 'negative'
+                  : 'neutral',
+            },
+          ]}
+        />
       }
       filterBar={
-        <div className="space-y-2">
-          <div className="relative">
-            <Search className="w-4 h-4 text-[var(--fiori-text-secondary)] absolute right-3 top-2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="جستجوی شماره دستور کار (MO)، کد قطعه، نام قطعه یا ایستگاه کاری..."
-              className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] focus:border-[var(--fiori-border-focus)] rounded-[var(--fiori-radius-sm)] pr-9 pl-3 py-1.5 text-xs text-[var(--fiori-text-primary)] placeholder:text-[var(--fiori-text-muted)] focus:outline-none transition-colors"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1 text-[var(--fiori-text-primary)]">
-                <Boxes className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
-                <span className="text-[var(--fiori-text-secondary)]">نمای بخش:</span>
-                <select
-                  value={activeView}
-                  onChange={e => handleChangeView(e.target.value as WipViewMode)}
-                  className="bg-transparent text-xs font-semibold text-[var(--fiori-text-primary)] focus:outline-none cursor-pointer"
-                >
-                  <option value="UNIFIED_DIRECTORY">
-                    نمای درختی یکپارچه (همه دستورات کار و ایستگاه‌ها)
-                  </option>
-                  <option value="BOTTLENECK">
-                    تحلیلگر زنده گلوگاه و زمان گذر ایستگاه‌ها (Bottleneck Visualizer)
-                  </option>
-                  <option value="TRACEABILITY">
-                    فرم شناسایی و ردیابی قطعه (استعلام شماره رهگیری و پرینت لیبل)
-                  </option>
-                  <option value="DASHBOARD">داشبورد گرافیکی گلوگاه‌ها</option>
-                  <option value="ORDERS">
-                    جدول تفصیلی دستورهای کار ({toPersianDigits(orders.length)})
-                  </option>
-                  <option value="TRANSFERS">
-                    حواله‌های انتقال بین مراحل ({toPersianDigits(transfers.length)})
-                  </option>
-                  <option value="STAGES">موجودی کل ایستگاه‌های کارخانه</option>
-                </select>
-              </div>
-
-              <div className="inline-flex items-center gap-1.5 bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1 text-[var(--fiori-text-primary)]">
-                <Filter className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)]" />
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className="bg-transparent text-xs font-medium text-[var(--fiori-text-primary)] focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL">وضعیت MO: همه</option>
-                  <option value="IN_PROGRESS">در جریان ساخت</option>
-                  <option value="RELEASED">صادرشده به سالن</option>
-                  <option value="PLANNED">متوقف / منتظر شروع</option>
-                  <option value="COMPLETED">تکمیل‌شده</option>
-                </select>
-              </div>
-
-              <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-primary)] cursor-pointer select-none hover:bg-[var(--fiori-bg-hover)]">
+        showMoFilterBar ? (
+          <FioriFilterBar
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="جستجوی شماره دستور کار (MO)، کد قطعه، نام قطعه یا ایستگاه کاری..."
+            segments={[
+              { id: 'ALL', label: 'همه', count: orders.length },
+              {
+                id: 'IN_PROGRESS',
+                label: 'در جریان ساخت',
+                count: orders.filter(o => o.status === 'IN_PROGRESS').length,
+              },
+              {
+                id: 'RELEASED',
+                label: 'صادرشده',
+                count: orders.filter(o => o.status === 'RELEASED').length,
+              },
+              {
+                id: 'PLANNED',
+                label: 'متوقف / منتظر',
+                count: orders.filter(o => o.status === 'PLANNED').length,
+              },
+              {
+                id: 'COMPLETED',
+                label: 'تکمیل‌شده',
+                count: orders.filter(o => o.status === 'COMPLETED').length,
+              },
+            ]}
+            activeSegment={statusFilter}
+            onSegmentChange={setStatusFilter}
+            hasActiveFilters={activeFiltersCount > 0}
+            onReset={resetMoFilters}
+            extraControls={
+              <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] bg-[var(--fiori-bg-surface)] text-xs text-[var(--fiori-text-primary)] cursor-pointer select-none hover:bg-[var(--fiori-bg-hover)] whitespace-nowrap">
                 <input
                   type="checkbox"
                   checked={onlyActiveQueue}
@@ -1065,41 +1119,30 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                 />
                 <span>فقط دارای موجودی در صف</span>
               </label>
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                onClick={() =>
-                  handleChangeView(activeView === 'BOTTLENECK' ? 'UNIFIED_DIRECTORY' : 'BOTTLENECK')
-                }
-                className={`px-2.5 py-1 rounded-[var(--fiori-radius-sm)] border text-[11px] font-semibold cursor-pointer flex items-center gap-1.5 transition-colors tabular-nums ${
-                  activeView === 'BOTTLENECK'
-                    ? 'bg-[var(--fiori-brand)] text-white border-[var(--fiori-brand)]'
-                    : bottleneckAnalysis.criticalCount > 0
-                    ? 'bg-[var(--fiori-negative-bg)] text-[var(--fiori-negative)] border-[var(--fiori-negative-border)] hover:opacity-90'
-                    : 'bg-[var(--fiori-bg-surface)] text-[var(--fiori-text-primary)] border-[var(--fiori-border-default)] hover:bg-[var(--fiori-bg-selected)]'
-                }`}
-              >
-                <Gauge className="w-3.5 h-3.5" />
-                <span>
-                  گلوگاه‌های لحظه‌ای ({toPersianDigits(bottleneckAnalysis.totalThroughputAllHours)} ساعت)
-                </span>
-              </button>
-              {activeView !== 'UNIFIED_DIRECTORY' && (
-                <button
-                  type="button"
-                  onClick={() => handleChangeView('UNIFIED_DIRECTORY')}
-                  className="sap-btn-standard text-[11px] font-semibold cursor-pointer"
-                >
-                  بازگشت به نمای درختی یکپارچه
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+            }
+          />
+        ) : undefined
       }
     >
+      {/* Persistent Load Error Banner */}
+      {loadError && (
+        <FioriMessageStrip
+          tone="error"
+          title="خطا در بارگذاری اطلاعات WIP"
+          actions={
+            <button
+              type="button"
+              onClick={loadWipData}
+              className="sap-btn-standard px-2.5 py-1 text-[11px]"
+            >
+              تلاش مجدد
+            </button>
+          }
+        >
+          {loadError}
+        </FioriMessageStrip>
+      )}
+
       {/* Toast Notification */}
       {notification && (
         <FioriMessageStrip
@@ -1111,12 +1154,9 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
         </FioriMessageStrip>
       )}
 
-      {/* Visual MO Status Distribution Chart across Production Halls */}
+      {/* Visual MO Status Distribution Chart across Production Halls (Top position only on analytical tabs) */}
       {!loading &&
-        (activeView === 'UNIFIED_DIRECTORY' ||
-          activeView === 'ORDERS' ||
-          activeView === 'DASHBOARD' ||
-          activeView === 'BOTTLENECK') && (
+        (activeView === 'DASHBOARD' || activeView === 'BOTTLENECK') && (
           <WipHallMoDistributionChart
             orders={orders}
             machines={machines}
@@ -1126,12 +1166,12 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
           />
         )}
 
-      {/* Real-Time Stage Bottleneck Visualizer (Embedded strip in Unified/Dashboard OR Full Panel in BOTTLENECK mode) */}
-      {(activeView === 'BOTTLENECK' || activeView === 'UNIFIED_DIRECTORY' || activeView === 'DASHBOARD') && (
+      {/* Real-Time Stage Bottleneck Visualizer (Shown in dedicated BOTTLENECK tab and analytical DASHBOARD tab) */}
+      {(activeView === 'BOTTLENECK' || activeView === 'DASHBOARD') && (
         <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-hidden">
           <FioriToolbar
             variant="table"
-            title="پایش لحظه‌ای گلوگاه و زمان گذر ایستگاه‌ها (Real-Time Stage Bottleneck & Throughput Visualizer)"
+            title="پایش لحظه‌ای گلوگاه و زمان گذر ایستگاه‌ها"
             subtitle="محاسبه‌شده از روی موجودی لحظه‌ای ایستگاه‌ها و زمان سیکل/ستاپ مسیر عملیات (Routing) — مبنای هشدار: شیفت ۷٫۵ ساعته"
             startContent={<Gauge className="w-4 h-4 text-[var(--fiori-brand)]" />}
             endContent={
@@ -1576,23 +1616,24 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
         />
       )}
 
-      {/* UNIFIED SAP HANA DIRECTORY VIEW */}
+      {/* UNIFIED SAP FIORI HORIZON WIP WORKSPACE */}
       {activeView === 'UNIFIED_DIRECTORY' && (
         <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] overflow-hidden shadow-[var(--fiori-shadow-card)]">
           <FioriToolbar
             variant="table"
-            title="نام دستور کار (MO) / مرحله عملیات و ایستگاه"
+            title="دستورهای کار تولید، زنجیره عملیات و حواله‌های انتقال"
+            subtitle="برای مشاهده ایستگاه‌ها، موقعیت فیزیکی و اقدام بعدی هر مرحله روی سطر دستور کار کلیک کنید"
             count={filteredOrders.length}
             countLabel="دستور کار"
             endContent={
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   type="button"
                   onClick={() => {
                     expandAllGroups(['orders_group', 'transfers_group']);
                     expandAllMos(filteredOrders.map(m => m.id));
                   }}
-                  className="sap-btn-standard px-2 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
+                  className="sap-btn-standard px-2.5 py-1 text-[11px] whitespace-nowrap"
                 >
                   باز کردن همه
                 </button>
@@ -1602,7 +1643,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                     collapseAllMos();
                     collapseAllGroups();
                   }}
-                  className="sap-btn-standard px-2 py-0.5 text-[11px] cursor-pointer whitespace-nowrap"
+                  className="sap-btn-standard px-2.5 py-1 text-[11px] whitespace-nowrap"
                 >
                   بستن همه
                 </button>
@@ -1610,261 +1651,521 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
             }
           />
 
-          <div className="divide-y divide-[#e5e5e5] text-xs">
+          <div className="divide-y divide-[var(--fiori-border-default)] text-xs">
             {/* Folder 1: Active Manufacturing Orders (Expandable inline) */}
             <div>
               <button
                 type="button"
                 onClick={() => toggleGroup('orders_group')}
-                className="w-full px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 hover:bg-[#e5f3fa]/50 transition-colors cursor-pointer text-right"
+                className="w-full px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 bg-[var(--fiori-bg-subtle)] hover:bg-[var(--fiori-bg-hover)] transition-colors cursor-pointer text-right"
               >
-                <div className="flex items-center gap-2 font-semibold text-[#333333]">
+                <div className="flex items-center gap-2 font-bold text-[var(--fiori-text-primary)]">
                   {expandedGroups.orders_group ? (
-                    <ChevronDown className="w-4 h-4 text-[#007cc0]" />
+                    <ChevronDown className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
                   ) : (
-                    <ChevronLeft className="w-4 h-4 text-[#666666]" />
+                    <ChevronLeft className="w-4 h-4 text-[var(--fiori-text-secondary)] shrink-0" />
                   )}
-                  <Folder className="w-4 h-4 text-[#007cc0]" />
-                  <span>دستورهای کار تولید و مراحل ساخت (Manufacturing Orders)</span>
+                  <Folder className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
+                  <span>دستورهای کار تولید و زنجیره مراحل ساخت (MO)</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-[11px] text-[#666666] font-mono tabular-nums">
-                  <span className="font-sans">
-                    تعداد: <strong className="font-mono text-[#333333]">{toPersianDigits(filteredOrders.length)}</strong>
+                <div className="flex items-center gap-2 text-[11px] text-[var(--fiori-text-secondary)] font-mono tabular-nums flex-wrap">
+                  <span className="font-sans whitespace-nowrap">
+                    تعداد: <strong className="font-mono text-[var(--fiori-text-primary)]">{toPersianDigits(filteredOrders.length)}</strong>
                   </span>
-                  <span className="text-[#d9d9d9]">·</span>
-                  <span className="font-sans text-[#007cc0]">
-                    در جریان: <strong className="font-mono">{toPersianDigits(filteredOrders.filter(o => o.status === 'IN_PROGRESS' || o.status === 'RELEASED').length)}</strong>
+                  <span className="text-[var(--fiori-border-default)]">·</span>
+                  <span className="font-sans text-[var(--fiori-brand)] whitespace-nowrap">
+                    در جریان:{' '}
+                    <strong className="font-mono">
+                      {toPersianDigits(
+                        filteredOrders.filter(o => o.status === 'IN_PROGRESS' || o.status === 'RELEASED').length
+                      )}
+                    </strong>
                   </span>
-                  <span className="text-[#d9d9d9]">·</span>
-                  <span className="font-sans text-[#107e3e]">
-                    تکمیل‌شده: <strong className="font-mono">{toPersianDigits(filteredOrders.filter(o => o.status === 'COMPLETED').length)}</strong>
+                  <span className="text-[var(--fiori-border-default)]">·</span>
+                  <span className="font-sans text-[var(--fiori-positive)] whitespace-nowrap">
+                    تکمیل‌شده:{' '}
+                    <strong className="font-mono">
+                      {toPersianDigits(filteredOrders.filter(o => o.status === 'COMPLETED').length)}
+                    </strong>
                   </span>
                 </div>
               </button>
 
               {expandedGroups.orders_group && (
-                <div className="divide-y divide-[#e5e5e5]">
-                  {filteredOrders.map(mo => {
-                    const isExpanded = !!expandedMoIds[mo.id];
-                    const completedOps = mo.operations.filter(
-                      o => o.status === 'COMPLETED'
-                    ).length;
-                    const activeOp =
-                      mo.operations.find(o => o.inProgressQty > 0) ||
-                      mo.operations.find(o => o.waitingInputQty > 0) ||
-                      mo.operations.find(o => o.readyForTransferQty > 0) ||
-                      mo.operations.find(o => o.status !== 'COMPLETED');
-                    const moWaiting = mo.operations.reduce((s, o) => s + (o.waitingInputQty || 0), 0);
-                    const moInProg = mo.operations.reduce((s, o) => s + (o.inProgressQty || 0), 0);
-                    const moReady = mo.operations.reduce((s, o) => s + (o.readyForTransferQty || 0), 0);
-                    const moProgressPct =
-                      mo.targetQuantity > 0
-                        ? Math.min(100, Math.round((mo.completedQuantity / mo.targetQuantity) * 100))
-                        : 0;
-                    return (
-                      <div key={mo.id} className="bg-white">
-                        {/* MO Row */}
-                        <div className="pr-7 pl-3.5 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 hover:bg-[#e5f3fa]/40 transition-colors">
+                <div className="divide-y divide-[var(--fiori-border-subtle)]">
+                  {filteredOrders.length === 0 ? (
+                    <div className="p-6">
+                      <EmptyState
+                        variant="NO_WIP"
+                        title="دستور کاری با فیلترهای انتخابی یافت نشد"
+                        description="فیلترهای وضعیت، صف فعال یا عبارت جستجو را تغییر دهید."
+                        actionLabel={activeFiltersCount > 0 ? 'بازنشانی فیلترها' : undefined}
+                        onAction={activeFiltersCount > 0 ? resetMoFilters : undefined}
+                      />
+                    </div>
+                  ) : (
+                    filteredOrders.map(mo => {
+                      const isExpanded = !!expandedMoIds[mo.id];
+                      const completedOps = mo.operations.filter(
+                        o => o.status === 'COMPLETED'
+                      ).length;
+                      const activeOp =
+                        mo.operations.find(o => o.inProgressQty > 0) ||
+                        mo.operations.find(o => o.readyForTransferQty > 0) ||
+                        mo.operations.find(o => o.waitingInputQty > 0) ||
+                        mo.operations.find(o => o.status !== 'COMPLETED');
+                      const shortOpCode = activeOp ? activeOp.stepCode.split('_')[0] : '';
+                      const moWaiting = mo.operations.reduce((s, o) => s + (o.waitingInputQty || 0), 0);
+                      const moInProg = mo.operations.reduce((s, o) => s + (o.inProgressQty || 0), 0);
+                      const moReady = mo.operations.reduce((s, o) => s + (o.readyForTransferQty || 0), 0);
+                      const moProgressPct =
+                        mo.targetQuantity > 0
+                          ? Math.min(100, Math.round((mo.completedQuantity / mo.targetQuantity) * 100))
+                          : 0;
+
+                      // Determine the single clearest immediate next action for operators
+                      const quickNextAction =
+                        mo.status !== 'COMPLETED' && activeOp ? (
+                          activeOp.inProgressQty > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => setProdModalOp(activeOp)}
+                              className="fiori-btn-positive inline-flex items-center gap-1 px-2.5 py-1 text-[11px] whitespace-nowrap"
+                              title={`ثبت تولید و ضایعات در ایستگاه ${activeOp.stepCode} (${activeOp.stepName})`}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>ثبت تولید ({shortOpCode})</span>
+                            </button>
+                          ) : activeOp.readyForTransferQty > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTransferModalContext({ mo, op: activeOp });
+                                setIsTransferModalOpen(true);
+                              }}
+                              className="sap-btn-emphasized inline-flex items-center gap-1 px-2.5 py-1 text-[11px] whitespace-nowrap"
+                              title={`صدور حواله انتقال از ${activeOp.stepCode} (${activeOp.stepName})`}
+                            >
+                              <ArrowRightLeft className="w-3.5 h-3.5" />
+                              <span>انتقال ({shortOpCode})</span>
+                            </button>
+                          ) : activeOp.waitingInputQty > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => setInputModalOp(activeOp)}
+                              className="sap-btn-emphasized inline-flex items-center gap-1 px-2.5 py-1 text-[11px] whitespace-nowrap"
+                              title={`شروع کار در ایستگاه ${activeOp.stepCode} (${activeOp.stepName})`}
+                            >
+                              <Play className="w-3.5 h-3.5" />
+                              <span>شروع کار ({shortOpCode})</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoadMatModalMo(mo);
+                                setLoadMatQty(
+                                  Math.max(1, mo.targetQuantity - mo.initialInputQuantity) ||
+                                    mo.targetQuantity
+                                );
+                                setLoadMatNotes('');
+                              }}
+                              className="sap-btn-emphasized inline-flex items-center gap-1 px-2.5 py-1 text-[11px] whitespace-nowrap"
+                              title="بارگذاری ورق یا بلنک اولیه در مرحله نخست دستور کار"
+                            >
+                              <PackagePlus className="w-3.5 h-3.5" />
+                              <span>بارگذاری مواد</span>
+                            </button>
+                          )
+                        ) : null;
+
+                      return (
+                        <div key={mo.id} className="bg-[var(--fiori-bg-surface)]">
+                          {/* MO Row */}
                           <div
-                            onClick={() => toggleMoRow(mo.id, mo.moNumber)}
-                            className="flex items-center gap-2 cursor-pointer flex-1"
+                            className={`px-3 py-2.5 sm:pr-5 sm:pl-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 transition-colors ${
+                              isExpanded
+                                ? 'bg-[var(--fiori-bg-selected)]/60'
+                                : 'hover:bg-[var(--fiori-bg-hover)]'
+                            }`}
                           >
-                            {isExpanded ? (
-                              <ChevronDown className="w-3.5 h-3.5 text-[#007cc0] shrink-0" />
-                            ) : (
-                              <ChevronLeft className="w-3.5 h-3.5 text-[#666666] shrink-0" />
-                            )}
-                            <Layers className="w-4 h-4 text-[#007cc0] shrink-0" />
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <button
-                                  type="button"
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    router.traceDocument(mo.moNumber, 'WIP_TRACEABILITY');
-                                  }}
-                                  className="sap-doc-link font-mono font-bold text-xs cursor-pointer"
-                                  title="استعلام شجره‌نامه و شماره رهگیری این دستور کار"
-                                >
-                                  {mo.moNumber}
-                                </button>
-                                <span className="font-semibold text-[#333333]">
-                                  {mo.partName}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    router.traceDocument(mo.partCode, 'INVENTORY_LEDGER');
-                                  }}
-                                  className="sap-doc-link font-mono text-[11px] cursor-pointer"
-                                  title="مشاهده کاردکس انبار این قطعه"
-                                >
-                                  ({mo.partCode})
-                                </button>
-                                {activeOp && (
-                                  <span className="text-[11px] text-[#007cc0] font-medium">
-                                    · ایستگاه فعال: <strong className="font-mono">{activeOp.stepCode}</strong> ({activeOp.stepName})
-                                  </span>
+                            <div
+                              onClick={() => toggleMoRow(mo.id, mo.moNumber)}
+                              className="flex items-start gap-2 cursor-pointer flex-1 min-w-0"
+                            >
+                              <span className="mt-0.5 shrink-0">
+                                {isExpanded ? (
+                                  <ChevronDown className="w-4 h-4 text-[var(--fiori-brand)]" />
+                                ) : (
+                                  <ChevronLeft className="w-4 h-4 text-[var(--fiori-text-secondary)]" />
                                 )}
-                              </div>
-                              <div className="text-[11px] text-[#666666] mt-0.5 flex items-center gap-2.5 flex-wrap tabular-nums">
-                                <span>
-                                  هدف:{' '}
-                                  <strong className="font-mono text-[#333333]">
-                                    {formatNumber(mo.targetQuantity)}
-                                  </strong>
-                                </span>
-                                <span>·</span>
-                                <span>
-                                  تکمیل:{' '}
-                                  <strong className="font-mono text-[#107e3e]">
-                                    {formatNumber(mo.completedQuantity)} ({toPersianDigits(moProgressPct)}٪)
-                                  </strong>
-                                </span>
-                                <span>·</span>
-                                <span>
-                                  صف: <strong className="font-mono text-[#e9730c]">{formatNumber(moWaiting)}</strong>
-                                </span>
-                                <span>·</span>
-                                <span>
-                                  پای دستگاه: <strong className="font-mono text-[#007cc0]">{formatNumber(moInProg)}</strong>
-                                </span>
-                                <span>·</span>
-                                <span>
-                                  آماده انتقال: <strong className="font-mono text-[#107e3e]">{formatNumber(moReady)}</strong>
-                                </span>
-                                <span>·</span>
-                                <span>
-                                  ضایعات:{' '}
-                                  <strong className="font-mono text-[#bb0000]">
-                                    {formatNumber(mo.totalScrapQuantity)}
-                                  </strong>
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 self-end md:self-center flex-wrap">
-                            <FioriObjectStatus
-                              tone="positive"
-                              label={`${toPersianDigits(completedOps)} از ${toPersianDigits(mo.operations.length)} مرحله`}
-                            />
-                            <FioriObjectStatus
-                              tone={
-                                mo.status === 'COMPLETED'
-                                  ? 'positive'
-                                  : mo.status === 'IN_PROGRESS'
-                                  ? 'brand'
-                                  : 'info'
-                              }
-                              label={
-                                mo.status === 'IN_PROGRESS'
-                                  ? 'در جریان ساخت'
-                                  : mo.status === 'COMPLETED'
-                                  ? 'تکمیل‌شده'
-                                  : 'صادرشده'
-                              }
-                            />
-                            {mo.status !== 'COMPLETED' && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setLoadMatModalMo(mo);
-                                  setLoadMatQty(Math.max(1, mo.targetQuantity - mo.initialInputQuantity) || mo.targetQuantity);
-                                  setLoadMatNotes('');
-                                }}
-                                className="sap-btn-standard text-[11px] py-0.5 px-2 cursor-pointer"
-                                title="بارگذاری ورق یا بلنک اولیه در مرحله نخست دستور کار"
-                              >
-                                بارگذاری مواد
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => router.traceDocument(mo.moNumber, 'INVENTORY_LEDGER')}
-                              className="sap-btn-standard text-[11px] py-0.5 px-2 cursor-pointer"
-                            >
-                              اسناد کاردکس
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setReconciliationMoId(mo.id)}
-                              className="sap-btn-standard text-[11px] py-0.5 px-2 cursor-pointer whitespace-nowrap shrink-0"
-                            >
-                              تراز پایستگی
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openMoRollbackModal(mo)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#fff0f0] hover:bg-[#fde0e0] text-[#bb0000] border border-[#f2b8b5] text-[11px] font-semibold cursor-pointer whitespace-nowrap shrink-0"
-                              title="حذف دستور تولید + زیرمجموعه‌ها و بازگشت کامل موجودی مصرفی به انبار"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              <span>حذف کامل و بازگشت موجودی</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Inline Operations Rows (Compact SAP HANA) */}
-                        {isExpanded && (
-                          <div className="bg-[#f8f9fa] border-t border-[#e5e5e5] divide-y divide-[#e5e5e5]">
-                            {mo.operations.map(op => (
-                              <div
-                                key={op.id}
-                                className="pr-12 pl-3.5 py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                              >
-                                <div className="flex items-center gap-2.5">
-                                  <span className="px-1.5 py-0.5 rounded bg-white border border-[#d9d9d9] font-mono text-[10px] font-bold text-[#007cc0]">
-                                    {op.stepCode}
+                              </span>
+                              <div className="min-w-0 flex-1 space-y-1.5">
+                                {/* Line 1: Identity + Status + Current Station & Location */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <button
+                                    type="button"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      router.traceDocument(mo.moNumber, 'WIP_TRACEABILITY');
+                                    }}
+                                    className="sap-doc-link fiori-ltr-code font-mono font-bold text-xs cursor-pointer"
+                                    title="استعلام شجره‌نامه و شماره رهگیری این دستور کار"
+                                  >
+                                    {mo.moNumber}
+                                  </button>
+                                  <span className="font-bold text-[var(--fiori-text-primary)]">
+                                    {mo.partName}
                                   </span>
-                                  <div>
-                                    <span className="font-semibold text-[#333333]">
-                                      {op.stepName}
+                                  <button
+                                    type="button"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      router.traceDocument(mo.partCode, 'INVENTORY_LEDGER');
+                                    }}
+                                    className="sap-doc-link fiori-ltr-code font-mono text-[11px] cursor-pointer"
+                                    title="مشاهده کاردکس انبار این قطعه"
+                                  >
+                                    ({mo.partCode})
+                                  </button>
+                                  <FioriObjectStatus
+                                    size="sm"
+                                    tone={
+                                      mo.status === 'COMPLETED'
+                                        ? 'positive'
+                                        : mo.status === 'IN_PROGRESS'
+                                        ? 'brand'
+                                        : mo.status === 'PLANNED'
+                                        ? 'neutral'
+                                        : 'info'
+                                    }
+                                    label={
+                                      mo.status === 'IN_PROGRESS'
+                                        ? 'در جریان ساخت'
+                                        : mo.status === 'COMPLETED'
+                                        ? 'تکمیل‌شده'
+                                        : mo.status === 'PLANNED'
+                                        ? 'برنامه‌ریزی‌شده'
+                                        : 'صادرشده'
+                                    }
+                                  />
+                                  {activeOp && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] text-[11px] text-[var(--fiori-text-primary)] flex-wrap">
+                                      <MapPin className="w-3 h-3 text-[var(--fiori-brand)] shrink-0" />
+                                      <span className="text-[var(--fiori-text-secondary)]">ایستگاه فعلی:</span>
+                                      <strong className="fiori-ltr-code font-mono text-[var(--fiori-brand)]">
+                                        {activeOp.stepCode}
+                                      </strong>
+                                      <span>{activeOp.stepName}</span>
+                                      {activeOp.warehouseLocation && (
+                                        <span className="fiori-ltr-code font-mono text-[10px] text-[var(--fiori-text-secondary)]">
+                                          [{activeOp.warehouseLocation}]
+                                        </span>
+                                      )}
                                     </span>
-                                    <div className="text-[11px] text-[#666666] flex items-center gap-3 mt-0.5 font-mono tabular-nums">
-                                      <span>صف: {formatNumber(op.waitingInputQty)}</span>
-                                      <span>پای دستگاه: {formatNumber(op.inProgressQty)}</span>
-                                      <span className="text-[#107e3e] font-bold">
-                                        آماده انتقال: {formatNumber(op.readyForTransferQty)}
-                                      </span>
-                                    </div>
-                                  </div>
+                                  )}
                                 </div>
 
-                                <div className="flex items-center gap-1.5 self-end sm:self-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => setInputModalOp(op)}
-                                    className="sap-btn-standard text-[11px] py-0.5 px-2 cursor-pointer"
-                                  >
-                                    ثبت ورودی
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setProdModalOp(op)}
-                                    className="px-2 py-0.5 rounded bg-[#107e3e] hover:bg-[#0d6832] text-white text-[11px] font-semibold cursor-pointer"
-                                  >
-                                    ثبت تولید / ضایعات
-                                  </button>
+                                {/* Line 2: Compact Visual Operation Sequence Flow */}
+                                {mo.operations.length > 0 && (
+                                  <div className="flex items-center gap-1 flex-wrap text-[10px]">
+                                    {mo.operations.map((op, opIdx) => {
+                                      const isCurrent = activeOp?.id === op.id;
+                                      const isDone = op.status === 'COMPLETED';
+                                      const hasStock =
+                                        op.waitingInputQty > 0 ||
+                                        op.inProgressQty > 0 ||
+                                        op.readyForTransferQty > 0;
+                                      const chipCls = isDone
+                                        ? 'bg-[var(--fiori-positive-bg)] text-[var(--fiori-positive)] border-[var(--fiori-positive-border)]'
+                                        : isCurrent
+                                        ? 'bg-[var(--fiori-info-bg)] text-[var(--fiori-brand)] border-[var(--fiori-brand)] font-bold'
+                                        : hasStock
+                                        ? 'bg-[var(--fiori-critical-bg)] text-[var(--fiori-critical)] border-[var(--fiori-critical-border)]'
+                                        : 'bg-[var(--fiori-bg-subtle)] text-[var(--fiori-text-secondary)] border-[var(--fiori-border-default)]';
+
+                                      const totalHere =
+                                        op.waitingInputQty + op.inProgressQty + op.readyForTransferQty;
+
+                                      return (
+                                        <React.Fragment key={op.id}>
+                                          <span
+                                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[var(--fiori-radius-sm)] border ${chipCls}`}
+                                            title={`${op.stepCode} — ${op.stepName} (${op.warehouseLocation})`}
+                                          >
+                                            <span className="fiori-ltr-code font-mono">{op.stepCode}</span>
+                                            {totalHere > 0 && (
+                                              <span className="font-mono tabular-nums">
+                                                ({formatNumber(totalHere)})
+                                              </span>
+                                            )}
+                                          </span>
+                                          {opIdx < mo.operations.length - 1 && (
+                                            <ChevronLeft className="w-3 h-3 text-[var(--fiori-text-muted)] shrink-0" />
+                                          )}
+                                        </React.Fragment>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {/* Line 3: Quantitative Breakdown (Atomic non-breaking metric pills for mobile & desktop readability) */}
+                                <div className="text-[11px] text-[var(--fiori-text-secondary)] flex items-center gap-x-2.5 gap-y-1 flex-wrap tabular-nums">
+                                  <span className="whitespace-nowrap">
+                                    هدف:{' '}
+                                    <strong className="font-mono text-[var(--fiori-text-primary)]">
+                                      {formatNumber(mo.targetQuantity)}
+                                    </strong>
+                                  </span>
+                                  <span className="text-[var(--fiori-border-default)]">·</span>
+                                  <span className="whitespace-nowrap">
+                                    صف:{' '}
+                                    <strong className="font-mono text-[var(--fiori-critical)]">
+                                      {formatNumber(moWaiting)}
+                                    </strong>
+                                  </span>
+                                  <span className="text-[var(--fiori-border-default)]">·</span>
+                                  <span className="whitespace-nowrap">
+                                    پای دستگاه:{' '}
+                                    <strong className="font-mono text-[var(--fiori-brand)]">
+                                      {formatNumber(moInProg)}
+                                    </strong>
+                                  </span>
+                                  <span className="text-[var(--fiori-border-default)]">·</span>
+                                  <span className="whitespace-nowrap">
+                                    آماده انتقال:{' '}
+                                    <strong className="font-mono text-[var(--fiori-positive)]">
+                                      {formatNumber(moReady)}
+                                    </strong>
+                                  </span>
+                                  <span className="text-[var(--fiori-border-default)]">·</span>
+                                  <span className="whitespace-nowrap">
+                                    تکمیل:{' '}
+                                    <strong className="font-mono text-[var(--fiori-positive)]">
+                                      {formatNumber(mo.completedQuantity)} ({toPersianDigits(moProgressPct)}٪)
+                                    </strong>
+                                  </span>
+                                  <span className="text-[var(--fiori-border-default)]">·</span>
+                                  <span className="whitespace-nowrap">
+                                    ضایعات:{' '}
+                                    <strong
+                                      className={`font-mono ${
+                                        mo.totalScrapQuantity > 0
+                                          ? 'text-[var(--fiori-negative)]'
+                                          : 'text-[var(--fiori-text-muted)]'
+                                      }`}
+                                    >
+                                      {formatNumber(mo.totalScrapQuantity)}
+                                    </strong>
+                                  </span>
+                                  <span className="text-[var(--fiori-border-default)]">·</span>
+                                  <span className="whitespace-nowrap">
+                                    مراحل:{' '}
+                                    <strong className="font-mono text-[var(--fiori-text-primary)]">
+                                      {toPersianDigits(completedOps)}/{toPersianDigits(mo.operations.length)}
+                                    </strong>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Right-hand Actions: Primary Next Step + Compact Secondary Utilities */}
+                            <div className="flex items-center gap-1.5 self-stretch sm:self-end lg:self-center flex-wrap shrink-0 pt-1 lg:pt-0 border-t lg:border-t-0 border-[var(--fiori-border-subtle)]">
+                              {quickNextAction}
+
+                              {mo.status !== 'COMPLETED' &&
+                                activeOp &&
+                                (activeOp.inProgressQty > 0 ||
+                                  activeOp.readyForTransferQty > 0 ||
+                                  activeOp.waitingInputQty > 0) && (
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setTransferModalContext({ mo, op });
-                                      setIsTransferModalOpen(true);
+                                      setLoadMatModalMo(mo);
+                                      setLoadMatQty(
+                                        Math.max(1, mo.targetQuantity - mo.initialInputQuantity) ||
+                                          mo.targetQuantity
+                                      );
+                                      setLoadMatNotes('');
                                     }}
-                                    className="sap-btn-emphasized text-[11px] py-0.5 px-2 cursor-pointer"
+                                    className="sap-btn-standard inline-flex items-center gap-1 text-[11px] py-1 px-2 whitespace-nowrap"
+                                    title="بارگذاری ورق یا بلنک اولیه در مرحله نخست دستور کار"
                                   >
-                                    انتقال به مرحله بعد
+                                    <PackagePlus className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
+                                    <span>بارگذاری مواد</span>
                                   </button>
-                                </div>
-                              </div>
-                            ))}
+                                )}
+
+                              <button
+                                type="button"
+                                onClick={() => router.traceDocument(mo.moNumber, 'INVENTORY_LEDGER')}
+                                className="sap-btn-standard inline-flex items-center gap-1 text-[11px] py-1 px-2 whitespace-nowrap"
+                                title="مشاهده اسناد کاردکس این دستور کار"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)]" />
+                                <span>کاردکس</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setReconciliationMoId(mo.id)}
+                                className="sap-btn-standard inline-flex items-center gap-1 text-[11px] py-1 px-2 whitespace-nowrap shrink-0"
+                                title="بررسی گواهی موازنه پایستگی قطعات"
+                              >
+                                <Scale className="w-3.5 h-3.5 text-[var(--fiori-positive)]" />
+                                <span>تراز</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => openMoRollbackModal(mo)}
+                                className="fiori-btn-danger-outline inline-flex items-center justify-center p-1.5"
+                                title="حذف دستور تولید + زیرمجموعه‌ها و بازگشت کامل موجودی مصرفی به انبار"
+                                aria-label={`حذف کامل دستور ${mo.moNumber}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+
+                          {/* Expanded Operations Table (SAP Fiori Horizon) */}
+                          {isExpanded && (
+                            <div className="bg-[var(--fiori-bg-subtle)] border-t border-[var(--fiori-border-default)] px-3 sm:px-4 py-3">
+                              <div className="overflow-x-auto bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)]">
+                                <table className="sap-table-compact w-full text-right text-xs">
+                                  <thead>
+                                    <tr>
+                                      <th>کد / مرحله عملیات</th>
+                                      <th>محل استقرار و دستگاه</th>
+                                      <th>وضعیت</th>
+                                      <th className="text-left">صف ورودی</th>
+                                      <th className="text-left">پای دستگاه</th>
+                                      <th className="text-left">آماده انتقال</th>
+                                      <th className="text-left">ضایعات</th>
+                                      <th className="text-center">اقدامات عملیاتی ایستگاه</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-[var(--fiori-border-subtle)] tabular-nums">
+                                    {mo.operations.map(op => {
+                                      const hasWaiting = op.waitingInputQty > 0;
+                                      const hasInProg = op.inProgressQty > 0;
+                                      const hasReady = op.readyForTransferQty > 0;
+                                      const opTone =
+                                        op.status === 'COMPLETED'
+                                          ? 'positive'
+                                          : hasInProg
+                                          ? 'brand'
+                                          : hasReady
+                                          ? 'positive'
+                                          : hasWaiting
+                                          ? 'critical'
+                                          : 'neutral';
+                                      const opStatusLabel =
+                                        op.status === 'COMPLETED'
+                                          ? 'تکمیل‌شده'
+                                          : hasInProg
+                                          ? 'در حال تولید'
+                                          : hasReady
+                                          ? 'آماده انتقال'
+                                          : hasWaiting
+                                          ? 'در صف انتظار'
+                                          : 'منتظر ورود';
+
+                                      return (
+                                        <tr key={op.id} className="hover:bg-[var(--fiori-bg-hover)]">
+                                          <td>
+                                            <div className="flex items-center gap-2">
+                                              <span className="fiori-ltr-code px-1.5 py-0.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-info-bg)] border border-[var(--fiori-info-border)] font-mono text-[10px] font-bold text-[var(--fiori-brand)]">
+                                                {op.stepCode}
+                                              </span>
+                                              <span className="font-semibold text-[var(--fiori-text-primary)]">
+                                                {op.stepName}
+                                              </span>
+                                            </div>
+                                          </td>
+                                          <td>
+                                            <div className="flex flex-col gap-0.5 text-[11px]">
+                                              <span className="inline-flex items-center gap-1 fiori-ltr-code font-mono text-[var(--fiori-brand)]">
+                                                <MapPin className="w-3 h-3 shrink-0" />
+                                                {op.warehouseLocation || '-'}
+                                              </span>
+                                              {op.machineName && (
+                                                <span className="inline-flex items-center gap-1 text-[var(--fiori-text-secondary)]">
+                                                  <Cpu className="w-3 h-3 shrink-0" />
+                                                  {op.machineName}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </td>
+                                          <td>
+                                            <FioriObjectStatus tone={opTone} label={opStatusLabel} size="sm" />
+                                          </td>
+                                          <td className="text-left font-mono font-bold">
+                                            <span className={hasWaiting ? 'text-[var(--fiori-critical)]' : 'text-[var(--fiori-text-muted)]'}>
+                                              {formatNumber(op.waitingInputQty)}
+                                            </span>
+                                          </td>
+                                          <td className="text-left font-mono font-bold">
+                                            <span className={hasInProg ? 'text-[var(--fiori-brand)]' : 'text-[var(--fiori-text-muted)]'}>
+                                              {formatNumber(op.inProgressQty)}
+                                            </span>
+                                          </td>
+                                          <td className="text-left font-mono font-bold">
+                                            <span className={hasReady ? 'text-[var(--fiori-positive)]' : 'text-[var(--fiori-text-muted)]'}>
+                                              {formatNumber(op.readyForTransferQty)}
+                                            </span>
+                                          </td>
+                                          <td className="text-left font-mono">
+                                            <span className={op.scrapQty > 0 ? 'text-[var(--fiori-negative)] font-bold' : 'text-[var(--fiori-text-muted)]'}>
+                                              {formatNumber(op.scrapQty)}
+                                            </span>
+                                          </td>
+                                          <td>
+                                            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                              <button
+                                                type="button"
+                                                onClick={() => setInputModalOp(op)}
+                                                className={`${
+                                                  hasWaiting && !hasInProg ? 'sap-btn-emphasized' : 'sap-btn-standard'
+                                                } text-[11px] py-0.5 px-2 whitespace-nowrap`}
+                                              >
+                                                شروع کار / ورودی
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setProdModalOp(op)}
+                                                className={`${
+                                                  hasInProg ? 'fiori-btn-positive' : 'sap-btn-standard'
+                                                } text-[11px] py-0.5 px-2 whitespace-nowrap`}
+                                              >
+                                                ثبت تولید / ضایعات
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setTransferModalContext({ mo, op });
+                                                  setIsTransferModalOpen(true);
+                                                }}
+                                                className={`${
+                                                  hasReady ? 'sap-btn-emphasized' : 'sap-btn-standard'
+                                                } text-[11px] py-0.5 px-2 whitespace-nowrap`}
+                                              >
+                                                انتقال به بعد
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               )}
             </div>
@@ -1874,106 +2175,135 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
               <button
                 type="button"
                 onClick={() => toggleGroup('transfers_group')}
-                className="w-full px-3.5 py-2 flex items-center justify-between hover:bg-[#e5f3fa]/50 transition-colors cursor-pointer text-right"
+                className="w-full px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 bg-[var(--fiori-bg-subtle)] hover:bg-[var(--fiori-bg-hover)] transition-colors cursor-pointer text-right"
               >
-                <div className="flex items-center gap-2 font-semibold text-[#333333]">
+                <div className="flex items-center gap-2 font-bold text-[var(--fiori-text-primary)]">
                   {expandedGroups.transfers_group ? (
-                    <ChevronDown className="w-4 h-4 text-[#007cc0]" />
+                    <ChevronDown className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
                   ) : (
-                    <ChevronLeft className="w-4 h-4 text-[#666666]" />
+                    <ChevronLeft className="w-4 h-4 text-[var(--fiori-text-secondary)] shrink-0" />
                   )}
-                  <Folder className="w-4 h-4 text-[#007cc0]" />
-                  <span>حواله‌های انتقال بین مراحل (Inter-Operation Transfers)</span>
+                  <Folder className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
+                  <span>حواله‌های انتقال بین مراحل (WIP)</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-[11px] text-[#666666] font-mono tabular-nums">
+                <div className="flex items-center gap-2.5 text-[11px] text-[var(--fiori-text-secondary)] font-mono tabular-nums">
                   <span className="font-sans">
-                    کل: <strong className="font-mono text-[#333333]">{toPersianDigits(transfers.length)}</strong> حواله
+                    کل: <strong className="font-mono text-[var(--fiori-text-primary)]">{toPersianDigits(transfers.length)}</strong> حواله
                   </span>
-                  <span className="text-[#d9d9d9]">·</span>
-                  <span className="font-sans text-[#b85a00]">
+                  <span className="text-[var(--fiori-border-default)]">·</span>
+                  <span className="font-sans text-[var(--fiori-critical)]">
                     در انتظار تایید:{' '}
-                    <strong className="font-mono">
-                      {toPersianDigits(transfers.filter(t => t.status === 'PENDING_APPROVAL').length)}
-                    </strong>
+                    <strong className="font-mono">{toPersianDigits(pendingTransfersCount)}</strong>
                   </span>
                 </div>
               </button>
 
               {expandedGroups.transfers_group && (
-                <div className="divide-y divide-[#e5e5e5]">
-                  {transfers.slice(0, 6).map(tr => (
-                    <div
-                      key={tr.id}
-                      className="pr-9 pl-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#e5f3fa]/40"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <ArrowRightLeft className="w-4 h-4 text-[#007cc0] shrink-0" />
-                        <div>
-                          <div className="font-semibold text-[#333333] flex items-center gap-1.5 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => router.traceDocument(tr.transferNumber, 'WIP_TRACEABILITY')}
-                              className="sap-doc-link font-mono cursor-pointer"
-                            >
-                              {tr.transferNumber}
-                            </button>
-                            <span>— {tr.partName}</span>
-                            <button
-                              type="button"
-                              onClick={() => router.traceDocument(tr.moNumber, 'WIP_TRACEABILITY')}
-                              className="sap-doc-link font-mono text-[11px] cursor-pointer"
-                            >
-                              ({tr.moNumber})
-                            </button>
+                <div className="divide-y divide-[var(--fiori-border-subtle)]">
+                  {transfers.length === 0 ? (
+                    <div className="p-5">
+                      <EmptyState
+                        compact
+                        title="حواله انتقالی ثبت نشده است"
+                        description="پس از ثبت تولید سالم در هر ایستگاه، می‌توانید از دکمه «انتقال به بعد» حواله صادر کنید."
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      {transfers.slice(0, 6).map(tr => (
+                        <div
+                          key={tr.id}
+                          className="pr-8 pl-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[var(--fiori-bg-hover)] transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <ArrowRightLeft className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
+                            <div className="min-w-0">
+                              <div className="font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1.5 flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => router.traceDocument(tr.transferNumber, 'WIP_TRACEABILITY')}
+                                  className="sap-doc-link fiori-ltr-code font-mono font-bold cursor-pointer"
+                                >
+                                  {tr.transferNumber}
+                                </button>
+                                <span>— {tr.partName}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => router.traceDocument(tr.moNumber, 'WIP_TRACEABILITY')}
+                                  className="sap-doc-link fiori-ltr-code font-mono text-[11px] cursor-pointer"
+                                >
+                                  ({tr.moNumber})
+                                </button>
+                              </div>
+                              <div className="text-[11px] text-[var(--fiori-text-secondary)] mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                <span>از {tr.fromStepName}</span>
+                                <ChevronLeft className="w-3 h-3 text-[var(--fiori-text-muted)]" />
+                                <span>به {tr.toStepName}</span>
+                                <span>• تعداد:</span>
+                                <strong className="font-mono text-[var(--fiori-text-primary)] tabular-nums">
+                                  {formatNumber(tr.quantity)} عدد
+                                </strong>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-[11px] text-[#666666] mt-0.5">
-                            از {tr.fromStepName} به {tr.toStepName} • تعداد:{' '}
-                            <strong className="font-mono text-[#333333] tabular-nums">
-                              {formatNumber(tr.quantity)} عدد
-                            </strong>
+
+                          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                            <FioriObjectStatus
+                              size="sm"
+                              tone={
+                                tr.status === 'APPROVED'
+                                  ? 'positive'
+                                  : tr.status === 'REJECTED'
+                                  ? 'negative'
+                                  : 'critical'
+                              }
+                              label={
+                                tr.status === 'APPROVED'
+                                  ? 'تحویل‌گرفته در ایستگاه مقصد'
+                                  : tr.status === 'REJECTED'
+                                  ? 'رد شده'
+                                  : 'در انتظار تایید دریافت'
+                              }
+                            />
+                            {tr.status === 'PENDING_APPROVAL' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  requestConfirm({
+                                    title: `تأیید دریافت حواله انتقال ${tr.transferNumber}`,
+                                    message: `آیا دریافت ${formatNumber(tr.quantity)} عدد «${tr.partName}» از «${tr.fromStepName}» به «${tr.toStepName}» را تأیید می‌کنید؟`,
+                                    confirmLabel: 'تأیید دریافت',
+                                    variant: 'emerald',
+                                    onConfirm: async () => {
+                                      await handleApproveTransfer(tr.id);
+                                    },
+                                  });
+                                }}
+                                className="fiori-btn-positive px-2.5 py-1 text-[11px]"
+                              >
+                                تایید دریافت
+                              </button>
+                            )}
                           </div>
                         </div>
-                      </div>
+                      ))}
 
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        <FioriObjectStatus
-                          tone={
-                            tr.status === 'APPROVED'
-                              ? 'positive'
-                              : tr.status === 'REJECTED'
-                              ? 'negative'
-                              : 'critical'
-                          }
-                          label={
-                            tr.status === 'APPROVED'
-                              ? 'تحویل‌گرفته در ایستگاه مقصد'
-                              : tr.status === 'REJECTED'
-                              ? 'رد شده'
-                              : 'در انتظار تایید دریافت'
-                          }
-                        />
-                        {tr.status === 'PENDING_APPROVAL' && (
+                      {transfers.length > 6 && (
+                        <div className="px-4 py-2 bg-[var(--fiori-bg-subtle)] flex items-center justify-between text-[11px] text-[var(--fiori-text-secondary)]">
+                          <span>
+                            نمایش ۶ حواله اخیر از مجموع {toPersianDigits(transfers.length)} حواله انتقال
+                          </span>
                           <button
                             type="button"
-                            onClick={() => {
-                              requestConfirm({
-                                title: `تأیید دریافت حواله انتقال ${tr.transferNumber}`,
-                                message: `آیا دریافت ${formatNumber(tr.quantity)} عدد «${tr.partName}» از «${tr.fromStepName}» به «${tr.toStepName}» را تأیید می‌کنید؟`,
-                                confirmLabel: 'تأیید دریافت',
-                                variant: 'emerald',
-                                onConfirm: async () => {
-                                  await handleApproveTransfer(tr.id);
-                                },
-                              });
-                            }}
-                            className="px-2.5 py-0.5 rounded bg-[#107e3e] hover:bg-[#0d6832] text-white text-[11px] font-semibold cursor-pointer whitespace-nowrap shrink-0"
+                            onClick={() => handleChangeView('TRANSFERS')}
+                            className="sap-doc-link font-semibold cursor-pointer"
                           >
-                            تایید دریافت
+                            مشاهده همه حواله‌ها
                           </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -1981,7 +2311,18 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
         </div>
       )}
 
-      {/* Specific Filtered Views when chosen from the View Dropdown */}
+      {/* Secondary Hall Distribution Chart placed below primary operational directory on UNIFIED_DIRECTORY */}
+      {!loading && activeView === 'UNIFIED_DIRECTORY' && (
+        <WipHallMoDistributionChart
+          orders={orders}
+          machines={machines}
+          halls={halls}
+          activeStatusFilter={statusFilter}
+          onSelectStatusFilter={setStatusFilter}
+        />
+      )}
+
+      {/* Specific Filtered Views when chosen from IconTabBar */}
       {activeView === 'DASHBOARD' && (
         <WipDashboardView
           metrics={metrics}
@@ -2023,6 +2364,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
         <InterOperationTransfersView
           transfers={transfers}
           loading={loading}
+          embeddedInParent
           onRefresh={loadWipData}
           onApproveTransfer={handleApproveTransfer}
           onRejectTransfer={handleRejectTransfer}
@@ -2125,12 +2467,12 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
               <label className="block text-[var(--fiori-text-primary)] font-semibold mb-1">
                 منبع موجودی انبار / کلاف <span className="text-[var(--fiori-negative)]">*</span>
               </label>
-              <select
+                <select
                 required
                 value={loadMatSourceBalanceId}
                 onChange={e => setLoadMatSourceBalanceId(e.target.value)}
                 disabled={materialSourcesLoading}
-                className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs focus:outline-none focus:border-[var(--fiori-border-focus)]"
+                className="fiori-input"
               >
                 <option value="">
                   {materialSourcesLoading ? 'در حال بارگذاری منابع موجودی انبار...' : '-- انتخاب منبع موجودی آزاد از انبار --'}
@@ -2155,7 +2497,8 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                 required
                 value={loadMatQty || ''}
                 onChange={e => setLoadMatQty(Math.max(0, Number(e.target.value)))}
-                className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs font-mono tabular-nums focus:outline-none focus:border-[var(--fiori-border-focus)]"
+                className="fiori-input font-mono tabular-nums"
+                dir="ltr"
               />
             </div>
 
@@ -2168,7 +2511,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                 value={loadMatNotes}
                 onChange={e => setLoadMatNotes(e.target.value)}
                 placeholder="مثال: بارگذاری بلنک برش‌خورده از کلاف COIL-ECU-001"
-                className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-2.5 py-1.5 text-xs focus:outline-none focus:border-[var(--fiori-border-focus)]"
+                className="fiori-input"
               />
             </div>
           </form>
@@ -2195,7 +2538,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
               type="button"
               disabled={rollbackSubmitting}
               onClick={() => setRollbackModalTarget(null)}
-              className="sap-btn-standard text-xs px-3.5 py-1.5 cursor-pointer"
+              className="sap-btn-standard text-xs px-3.5 py-1.5"
             >
               انصراف
             </button>
@@ -2208,7 +2551,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                 !rollbackPreview?.canRollback ||
                 rollbackReason.trim().length < 3
               }
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-negative)] hover:opacity-90 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+              className="fiori-btn-danger inline-flex items-center gap-1.5 px-4 py-1.5 text-xs"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>
@@ -2368,7 +2711,7 @@ export const ProductionWipModuleView: React.FC<ProductionWipModuleViewProps> = (
                   value={rollbackReason}
                   onChange={e => setRollbackReason(e.target.value)}
                   placeholder="مثال: اشتباه در تیراژ ابلاغی یا لغو برنامه برش توسط مشتری..."
-                  className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-3 py-2 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-border-focus)]"
+                  className="fiori-input"
                 />
               </form>
             </>

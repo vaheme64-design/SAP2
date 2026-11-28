@@ -38,7 +38,7 @@ function classifyMoStatus(mo: ManufacturingOrder): 'IN_PROGRESS' | 'STOPPED' | '
   const st = String(mo.status || '').toUpperCase();
   if (st === 'COMPLETED') return 'COMPLETED';
   if (st === 'IN_PROGRESS' || st === 'RELEASED') return 'IN_PROGRESS';
-  return 'STOPPED'; // PLANNED, ON_HOLD, CANCELLED, STOPPED
+  return 'STOPPED';
 }
 
 function computeMoProgressPct(mo: ManufacturingOrder): number {
@@ -101,7 +101,6 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
 
     const hallMap = new Map<string, HallDistributionRow>();
 
-    // Pre-populate configured factory halls so empty halls are also visible in the unified chart
     halls.forEach(h => {
       const hallMachines = machines.filter(
         m => m.hallId === h.id || (h.name && m.location === h.name)
@@ -209,7 +208,6 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
     };
   }, [orders, machines, halls]);
 
-  // SVG Donut Geometry
   const radius = 44;
   const circumference = 2 * Math.PI * radius;
   const safeTotal = Math.max(totals.all, 1);
@@ -230,8 +228,7 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
       label: 'در حال انجام',
       count: totals.inProgress,
       pct: inProgressPct,
-      color: '#007cc0',
-      textClass: 'text-[#007cc0]',
+      textClass: 'text-[var(--fiori-brand)]',
       icon: PlayCircle,
     },
     {
@@ -240,8 +237,7 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
       label: 'متوقف / منتظر شروع',
       count: totals.stopped,
       pct: stoppedPct,
-      color: '#e9730c',
-      textClass: 'text-[#e9730c]',
+      textClass: 'text-[var(--fiori-critical)]',
       icon: PauseCircle,
     },
     {
@@ -250,48 +246,53 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
       label: 'تکمیل‌شده',
       count: totals.completed,
       pct: completedPct,
-      color: '#107e3e',
-      textClass: 'text-[#107e3e]',
+      textClass: 'text-[var(--fiori-positive)]',
       icon: CheckCircle2,
     },
   ];
 
   return (
-    <section className="bg-white border border-[#d9d9d9] rounded-md overflow-hidden" dir="rtl">
+    <section
+      className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-hidden"
+      dir="rtl"
+    >
       {/* Header */}
-      <div className="px-4 py-2 bg-[#fafbfc] border-b border-[#e5e8ec] flex flex-wrap items-center justify-between gap-2">
+      <div className="px-4 py-2.5 bg-[var(--fiori-bg-subtle)] border-b border-[var(--fiori-border-subtle)] flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <BarChart3 className="w-4 h-4 text-[#007cc0] shrink-0" />
+          <BarChart3 className="w-4 h-4 text-[var(--fiori-brand)] shrink-0" />
           <div className="min-w-0">
-            <h2 className="text-xs font-bold text-[#1d2d3e] truncate">
+            <h2 className="text-xs font-bold text-[var(--fiori-text-primary)] truncate">
               نمودار توزیع وضعیت دستورات ساخت (MO) در سالن‌های تولید
             </h2>
-            <p className="text-[11px] text-[#556b82] truncate">
-              نمایش بصری و یکپارچه دستورات در حال انجام، متوقف/منتظر و تکمیل‌شده به تفکیک هر سالن کارگاهی
+            <p className="text-[11px] text-[var(--fiori-text-secondary)] truncate">
+              توزیع دستورات در حال انجام، متوقف/منتظر و تکمیل‌شده به تفکیک هر سالن کارگاهی
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 text-[11px] shrink-0 tabular-nums flex-wrap">
-          <div className="flex items-center gap-2.5 text-[#556b82]">
+          <div className="flex items-center gap-2.5 text-[var(--fiori-text-secondary)]">
             <span className="inline-flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#007cc0] inline-block" />
-              در حال انجام: <strong className="font-mono text-[#007cc0]">{toPersianDigits(totals.inProgress)}</strong>
+              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--fiori-brand)] inline-block" />
+              در حال انجام:{' '}
+              <strong className="font-mono text-[var(--fiori-brand)]">{toPersianDigits(totals.inProgress)}</strong>
             </span>
             <span className="inline-flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#e9730c] inline-block" />
-              متوقف/منتظر: <strong className="font-mono text-[#e9730c]">{toPersianDigits(totals.stopped)}</strong>
+              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--fiori-critical)] inline-block" />
+              متوقف/منتظر:{' '}
+              <strong className="font-mono text-[var(--fiori-critical)]">{toPersianDigits(totals.stopped)}</strong>
             </span>
             <span className="inline-flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#107e3e] inline-block" />
-              تکمیل‌شده: <strong className="font-mono text-[#107e3e]">{toPersianDigits(totals.completed)}</strong>
+              <span className="w-2.5 h-2.5 rounded-xs bg-[var(--fiori-positive)] inline-block" />
+              تکمیل‌شده:{' '}
+              <strong className="font-mono text-[var(--fiori-positive)]">{toPersianDigits(totals.completed)}</strong>
             </span>
           </div>
 
           <button
             type="button"
             onClick={toggleOpen}
-            className="sap-btn-standard px-2 py-0.5 text-[11px] inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+            className="sap-btn-standard px-2.5 py-1 text-[11px] inline-flex items-center gap-1 whitespace-nowrap"
           >
             <span>{isOpen ? 'بستن نمودار' : 'باز کردن نمودار'}</span>
             {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -299,41 +300,42 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
         </div>
       </div>
 
-      {/* At-a-Glance Inline Proportional Bar when collapsed */}
+      {/* Collapsed Proportional Bar */}
       {!isOpen && (
-        <div className="px-4 py-2 bg-[#fcfcfd] flex flex-wrap items-center justify-between gap-3 text-[11px] tabular-nums">
+        <div className="px-4 py-2 bg-[var(--fiori-bg-surface)] flex flex-wrap items-center justify-between gap-3 text-[11px] tabular-nums">
           <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-            <span className="text-[#556b82] whitespace-nowrap">
+            <span className="text-[var(--fiori-text-secondary)] whitespace-nowrap">
               نمای کلی ({toPersianDigits(totals.all)} MO در {toPersianDigits(hallRows.length)} سالن):
             </span>
-            <div className="flex-1 h-2 bg-[#eef1f4] rounded-full overflow-hidden flex">
+            <div className="flex-1 h-2 bg-[var(--fiori-border-subtle)] rounded-full overflow-hidden flex">
               {totals.inProgress > 0 && (
                 <div
-                  className="h-full bg-[#007cc0]"
+                  className="h-full bg-[var(--fiori-brand)]"
                   style={{ width: `${inProgressPct}%` }}
                   title={`در حال انجام: ${totals.inProgress}`}
                 />
               )}
               {totals.stopped > 0 && (
                 <div
-                  className="h-full bg-[#e9730c]"
+                  className="h-full bg-[var(--fiori-critical)]"
                   style={{ width: `${stoppedPct}%` }}
                   title={`متوقف/منتظر: ${totals.stopped}`}
                 />
               )}
               {totals.completed > 0 && (
                 <div
-                  className="h-full bg-[#107e3e]"
+                  className="h-full bg-[var(--fiori-positive)]"
                   style={{ width: `${completedPct}%` }}
                   title={`تکمیل‌شده: ${totals.completed}`}
                 />
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2.5 text-[#556b82] font-mono">
+          <div className="flex items-center gap-2.5 text-[var(--fiori-text-secondary)] font-mono">
             {hallRows.slice(0, 3).map(h => (
               <span key={h.hallKey} className="font-sans whitespace-nowrap">
-                {h.hallName}: <strong className="font-mono text-[#1d2d3e]">{toPersianDigits(h.total)}</strong>
+                {h.hallName}:{' '}
+                <strong className="font-mono text-[var(--fiori-text-primary)]">{toPersianDigits(h.total)}</strong>
               </span>
             ))}
           </div>
@@ -342,29 +344,32 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
 
       {isOpen && (
         <div className="p-4 grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
-          {/* Right: Overall Status Distribution Donut Chart + Interactive Legend */}
-          <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-row items-center gap-4 lg:border-l lg:border-[#eaeef2] lg:pl-4">
+          {/* Overall Status Donut + Interactive Legend */}
+          <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-row items-center gap-4 lg:border-l lg:border-[var(--fiori-border-subtle)] lg:pl-4">
             <div className="relative w-28 h-28 shrink-0">
-              <svg viewBox="0 0 110 110" className="w-full h-full -rotate-90" role="img" aria-label="نمودار دایره‌ای وضعیت دستورات ساخت">
-                {/* Track */}
+              <svg
+                viewBox="0 0 110 110"
+                className="w-full h-full -rotate-90"
+                role="img"
+                aria-label="نمودار دایره‌ای وضعیت دستورات ساخت"
+              >
                 <circle
                   cx="55"
                   cy="55"
                   r={radius}
                   fill="none"
-                  stroke="#eef1f4"
+                  stroke="var(--fiori-border-subtle)"
                   strokeWidth="12"
                 />
                 {totals.all > 0 && (
                   <>
-                    {/* In Progress */}
                     {totals.inProgress > 0 && (
                       <circle
                         cx="55"
                         cy="55"
                         r={radius}
                         fill="none"
-                        stroke="#007cc0"
+                        stroke="var(--fiori-brand)"
                         strokeWidth={hoveredSegment === 'IN_PROGRESS' ? 14 : 12}
                         strokeDasharray={`${inProgressLen} ${circumference}`}
                         strokeDashoffset={0}
@@ -378,14 +383,13 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
                         }
                       />
                     )}
-                    {/* Stopped / Waiting */}
                     {totals.stopped > 0 && (
                       <circle
                         cx="55"
                         cy="55"
                         r={radius}
                         fill="none"
-                        stroke="#e9730c"
+                        stroke="var(--fiori-critical)"
                         strokeWidth={hoveredSegment === 'STOPPED' ? 14 : 12}
                         strokeDasharray={`${stoppedLen} ${circumference}`}
                         strokeDashoffset={-inProgressLen}
@@ -399,14 +403,13 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
                         }
                       />
                     )}
-                    {/* Completed */}
                     {totals.completed > 0 && (
                       <circle
                         cx="55"
                         cy="55"
                         r={radius}
                         fill="none"
-                        stroke="#107e3e"
+                        stroke="var(--fiori-positive)"
                         strokeWidth={hoveredSegment === 'COMPLETED' ? 14 : 12}
                         strokeDasharray={`${completedLen} ${circumference}`}
                         strokeDashoffset={-(inProgressLen + stoppedLen)}
@@ -424,10 +427,10 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
                 )}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none tabular-nums">
-                <span className="text-xl font-bold font-mono text-[#1d2d3e] leading-none">
+                <span className="text-xl font-bold font-mono text-[var(--fiori-text-primary)] leading-none">
                   {toPersianDigits(totals.all)}
                 </span>
-                <span className="text-[10px] text-[#556b82] mt-0.5">کل MO</span>
+                <span className="text-[10px] text-[var(--fiori-text-secondary)] mt-0.5">کل MO</span>
               </div>
             </div>
 
@@ -444,19 +447,23 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
                     onClick={() =>
                       onSelectStatusFilter?.(isActive ? 'ALL' : item.filterValue)
                     }
-                    className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded border text-xs transition-colors cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--fiori-radius-sm)] border text-xs transition-colors cursor-pointer ${
                       isActive
-                        ? 'bg-[#e8f3fc] border-[#007cc0]'
-                        : 'bg-[#fafbfc] border-[#ebeff3] hover:bg-[#f2f6fa]'
+                        ? 'bg-[var(--fiori-brand-light)] border-[var(--fiori-brand)]'
+                        : 'bg-[var(--fiori-bg-subtle)] border-[var(--fiori-border-subtle)] hover:bg-[var(--fiori-bg-hover)]'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <Icon className={`w-3.5 h-3.5 shrink-0 ${item.textClass}`} />
-                      <span className="font-semibold text-[#1d2d3e] truncate">{item.label}</span>
+                      <span className="font-semibold text-[var(--fiori-text-primary)] truncate">
+                        {item.label}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 font-mono">
                       <strong className={item.textClass}>{toPersianDigits(item.count)}</strong>
-                      <span className="text-[10px] text-[#556b82]">({toPersianDigits(item.pct)}٪)</span>
+                      <span className="text-[10px] text-[var(--fiori-text-secondary)]">
+                        ({toPersianDigits(item.pct)}٪)
+                      </span>
                     </div>
                   </button>
                 );
@@ -464,24 +471,25 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
             </div>
           </div>
 
-          {/* Left: Stacked Horizontal Bar Chart per Production Hall */}
+          {/* Stacked Horizontal Bar Chart per Production Hall */}
           <div className="lg:col-span-8 space-y-2.5">
-            <div className="flex items-center justify-between text-[11px] text-[#556b82]">
-              <span className="font-semibold text-[#1d2d3e] flex items-center gap-1.5">
-                <Factory className="w-3.5 h-3.5 text-[#007cc0]" />
+            <div className="flex items-center justify-between text-[11px] text-[var(--fiori-text-secondary)]">
+              <span className="font-semibold text-[var(--fiori-text-primary)] flex items-center gap-1.5">
+                <Factory className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
                 توزیع دستورات ساخت به تفکیک سالن تولید
               </span>
               <span>عرض هر نوار متناسب با تعداد کل دستورات سالن</span>
             </div>
 
             {hallRows.length === 0 ? (
-              <div className="py-6 text-center text-xs text-[#666666] bg-[#fafbfc] border border-[#eaeef2] rounded">
+              <div className="py-6 text-center text-xs text-[var(--fiori-text-secondary)] bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-subtle)] rounded-[var(--fiori-radius-sm)]">
                 هنوز دستور ساختی برای نمایش در سالن‌های تولید ثبت نشده است.
               </div>
             ) : (
               <div className="space-y-2.5">
                 {hallRows.map(row => {
-                  const barScalePct = row.total > 0 ? Math.max(12, Math.round((row.total / maxHallTotal) * 100)) : 0;
+                  const barScalePct =
+                    row.total > 0 ? Math.max(12, Math.round((row.total / maxHallTotal) * 100)) : 0;
                   const segInProg = row.total > 0 ? (row.inProgress / row.total) * 100 : 0;
                   const segStopped = row.total > 0 ? (row.stopped / row.total) * 100 : 0;
                   const segCompleted = row.total > 0 ? (row.completed / row.total) * 100 : 0;
@@ -490,30 +498,31 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
                     <div key={row.hallKey} className="space-y-1 tabular-nums">
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-bold text-[#1d2d3e] truncate">{row.hallName}</span>
+                          <span className="font-bold text-[var(--fiori-text-primary)] truncate">
+                            {row.hallName}
+                          </span>
                           {row.totalMachines > 0 && (
-                            <span className="text-[10px] text-[#556b82] font-mono">
+                            <span className="text-[10px] text-[var(--fiori-text-secondary)] font-mono">
                               ماشین‌آلات: {toPersianDigits(row.activeMachines)}/{toPersianDigits(row.totalMachines)}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2.5 text-[11px] text-[#556b82] font-mono">
+                        <div className="flex items-center gap-2.5 text-[11px] text-[var(--fiori-text-secondary)] font-mono">
                           <span>
-                            جمع: <strong className="text-[#1d2d3e]">{toPersianDigits(row.total)} MO</strong>
+                            جمع: <strong className="text-[var(--fiori-text-primary)]">{toPersianDigits(row.total)} MO</strong>
                           </span>
                           <span aria-hidden="true">·</span>
                           <span>
-                            WIP: <strong className="text-[#007cc0]">{formatNumber(row.wipQty)}</strong>
+                            WIP: <strong className="text-[var(--fiori-brand)]">{formatNumber(row.wipQty)}</strong>
                           </span>
                           <span aria-hidden="true">·</span>
                           <span>
-                            پیشرفت: <strong className="text-[#107e3e]">{toPersianDigits(row.avgProgressPct)}٪</strong>
+                            پیشرفت: <strong className="text-[var(--fiori-positive)]">{toPersianDigits(row.avgProgressPct)}٪</strong>
                           </span>
                         </div>
                       </div>
 
-                      {/* Stacked Proportional Bar */}
-                      <div className="w-full h-5 bg-[#f0f3f6] rounded overflow-hidden flex items-center">
+                      <div className="w-full h-5 bg-[var(--fiori-border-subtle)] rounded-[var(--fiori-radius-sm)] overflow-hidden flex items-center">
                         {row.total > 0 ? (
                           <div
                             className="h-full flex overflow-hidden transition-all duration-300"
@@ -522,7 +531,7 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
                             {row.inProgress > 0 && (
                               <div
                                 style={{ width: `${segInProg}%` }}
-                                className="h-full bg-[#007cc0] text-white text-[10px] font-mono font-bold flex items-center justify-center px-1 truncate"
+                                className="h-full bg-[var(--fiori-brand)] text-white text-[10px] font-mono font-bold flex items-center justify-center px-1 truncate"
                                 title={`در حال انجام: ${row.inProgress} دستور`}
                               >
                                 {toPersianDigits(row.inProgress)}
@@ -531,7 +540,7 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
                             {row.stopped > 0 && (
                               <div
                                 style={{ width: `${segStopped}%` }}
-                                className="h-full bg-[#e9730c] text-white text-[10px] font-mono font-bold flex items-center justify-center px-1 truncate"
+                                className="h-full bg-[var(--fiori-critical)] text-white text-[10px] font-mono font-bold flex items-center justify-center px-1 truncate"
                                 title={`متوقف / منتظر شروع: ${row.stopped} دستور`}
                               >
                                 {toPersianDigits(row.stopped)}
@@ -540,7 +549,7 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
                             {row.completed > 0 && (
                               <div
                                 style={{ width: `${segCompleted}%` }}
-                                className="h-full bg-[#107e3e] text-white text-[10px] font-mono font-bold flex items-center justify-center px-1 truncate"
+                                className="h-full bg-[var(--fiori-positive)] text-white text-[10px] font-mono font-bold flex items-center justify-center px-1 truncate"
                                 title={`تکمیل‌شده: ${row.completed} دستور`}
                               >
                                 {toPersianDigits(row.completed)}
@@ -548,7 +557,9 @@ export const WipHallMoDistributionChart: React.FC<WipHallMoDistributionChartProp
                             )}
                           </div>
                         ) : (
-                          <span className="text-[10px] text-[#888888] px-2">بدون دستور فعال در این سالن</span>
+                          <span className="text-[10px] text-[var(--fiori-text-muted)] px-2">
+                            بدون دستور فعال در این سالن
+                          </span>
                         )}
                       </div>
                     </div>

@@ -1,22 +1,14 @@
 import React, { useState } from 'react';
-import {
-  ArrowRightLeft,
-  Search,
-  XCircle,
-} from 'lucide-react';
+import { ArrowRightLeft, XCircle } from 'lucide-react';
 import { WipTransfer } from '../../types/productionWip';
-import {
-  formatNumber,
-  toPersianDigits,
-  formatDateTime,
-} from '../../utils/formatters';
-import { TableSkeleton } from '../ui/Skeleton';
+import { formatNumber, toPersianDigits, formatDateTime } from '../../utils/formatters';
 import { useErpRouter } from '../../context/RouterContext';
 import { useEnterpriseUx } from '../../context/EnterpriseUxContext';
 import {
   FioriDataTable,
   FioriDialog,
   FioriDynamicPage,
+  FioriFilterBar,
   FioriMessageStrip,
   FioriObjectStatus,
   FioriTableColumn,
@@ -30,6 +22,7 @@ interface InterOperationTransfersViewProps {
   onRefresh: () => Promise<void>;
   onApproveTransfer: (transferId: string, notes?: string) => Promise<{ success: boolean; error?: string }>;
   onRejectTransfer: (transferId: string, reason: string) => Promise<{ success: boolean; error?: string }>;
+  embeddedInParent?: boolean;
 }
 
 export const InterOperationTransfersView: React.FC<InterOperationTransfersViewProps> = ({
@@ -37,6 +30,7 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
   loading,
   onApproveTransfer,
   onRejectTransfer,
+  embeddedInParent = false,
 }) => {
   const { traceDocument } = useErpRouter();
   const { requestConfirm } = useEnterpriseUx();
@@ -46,10 +40,6 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  if (loading && transfers.length === 0) {
-    return <TableSkeleton rows={5} columns={6} theme="light" />;
-  }
 
   const filteredTransfers = transfers.filter(trf => {
     if (statusFilter !== 'ALL' && trf.status !== statusFilter) return false;
@@ -112,7 +102,14 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
   };
 
   const pendingCount = transfers.filter(t => t.status === 'PENDING_APPROVAL').length;
+  const approvedCount = transfers.filter(t => t.status === 'APPROVED').length;
+  const rejectedCount = transfers.filter(t => t.status === 'REJECTED').length;
   const activeFiltersCount = (statusFilter !== 'ALL' ? 1 : 0) + (searchTerm.trim() ? 1 : 0);
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('ALL');
+  };
 
   const columns: FioriTableColumn<WipTransfer>[] = [
     {
@@ -166,24 +163,28 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
       header: 'ایستگاه مبدأ',
       render: trf => (
         <div>
-          <div className="text-[var(--fiori-text-primary)]">{trf.fromStepName}</div>
-          <div className="fiori-ltr-code font-mono text-[10px] text-[var(--fiori-text-secondary)]">{trf.fromLocation}</div>
+          <div className="text-[var(--fiori-text-primary)] font-medium">{trf.fromStepName}</div>
+          <div className="fiori-ltr-code font-mono text-[10px] text-[var(--fiori-text-secondary)]">
+            {trf.fromLocation}
+          </div>
         </div>
       ),
     },
     {
       key: 'toStepName',
-      header: 'ایستگاه یا انبار مقصد',
+      header: 'ایستگاه / انبار مقصد',
       render: trf => (
         <div>
-          <div className="text-[var(--fiori-text-primary)]">{trf.toStepName}</div>
-          <div className="fiori-ltr-code font-mono text-[10px] text-[var(--fiori-text-secondary)]">{trf.toLocation}</div>
+          <div className="text-[var(--fiori-text-primary)] font-medium">{trf.toStepName}</div>
+          <div className="fiori-ltr-code font-mono text-[10px] text-[var(--fiori-text-secondary)]">
+            {trf.toLocation}
+          </div>
         </div>
       ),
     },
     {
       key: 'quantity',
-      header: 'تعداد (PCS)',
+      header: 'تعداد (عدد)',
       align: 'left',
       isMono: true,
       render: trf => (
@@ -206,10 +207,10 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
           }
           label={
             trf.status === 'APPROVED'
-              ? 'تحویل‌گرفته‌شده (قطعی)'
+              ? 'تحویل‌گرفته‌شده'
               : trf.status === 'REJECTED'
               ? 'ردشده و عودت به مبدأ'
-              : 'در حال انتقال (در انتظار تأیید)'
+              : 'در انتظار تأیید مقصد'
           }
           size="sm"
         />
@@ -220,7 +221,7 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
       header: 'زمان ارسال',
       isMono: true,
       render: trf => (
-        <span className="text-[var(--fiori-text-secondary)] font-mono text-[11px] tabular-nums">
+        <span className="fiori-ltr-code text-[var(--fiori-text-secondary)] font-mono text-[11px] tabular-nums">
           {formatDateTime(trf.dispatchedAt)}
         </span>
       ),
@@ -236,7 +237,7 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
               type="button"
               onClick={() => handleApprove(trf)}
               disabled={actionLoading}
-              className="px-2.5 py-1 bg-[var(--fiori-positive)] hover:opacity-90 text-white rounded-[var(--fiori-radius-sm)] text-[11px] font-bold transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
+              className="fiori-btn-positive px-2.5 py-1 text-[11px]"
               title="تأیید رسید و افزودن به صف ورودی مقصد"
             >
               تأیید تحویل
@@ -248,7 +249,7 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
                 setRejectReason('');
               }}
               disabled={actionLoading}
-              className="px-2 py-1 bg-[var(--fiori-negative-bg)] hover:opacity-90 text-[var(--fiori-negative)] border border-[var(--fiori-negative-border)] rounded-[var(--fiori-radius-sm)] text-[11px] font-medium transition-all cursor-pointer disabled:opacity-50"
+              className="fiori-btn-danger-outline px-2 py-1 text-[11px]"
               title="رد محموله و بازگشت به مبدأ"
             >
               رد
@@ -266,95 +267,74 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
     },
   ];
 
-  return (
-    <FioriDynamicPage
-      title="حواله‌های انتقال و ردیابی بین‌مراحل"
-      subtitle="ردیابی دقیق محموله‌های در حال جابجایی بین سالن‌ها و ایستگاه‌های پرس، جوشکاری، رنگ و مونتاژ"
-      status={
-        pendingCount > 0 ? (
-          <FioriObjectStatus
-            tone="critical"
-            label={`${toPersianDigits(pendingCount)} حواله در انتظار تأیید`}
-            size="sm"
+  const filterBarNode = (
+    <FioriFilterBar
+      searchValue={searchTerm}
+      onSearchChange={setSearchTerm}
+      searchPlaceholder="جستجوی شماره حواله، دستور کار، نام یا کد قطعه، ایستگاه..."
+      segments={[
+        { id: 'ALL', label: 'همه', count: transfers.length },
+        { id: 'PENDING_APPROVAL', label: 'در انتظار تأیید', count: pendingCount },
+        { id: 'APPROVED', label: 'تحویل قطعی', count: approvedCount },
+        { id: 'REJECTED', label: 'ردشده', count: rejectedCount },
+      ]}
+      activeSegment={statusFilter}
+      onSegmentChange={setStatusFilter}
+      hasActiveFilters={activeFiltersCount > 0}
+      onReset={resetFilters}
+    />
+  );
+
+  const mainBody = (
+    <div className="space-y-3">
+      {embeddedInParent && (
+        <div className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] p-3">
+          {filterBarNode}
+        </div>
+      )}
+
+      {errorMsg && (
+        <FioriMessageStrip tone="error" title="خطای عملیات انتقال" onClose={() => setErrorMsg(null)}>
+          {errorMsg}
+        </FioriMessageStrip>
+      )}
+
+      <FioriDataTable
+        columns={columns}
+        data={filteredTransfers}
+        rowKey={trf => trf.id}
+        loading={loading && transfers.length === 0}
+        loadingRows={5}
+        compact
+        toolbar={
+          <FioriToolbar
+            variant="table"
+            title="فهرست حواله‌های انتقال بین مراحل"
+            startContent={<ArrowRightLeft className="w-4 h-4 text-[var(--fiori-brand)]" />}
+            count={filteredTransfers.length}
+            countLabel="حواله"
+            endContent={
+              pendingCount > 0 ? (
+                <FioriObjectStatus
+                  tone="critical"
+                  label={`${toPersianDigits(pendingCount)} حواله در انتظار تأیید`}
+                  size="sm"
+                />
+              ) : (
+                <FioriObjectStatus tone="positive" label="بدون حواله معلق" size="sm" />
+              )
+            }
           />
-        ) : (
-          <FioriObjectStatus tone="positive" label="بدون حواله معلق" size="sm" />
-        )
-      }
-      headerActions={
-        <div className="text-xs text-[var(--fiori-text-secondary)] tabular-nums">
-          کل حواله‌ها: <strong className="text-[var(--fiori-text-primary)] font-mono">{toPersianDigits(transfers.length)}</strong>
-        </div>
-      }
-      filterBar={
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[240px] flex-1">
-            <Search className="w-4 h-4 text-[var(--fiori-text-muted)] absolute right-3 top-2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="جستجوی شماره حواله، دستور کار، نام قطعه یا مرحله..."
-              className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] pr-9 pl-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
-            />
-          </div>
-
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] px-3 py-1.5 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
-          >
-            <option value="ALL">همه وضعیت‌ها</option>
-            <option value="PENDING_APPROVAL">در انتظار تحویل در مقصد (Pending)</option>
-            <option value="APPROVED">تحویل قطعی شده (Approved)</option>
-            <option value="REJECTED">ردشده (Rejected)</option>
-          </select>
-        </div>
-      }
-      activeFiltersCount={activeFiltersCount}
-      onResetFilters={() => {
-        setSearchTerm('');
-        setStatusFilter('ALL');
-      }}
-    >
-      <div className="space-y-4">
-        {errorMsg && (
-          <FioriMessageStrip tone="error" title="خطای عملیات انتقال" onClose={() => setErrorMsg(null)}>
-            {errorMsg}
-          </FioriMessageStrip>
-        )}
-
-        <FioriDataTable
-          columns={columns}
-          data={filteredTransfers}
-          rowKey={trf => trf.id}
-          toolbar={
-            <FioriToolbar
-              variant="table"
-              title="فهرست حواله‌های انتقال بین مراحل"
-              startContent={<ArrowRightLeft className="w-4 h-4 text-[var(--fiori-brand)]" />}
-              count={filteredTransfers.length}
-              countLabel="حواله"
-            />
-          }
-          emptyState={
-            <EmptyState
-              title="حواله‌ای یافت نشد"
-              description="فیلترهای جستجو را تغییر دهید یا حواله انتقال جدیدی صادر کنید."
-              actionLabel={activeFiltersCount > 0 ? 'بازنشانی فیلترها' : undefined}
-              onAction={
-                activeFiltersCount > 0
-                  ? () => {
-                      setSearchTerm('');
-                      setStatusFilter('ALL');
-                    }
-                  : undefined
-              }
-            />
-          }
-          compact
-        />
-      </div>
+        }
+        emptyState={
+          <EmptyState
+            title="حواله‌ای یافت نشد"
+            description="فیلترهای جستجو را تغییر دهید یا از لیست عملیات دستور کار حواله انتقال جدیدی صادر کنید."
+            actionLabel={activeFiltersCount > 0 ? 'بازنشانی فیلترها' : undefined}
+            onAction={activeFiltersCount > 0 ? resetFilters : undefined}
+          />
+        }
+      />
 
       {/* Reject Confirmation Dialog */}
       <FioriDialog
@@ -377,7 +357,7 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
               type="button"
               onClick={handleConfirmReject}
               disabled={actionLoading || !rejectReason.trim()}
-              className="px-3.5 py-1.5 bg-[var(--fiori-negative)] hover:opacity-90 text-white rounded-[var(--fiori-radius-sm)] text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              className="fiori-btn-danger px-3.5 py-1.5 text-xs"
             >
               تأیید رد و عودت
             </button>
@@ -398,12 +378,46 @@ export const InterOperationTransfersView: React.FC<InterOperationTransfersViewPr
               onChange={e => setRejectReason(e.target.value)}
               placeholder="مثال: مغایرت در تعداد شمارش، پلیسه روی لبه، عدم تطابق پالت..."
               rows={3}
-              className="w-full bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-input)] rounded-[var(--fiori-radius-sm)] p-2 text-xs text-[var(--fiori-text-primary)] focus:outline-none focus:border-[var(--fiori-brand)]"
+              className="fiori-input"
             />
           </div>
         </div>
       </FioriDialog>
+    </div>
+  );
+
+  if (embeddedInParent) {
+    return mainBody;
+  }
+
+  return (
+    <FioriDynamicPage
+      title="حواله‌های انتقال و ردیابی بین‌مراحل"
+      subtitle="ردیابی دقیق محموله‌های در حال جابجایی بین سالن‌ها و ایستگاه‌های پرس، جوشکاری، رنگ و مونتاژ"
+      status={
+        pendingCount > 0 ? (
+          <FioriObjectStatus
+            tone="critical"
+            label={`${toPersianDigits(pendingCount)} حواله در انتظار تأیید`}
+            size="sm"
+          />
+        ) : (
+          <FioriObjectStatus tone="positive" label="بدون حواله معلق" size="sm" />
+        )
+      }
+      headerActions={
+        <div className="text-xs text-[var(--fiori-text-secondary)] tabular-nums">
+          کل حواله‌ها:{' '}
+          <strong className="text-[var(--fiori-text-primary)] font-mono">
+            {toPersianDigits(transfers.length)}
+          </strong>
+        </div>
+      }
+      filterBar={filterBarNode}
+      activeFiltersCount={activeFiltersCount}
+      onResetFilters={resetFilters}
+    >
+      {mainBody}
     </FioriDynamicPage>
   );
 };
-

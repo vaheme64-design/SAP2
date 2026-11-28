@@ -6,8 +6,10 @@ import {
   ChevronRight,
   ChevronLeft,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { toPersianDigits } from '../../../utils/formatters';
+import { FioriMessageStrip } from './FioriMessageStrip';
 
 export interface FioriTableColumn<T> {
   key: string;
@@ -40,7 +42,12 @@ export interface FioriDataTableProps<T> {
   rowKey: (row: T, index: number) => string;
   onRowClick?: (row: T) => void;
   rowClassName?: (row: T, index: number) => string;
+  expandedRowKeys?: Record<string, boolean>;
+  renderExpandedRow?: (row: T, index: number) => React.ReactNode;
   loading?: boolean;
+  loadingRows?: number;
+  error?: string | null;
+  onRetry?: () => void;
   emptyState?: React.ReactNode;
   toolbar?: React.ReactNode;
   sortKey?: string;
@@ -74,7 +81,12 @@ export function FioriDataTable<T>({
   rowKey,
   onRowClick,
   rowClassName,
+  expandedRowKeys,
+  renderExpandedRow,
   loading = false,
+  loadingRows = 5,
+  error = null,
+  onRetry,
   emptyState,
   toolbar,
   sortKey: controlledSortKey,
@@ -153,12 +165,35 @@ export function FioriDataTable<T>({
     >
       {toolbar}
 
+      {error && (
+        <div className="p-3 bg-[var(--fiori-bg-surface)] border-b border-[var(--fiori-border-subtle)]">
+          <FioriMessageStrip
+            tone="error"
+            title="خطا در بارگذاری اطلاعات جدول"
+            actions={
+              onRetry && (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="sap-btn-standard px-2.5 py-1 text-[11px] inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>تلاش مجدد</span>
+                </button>
+              )
+            }
+          >
+            {error}
+          </FioriMessageStrip>
+        </div>
+      )}
+
       <div className="relative overflow-x-auto">
-        {loading && (
-          <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-center bg-white/75 backdrop-blur-[1px] py-2 border-b border-[var(--fiori-border-subtle)]">
+        {loading && sortedData.length > 0 && (
+          <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-[1px] py-1.5 border-b border-[var(--fiori-border-subtle)]">
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--fiori-brand)]">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>در حال بارگذاری اطلاعات...</span>
+              <span>در حال بروزرسانی اطلاعات...</span>
             </span>
           </div>
         )}
@@ -171,7 +206,7 @@ export function FioriDataTable<T>({
           <thead
             className={
               stickyHeader
-                ? 'sticky top-0 z-10 bg-[var(--fiori-bg-surface)] shadow-[0_1px_0_var(--fiori-border-default)]'
+                ? 'sticky top-0 z-10 bg-[var(--fiori-bg-subtle)] shadow-[0_1px_0_var(--fiori-border-default)]'
                 : ''
             }
           >
@@ -185,7 +220,7 @@ export function FioriDataTable<T>({
                   <th
                     key={col.key}
                     style={col.width ? { width: col.width } : undefined}
-                    className={`whitespace-nowrap text-[var(--fiori-text-primary)] select-none ${alignCls} ${hideCls} ${
+                    className={`whitespace-nowrap text-[var(--fiori-text-secondary)] select-none ${alignCls} ${hideCls} ${
                       col.headerClassName || ''
                     }`}
                   >
@@ -203,7 +238,7 @@ export function FioriDataTable<T>({
                             <ArrowDown className="w-3 h-3 text-[var(--fiori-brand)]" />
                           )
                         ) : (
-                          <ArrowUpDown className="w-3 h-3 opacity-40" />
+                          <ArrowUpDown className="w-3 h-3 opacity-45" />
                         )}
                       </button>
                     ) : (
@@ -216,7 +251,20 @@ export function FioriDataTable<T>({
           </thead>
 
           <tbody className="divide-y divide-[var(--fiori-border-subtle)] bg-[var(--fiori-bg-surface)] tabular-nums">
-            {sortedData.length === 0 ? (
+            {loading && sortedData.length === 0 ? (
+              Array.from({ length: loadingRows }).map((_, skIdx) => (
+                <tr key={`sk-${skIdx}`} aria-hidden="true">
+                  {columns.map(col => {
+                    const hideCls = col.hideBelow ? HIDE_BELOW_CLS[col.hideBelow] : '';
+                    return (
+                      <td key={col.key} className={hideCls}>
+                        <div className="h-3.5 rounded bg-[var(--fiori-bg-hover)] animate-pulse w-3/4" />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
+            ) : sortedData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="!p-0">
                   {emptyState || (
@@ -228,59 +276,69 @@ export function FioriDataTable<T>({
               </tr>
             ) : (
               sortedData.map((row, rowIndex) => {
+                const key = rowKey(row, rowIndex);
                 const customRowClass = rowClassName ? rowClassName(row, rowIndex) : '';
                 const isInteractive = Boolean(onRowClick);
+                const isExpanded = Boolean(expandedRowKeys && expandedRowKeys[key] && renderExpandedRow);
 
                 return (
-                  <tr
-                    key={rowKey(row, rowIndex)}
-                    tabIndex={isInteractive ? 0 : undefined}
-                    onClick={isInteractive ? () => onRowClick?.(row) : undefined}
-                    onKeyDown={
-                      isInteractive
-                        ? e => {
-                            if (
-                              e.key === 'Enter' &&
-                              e.target === e.currentTarget
-                            ) {
-                              e.preventDefault();
-                              onRowClick?.(row);
+                  <React.Fragment key={key}>
+                    <tr
+                      tabIndex={isInteractive ? 0 : undefined}
+                      onClick={isInteractive ? () => onRowClick?.(row) : undefined}
+                      onKeyDown={
+                        isInteractive
+                          ? e => {
+                              if (
+                                e.key === 'Enter' &&
+                                e.target === e.currentTarget
+                              ) {
+                                e.preventDefault();
+                                onRowClick?.(row);
+                              }
                             }
-                          }
-                        : undefined
-                    }
-                    className={`${
-                      isInteractive
-                        ? 'cursor-pointer hover:bg-[var(--fiori-bg-selected)]/70 focus-visible:outline-2 focus-visible:outline-[var(--fiori-border-focus)]'
-                        : 'hover:bg-[var(--fiori-bg-hover)]/60'
-                    } transition-colors ${customRowClass}`}
-                  >
-                    {columns.map(col => {
-                      const alignCls = ALIGN_CLS[col.align || 'right'];
-                      const hideCls = col.hideBelow ? HIDE_BELOW_CLS[col.hideBelow] : '';
-                      const dynamicCellCls =
-                        typeof col.cellClassName === 'function'
-                          ? col.cellClassName(row, rowIndex)
-                          : col.cellClassName || '';
+                          : undefined
+                      }
+                      className={`${
+                        isInteractive
+                          ? 'cursor-pointer hover:bg-[var(--fiori-bg-selected)]/60 focus-visible:outline-2 focus-visible:outline-[var(--fiori-border-focus)]'
+                          : 'hover:bg-[var(--fiori-bg-hover)]/65'
+                      } ${isExpanded ? 'bg-[var(--fiori-brand-bg)]/35' : ''} transition-colors ${customRowClass}`}
+                    >
+                      {columns.map(col => {
+                        const alignCls = ALIGN_CLS[col.align || 'right'];
+                        const hideCls = col.hideBelow ? HIDE_BELOW_CLS[col.hideBelow] : '';
+                        const dynamicCellCls =
+                          typeof col.cellClassName === 'function'
+                            ? col.cellClassName(row, rowIndex)
+                            : col.cellClassName || '';
 
-                      return (
-                        <td
-                          key={col.key}
-                          className={`${alignCls} ${hideCls} ${
-                            col.nowrap ? 'whitespace-nowrap' : ''
-                          } ${col.isMono ? 'font-mono' : ''} ${dynamicCellCls}`}
-                        >
-                          {col.isLtrCode ? (
-                            <span className="fiori-ltr-code font-mono">
-                              {col.render(row, rowIndex)}
-                            </span>
-                          ) : (
-                            col.render(row, rowIndex)
-                          )}
+                        return (
+                          <td
+                            key={col.key}
+                            className={`${alignCls} ${hideCls} ${
+                              col.nowrap ? 'whitespace-nowrap' : ''
+                            } ${col.isMono ? 'font-mono' : ''} ${dynamicCellCls}`}
+                          >
+                            {col.isLtrCode ? (
+                              <span className="fiori-ltr-code font-mono">
+                                {col.render(row, rowIndex)}
+                              </span>
+                            ) : (
+                              col.render(row, rowIndex)
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {isExpanded && renderExpandedRow && (
+                      <tr className="bg-[var(--fiori-bg-subtle)]/75 hover:!bg-[var(--fiori-bg-subtle)]/75">
+                        <td colSpan={columns.length} className="!p-0">
+                          {renderExpandedRow(row, rowIndex)}
                         </td>
-                      );
-                    })}
-                  </tr>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })
             )}

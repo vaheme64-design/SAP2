@@ -1,17 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import {
-  FilePlus,
-  X,
-  Layers,
-  Calendar,
-  AlertCircle,
-  CheckCircle2,
-  Boxes,
-  Plus,
-} from 'lucide-react';
+import { FilePlus, Plus } from 'lucide-react';
 import { Part, Routing } from '../../types/inventory';
-import { formatNumber, toPersianDigits } from '../../utils/formatters';
+import { formatNumber } from '../../utils/formatters';
 import { QuickEntryModals, QuickCreateEntityType } from '../common/QuickEntryModals';
+import { JalaliDatePicker } from '../common/JalaliDatePicker';
+import { FioriDialog, FioriMessageStrip } from '../fiori/ui';
 
 interface MaterialSourceOption {
   id: string;
@@ -112,7 +105,10 @@ export const CreateMoModal: React.FC<CreateMoModalProps> = ({
       if (src.unitCode === 'KG') {
         setInitialInputQuantity(String(targetNum > 0 ? targetNum : 1));
       } else {
-        const capped = Math.min(targetNum || Math.floor(src.quantityAvailable), Math.floor(src.quantityAvailable));
+        const capped = Math.min(
+          targetNum || Math.floor(src.quantityAvailable),
+          Math.floor(src.quantityAvailable)
+        );
         setInitialInputQuantity(String(Math.max(1, capped)));
       }
     }
@@ -140,9 +136,15 @@ export const CreateMoModal: React.FC<CreateMoModalProps> = ({
       setErrorMsg('برای بارگذاری ورودی اولیه بیشتر از صفر، انتخاب منبع موجودی از انبار الزامی است.');
       return;
     }
-    if (selectedSource && selectedSource.unitCode !== 'KG' && inputQty > selectedSource.quantityAvailable + 1e-6) {
+    if (
+      selectedSource &&
+      selectedSource.unitCode !== 'KG' &&
+      inputQty > selectedSource.quantityAvailable + 1e-6
+    ) {
       setErrorMsg(
-        `موجودی آزاد در منبع انتخابی (${formatNumber(selectedSource.quantityAvailable)} ${selectedSource.unitSymbol}) کمتر از مقدار درخواستی است.`
+        `موجودی آزاد در منبع انتخابی (${formatNumber(selectedSource.quantityAvailable)} ${
+          selectedSource.unitSymbol
+        }) کمتر از مقدار درخواستی است.`
       );
       return;
     }
@@ -175,184 +177,206 @@ export const CreateMoModal: React.FC<CreateMoModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#333333]/40 backdrop-blur-xs">
-      <div className="bg-white border border-[#d9d9d9] rounded-md max-w-xl w-full p-5 space-y-4 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[#d9d9d9] pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-[#e5f3fa] text-[#007cc0] border border-[#b3d7ff] rounded">
-              <FilePlus className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[#333333]">صدور دستور کار ساخت جدید (Manufacturing Order)</h3>
-              <p className="text-xs text-[#666666]">تولید خودکار مراحل عملیاتی از روی مسیر فرآیند مصوب قطعه</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-[#666666] hover:text-[#333333] p-1 rounded hover:bg-[#f5f5f5] cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {errorMsg && (
-          <div className="p-3 bg-[#fde8e8] border border-[#f5b8b8] rounded text-xs text-[#bb0000] flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-[#333333]">
-                انتخاب قطعه خودرویی <span className="text-[#bb0000]">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => setActiveQuickModal('PART')}
-                className="text-[11px] font-semibold text-[#107e3e] hover:underline flex items-center gap-0.5 cursor-pointer"
-              >
-                <Plus className="w-3 h-3" />
-                <span>+ تعریف سریع قطعه جدید</span>
-              </button>
-            </div>
-            <select
-              value={selectedPartId}
-              onChange={e => setSelectedPartId(e.target.value)}
-              className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-            >
-              <option value="">-- انتخاب قطعه از فهرست قطعات فعال --</option>
-              {localParts.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.code} - {p.name} ({p.carModel || 'سازه بدنه'})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {selectedPart && (
-            <div className="p-3 bg-[#fafafa] rounded border border-[#d9d9d9] text-xs space-y-1.5">
-              <div className="flex items-center justify-between text-[#333333]">
-                <span>مسیر فرآیند مصوب:</span>
-                <span className="font-bold text-[#e9730c] font-mono">
-                  {matchingRouting ? `نسخه ${matchingRouting.version} (${matchingRouting.operations.length} مرحله عملیاتی)` : 'مسیر استاندارد پیش‌فرض'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[#666666] text-[11px]">
-                <span>گرید فولاد / ضخامت:</span>
-                <span className="font-mono text-[#333333]">{selectedPart.materialGrade || 'ST14'} / {selectedPart.thicknessMm || 1.2}mm</span>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#333333]">
-              منبع موجودی انبار / کلاف برای بارگذاری اولیه (حواله اتمیک انبار)
-            </label>
-            <select
-              value={sourceStockBalanceId}
-              onChange={e => handleSourceChange(e.target.value)}
-              disabled={sourcesLoading}
-              className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-            >
-              <option value="">
-                {sourcesLoading
-                  ? 'در حال بارگذاری موجودی انبارها...'
-                  : 'بدون بارگذاری اولیه — ۰ ورودی (بارگذاری بعدی با حواله انبار)'}
-              </option>
-              {materialSources.map(src => (
-                <option key={src.id} value={src.id}>
-                  {src.partCode} — {src.partName} | {src.warehouseName} ({src.locationCode || '-'})
-                  {src.coilId ? ` | کلاف ${src.coilId}` : src.lotNumber ? ` | لات ${src.lotNumber}` : ''}
-                  {` | آزاد: ${formatNumber(src.quantityAvailable)} ${src.unitSymbol} (${formatNumber(src.weightKgAvailable)} kg)`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#333333]">
-                تعداد هدف محصول نهایی (PCS) <span className="text-[#bb0000]">*</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={targetQuantity}
-                onChange={e => setTargetQuantity(e.target.value)}
-                className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#333333]">
-                ورودی شیت/بلنک مرحله ۱ (PCS)
-              </label>
-              <input
-                type="number"
-                min="0"
-                disabled={!sourceStockBalanceId}
-                value={initialInputQuantity}
-                onChange={e => setInitialInputQuantity(e.target.value)}
-                className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] font-mono focus:outline-none focus:border-[#007cc0] disabled:bg-[#f5f5f5] disabled:text-[#767676]"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#333333]">تاریخ شروع ساخت</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#333333]">موعد تحویل به انبار</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] font-mono focus:outline-none focus:border-[#007cc0]"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#333333]">توضیحات و الزامات کیفی ساپکو</label>
-            <input
-              type="text"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="مثال: اولویت تحویل خط رنگ، کلاف امانی ساپکو..."
-              className="w-full bg-white border border-[#bfbfbf] rounded p-2 text-xs text-[#333333] focus:outline-none focus:border-[#007cc0]"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#d9d9d9]">
+    <>
+      <FioriDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        title="صدور دستور کار ساخت جدید (MO)"
+        subtitle="تولید خودکار مراحل عملیاتی از روی مسیر فرآیند مصوب قطعه"
+        icon={<FilePlus className="w-4 h-4" />}
+        tone="brand"
+        size="lg"
+        disableClose={isSubmitting}
+        footer={
+          <>
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="sap-btn-standard px-4 py-1.5 text-xs font-medium cursor-pointer"
+              className="sap-btn-standard px-4 py-1.5 text-xs cursor-pointer"
             >
               انصراف
             </button>
             <button
               type="submit"
+              form="create-mo-form"
               disabled={isSubmitting}
-              className="sap-btn-emphasized flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold cursor-pointer disabled:opacity-50"
+              className="sap-btn-emphasized inline-flex items-center gap-1.5 px-4 py-1.5 text-xs cursor-pointer disabled:opacity-50"
             >
-              <FilePlus className={`w-4 h-4 ${isSubmitting ? 'animate-spin' : ''}`} />
-              <span>ایجاد دستور ساخت و تولید عملیات</span>
+              <FilePlus className={`w-3.5 h-3.5 ${isSubmitting ? 'animate-spin' : ''}`} />
+              <span>{isSubmitting ? 'در حال ثبت...' : 'ایجاد دستور ساخت و تولید عملیات'}</span>
             </button>
+          </>
+        }
+      >
+        {errorMsg && (
+          <FioriMessageStrip tone="error" compact onClose={() => setErrorMsg(null)}>
+            {errorMsg}
+          </FioriMessageStrip>
+        )}
+
+        <form id="create-mo-form" onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {/* Group 1: Part & Routing */}
+          <div className="space-y-2.5">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className="font-semibold text-[var(--fiori-text-primary)]">
+                  انتخاب قطعه خودرویی <span className="text-[var(--fiori-negative)]">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setActiveQuickModal('PART')}
+                  className="text-[11px] font-semibold text-[var(--fiori-positive)] hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>تعریف سریع قطعه جدید</span>
+                </button>
+              </div>
+              <select
+                value={selectedPartId}
+                onChange={e => setSelectedPartId(e.target.value)}
+                className="fiori-input w-full p-2"
+              >
+                <option value="">-- انتخاب قطعه از فهرست قطعات فعال --</option>
+                {localParts.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.code} - {p.name} ({p.carModel || 'سازه بدنه'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedPart && (
+              <div className="p-3 bg-[var(--fiori-bg-subtle)] rounded-[var(--fiori-radius-sm)] border border-[var(--fiori-border-default)] space-y-1.5">
+                <div className="flex items-center justify-between text-[var(--fiori-text-primary)]">
+                  <span className="text-[var(--fiori-text-secondary)]">مسیر فرآیند مصوب:</span>
+                  <span className="font-semibold text-[var(--fiori-brand)] font-mono">
+                    {matchingRouting
+                      ? `نسخه ${matchingRouting.version} (${matchingRouting.operations.length} مرحله عملیاتی)`
+                      : 'مسیر استاندارد پیش‌فرض'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--fiori-text-secondary)]">
+                  <span>گرید فولاد / ضخامت:</span>
+                  <span className="font-mono fiori-ltr-code text-[var(--fiori-text-primary)]">
+                    {selectedPart.materialGrade || 'ST14'} / {selectedPart.thicknessMm || 1.2}mm
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Group 2: Material Source & Quantities */}
+          <div className="space-y-3 pt-2 border-t border-[var(--fiori-border-subtle)]">
+            <div className="space-y-1.5">
+              <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                منبع موجودی انبار / کلاف برای بارگذاری اولیه (حواله اتمیک انبار)
+              </label>
+              <select
+                value={sourceStockBalanceId}
+                onChange={e => handleSourceChange(e.target.value)}
+                disabled={sourcesLoading}
+                className="fiori-input w-full p-2"
+              >
+                <option value="">
+                  {sourcesLoading
+                    ? 'در حال بارگذاری موجودی انبارها...'
+                    : 'بدون بارگذاری اولیه — ۰ ورودی (بارگذاری بعدی با حواله انبار)'}
+                </option>
+                {materialSources.map(src => (
+                  <option key={src.id} value={src.id}>
+                    {src.partCode} — {src.partName} | {src.warehouseName} ({src.locationCode || '-'})
+                    {src.coilId
+                      ? ` | کلاف ${src.coilId}`
+                      : src.lotNumber
+                      ? ` | لات ${src.lotNumber}`
+                      : ''}
+                    {` | آزاد: ${formatNumber(src.quantityAvailable)} ${src.unitSymbol} (${formatNumber(
+                      src.weightKgAvailable
+                    )} kg)`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                  تعداد هدف محصول نهایی (عدد){' '}
+                  <span className="text-[var(--fiori-negative)]">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={targetQuantity}
+                  onChange={e => setTargetQuantity(e.target.value)}
+                  className="fiori-input w-full p-2 font-mono text-left"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                  ورودی شیت/بلنک مرحله ۱ (عدد)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  disabled={!sourceStockBalanceId}
+                  value={initialInputQuantity}
+                  onChange={e => setInitialInputQuantity(e.target.value)}
+                  className="fiori-input w-full p-2 font-mono text-left"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Group 3: Schedule (Jalali) & Notes */}
+          <div className="space-y-3 pt-2 border-t border-[var(--fiori-border-subtle)]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                  تاریخ شروع ساخت (شمسی)
+                </label>
+                <JalaliDatePicker
+                  value={startDate}
+                  onChange={(_jalali, gregorian) => {
+                    if (gregorian) setStartDate(gregorian);
+                  }}
+                  placeholder="انتخاب تاریخ شروع..."
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                  موعد تحویل به انبار (شمسی)
+                </label>
+                <JalaliDatePicker
+                  value={dueDate}
+                  onChange={(_jalali, gregorian) => {
+                    if (gregorian) setDueDate(gregorian);
+                  }}
+                  placeholder="انتخاب موعد تحویل..."
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="font-semibold text-[var(--fiori-text-primary)] block">
+                توضیحات و الزامات کیفی ساپکو
+              </label>
+              <input
+                type="text"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="مثال: اولویت تحویل خط رنگ، کلاف امانی ساپکو..."
+                className="fiori-input w-full p-2"
+              />
+            </div>
           </div>
         </form>
-      </div>
+      </FioriDialog>
 
       <QuickEntryModals
         activeModal={activeQuickModal}
@@ -365,6 +389,6 @@ export const CreateMoModal: React.FC<CreateMoModalProps> = ({
           }
         }}
       />
-    </div>
+    </>
   );
 };

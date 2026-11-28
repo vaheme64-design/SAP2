@@ -7,7 +7,7 @@ import {
   Building2,
   X,
 } from 'lucide-react';
-import { StageInventorySummary, FACTORY_STAGES } from '../types/inventory';
+import { StageInventorySummary, FACTORY_STAGES, resolveStageDisplayName } from '../types/inventory';
 import {
   formatNumber,
   formatWeightKg,
@@ -122,14 +122,14 @@ export const InventoryReportView: React.FC<InventoryReportViewProps> = ({
     ];
 
     const rows = filteredBalances.map(item => [
-      item.stageName,
+      resolveStageDisplayName(item.stageId, item.stageName),
       item.partCode,
       item.partName,
       item.usableQty,
       item.reservedQty,
       item.inTransitQty,
       item.totalQty,
-      item.unit,
+      item.unit === 'PCS' ? 'عدد' : item.unit === 'KG' ? 'کیلوگرم' : item.unit,
       item.totalKg,
       item.scrapQty,
       `${item.scrapRatePercent}%`,
@@ -147,7 +147,7 @@ export const InventoryReportView: React.FC<InventoryReportViewProps> = ({
         render: item => (
           <div className="flex items-center gap-1.5 font-medium text-[var(--fiori-text-primary)]">
             <Building2 className="w-3.5 h-3.5 text-[var(--fiori-brand)] shrink-0" />
-            <span>{item.stageName}</span>
+            <span>{resolveStageDisplayName(item.stageId, item.stageName)}</span>
           </div>
         ),
       },
@@ -207,7 +207,7 @@ export const InventoryReportView: React.FC<InventoryReportViewProps> = ({
         key: 'unit',
         header: 'واحد',
         cellClassName: 'text-[var(--fiori-text-secondary)] font-medium',
-        render: item => item.unit,
+        render: item => (item.unit === 'PCS' ? 'عدد' : item.unit === 'KG' ? 'کیلوگرم' : item.unit),
       },
       {
         key: 'totalKg',

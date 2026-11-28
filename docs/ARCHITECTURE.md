@@ -163,3 +163,29 @@ npx prisma studio
 ### ۸.۵ اولویت طراحی
 رابط کاربری باید برای ثبت سریع و کم‌خطای عملیات روزمره انبار، برنامه‌ریزی و تولید طراحی شود. پیچیدگی‌های فنی مانند اسناد کاردکس و انتقال موجودی باید تا حد امکان پشت جریان‌های کاری ساده پنهان بمانند، بدون آنکه قابلیت ردیابی و کنترل داخلی از بین برود.
 
+---
+
+## ۹. سیستم طراحی رابط کاربری SAP Fiori Horizon (فاز ۱)
+رابط کاربری سامانه KPIMS در چارچوب React + TypeScript + Tailwind CSS v4 بر پایه الگوی **SAP Fiori Horizon** هم‌تراز شده است. تمام صفحات عملیاتی باید از توکن‌ها و کامپوننت‌های مشترک زیر استفاده کنند و از ایجاد رنگ‌های ثابت قدیمی (`#007cc0`, `#333333`, `#e9730c`, `#bb0000`) یا لایه‌های هدر تکراری خودداری شود.
+
+### ۹.۱ توکن‌های طراحی (`src/index.css`)
+منبع واحد توکن‌های رنگ، حاشیه، شعاع و سایه در `:root` با پیشوند `--fiori-*` تعریف شده و متغیرهای قدیمی `--sap*` برای سازگاری معکوس به همان توکن‌ها نگاشت شده‌اند:
+* **سطوح و بوم:** `--fiori-bg-canvas` (`#f5f6f7`), `--fiori-bg-surface` (`#ffffff`), `--fiori-bg-subtle` (`#f8f9fa`), `--fiori-bg-hover` (`#eef2f6`), `--fiori-bg-selected` (`#ebf5ff`).
+* **متن:** `--fiori-text-primary` (`#1d2d3e`), `--fiori-text-secondary` (`#556b82`), `--fiori-text-muted` (`#788fa6`).
+* **رنگ‌های معنایی (Semantic):** `--fiori-brand` (`#0070f2`), `--fiori-positive` (`#107e3e`), `--fiori-critical` / `--fiori-warning` (`#c85f00`), `--fiori-negative` (`#bb0000`), همراه با پس‌زمینه‌ها (`*-bg`) و حاشیه‌های (`*-border`) استاندارد.
+* **کنترل‌های فرم و دکمه‌ها:** کلاس‌های مشترک `.sap-btn-emphasized` (اقدام اصلی)، `.sap-btn-standard` (اقدام ثانویه)، `.fiori-btn-positive` (ثبت/تأیید تولید)، `.fiori-btn-danger` / `.fiori-btn-danger-outline` (حذف/ابطال)، `.fiori-btn-ghost` و `.fiori-input`.
+* **اعداد و شناسه‌های فنی (RTL/LTR):** محیط برنامه فارسی راست‌چین (`dir="rtl"`) است؛ کلیه کدهای فنی (`MO-…`، کد قطعه، کد عملیات `OP10`، موقعیت انبار و تاریخ‌ها) با کلاس `.fiori-ltr-code` (`direction: ltr; unicode-bidi: isolate`) و اعداد جدولی با `tabular-nums` نمایش داده می‌شوند. قواعد `@media print` برای چاپ A4 حفظ شده‌اند.
+
+### ۹.۲ کاتالوگ کامپوننت‌های مشترک (`src/components/fiori/ui/`)
+* `FioriDynamicPage`: چارچوب استاندارد صفحه (عنوان، زیرعنوان، وضعیت، دکمه‌های هدر، اسلات `tabs` برای `FioriIconTabBar`، اسلات `kpiStrip` و اسلات `filterBar`). برای جلوگیری از هدرهای تودرتو، نمای فرزند در حالت تعبیه‌شده از پراپ `embeddedInParent` استفاده می‌کند.
+* `FioriIconTabBar`: نوار تب استاندارد Horizon با شمارنده معنایی و اسلات `endContent`.
+* `FioriKpiStrip`: نوار شاخص‌های کلیدی (۴ تا ۶ ستون) با حالت اسکلتون بارگذاری، نوار پیشرفت اختیاری و امکان فیلتر کلیکی.
+* `FioriFilterBar`: نوار جستجو و فیلتر یکپارچه با دکمه پاک‌سازی، فیلترهای سگمنتی همراه با شمارنده و دکمه بازنشانی فیلترها.
+* `FioriDataTable`: جدول داده Horizon با مرتب‌سازی، بارگذاری اسکلتون (`loadingRows`)، بنر خطا با تلاش مجدد (`error` / `onRetry`) و پشتیبانی از سطرهای بازشونده Master-Detail (`expandedRowKeys` / `renderExpandedRow`).
+* `FioriDialog`, `FioriObjectStatus`, `FioriMessageStrip`, `FioriToolbar`: دیالوگ‌های استاندارد (با اسلات `headerActions` و تن `positive`/`danger`/`info`/`brand`)، نشانگرهای وضعیت معنایی و نوار پیام‌ها.
+
+### ۹.۳ صفحات پایلوت هم‌ترازشده در فاز ۱
+1. **مدیریت دستور ساخت (`#/production/orders`)** — `ManufacturingOrdersManagementView.tsx` همراه با دیالوگ‌های مشترک `CreateMoModal.tsx` و `OperationProductionModal.tsx`.
+2. **قطعات در جریان ساخت و ایستگاه‌ها (`#/wip`)** — `ProductionWipModuleView.tsx` همراه با `ManufacturingOrdersView.tsx`, `InterOperationTransfersView.tsx`, `WipHallMoDistributionChart.tsx` و دیالوگ‌های `OperationInputModal.tsx`, `OperationTransferModal.tsx`, `WipReconciliationModal.tsx`.
+
+

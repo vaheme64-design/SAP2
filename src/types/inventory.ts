@@ -311,6 +311,36 @@ export const FACTORY_STAGES = [
   { id: 'STAGE_SCRAP_YARD', name: 'انبار ضایعات پرس و ورق', type: 'SCRAP', unit: 'KG' },
 ] as const;
 
+export const STAGE_DISPLAY_NAME_MAP: Record<string, string> = {
+  STAGE_RAW_STORE: 'انبار مواد اولیه ساپکو',
+  STAGE_SHEARING: 'ایستگاه ۱: برش و نواربری ورق',
+  STAGE_BLANKING: 'ایستگاه ۲: پرس بلنکینگ',
+  STAGE_STAMPING: 'ایستگاه پرس‌کاری و فرم‌دهی',
+  STAGE_PRESS: 'ایستگاه پرس‌کاری',
+  STAGE_DRAWING: 'ایستگاه کشش عمیق هیدرولیک',
+  STAGE_FORMING: 'ایستگاه ۳: پرس پانچ و فرم‌دهی',
+  STAGE_BENDING: 'ایستگاه ۴: پرس برک و خم‌کاری',
+  STAGE_SPOT_WELD: 'ایستگاه ۵: پرس‌جوش مقاومتی',
+  STAGE_CO2_WELD: 'ایستگاه ۶: خط جوشکاری CO2',
+  STAGE_WELDING: 'ایستگاه جوشکاری و مونتاژ',
+  STAGE_PAINT: 'ایستگاه ۷: خط شستشو و رنگ کاتافورز',
+  STAGE_ASSEMBLY: 'ایستگاه ۸: مونتاژ مجموعه‌ها',
+  STAGE_FINISHED_STORE: 'انبار قطعات و محصولات نهایی',
+  STAGE_SCRAP_YARD: 'انبار ضایعات پرس و ورق',
+};
+
+export function resolveStageDisplayName(stageId?: string, stageName?: string): string {
+  const rawName = (stageName || '').trim();
+  const rawId = (stageId || '').trim();
+  if (rawName && STAGE_DISPLAY_NAME_MAP[rawName]) {
+    return STAGE_DISPLAY_NAME_MAP[rawName];
+  }
+  if (rawId && STAGE_DISPLAY_NAME_MAP[rawId] && (!rawName || rawName === rawId || rawName.startsWith('STAGE_'))) {
+    return STAGE_DISPLAY_NAME_MAP[rawId];
+  }
+  return rawName || STAGE_DISPLAY_NAME_MAP[rawId] || rawId || 'ایستگاه تولید';
+}
+
 export const SCRAP_REASONS = [
   'پارگی کشش عمیق در قالب پرس',
   'چروکیدگی ورق در شعاع خم',

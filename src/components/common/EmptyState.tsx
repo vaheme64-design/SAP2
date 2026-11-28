@@ -149,13 +149,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   if (compact) {
     return (
       <div
-        className={`flex flex-col items-center justify-center p-5 text-center text-[#666666] rounded border border-dashed border-[#bfbfbf] bg-[#f7f7f7] ${className}`}
+        className={`flex flex-col items-center justify-center p-5 text-center text-[var(--fiori-text-secondary)] rounded-[var(--fiori-radius-md)] border border-dashed border-[var(--fiori-border-strong)] bg-[var(--fiori-bg-subtle)] ${className}`}
       >
-        <div className="w-9 h-9 rounded bg-[#e5f3fa] border border-[#b3ddf2] flex items-center justify-center text-[#007cc0] mb-2">
+        <div className="w-9 h-9 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] border border-[var(--fiori-brand-border)] flex items-center justify-center text-[var(--fiori-brand)] mb-2">
           <FinalIcon className="w-4 h-4 stroke-[1.6]" />
         </div>
-        <h4 className="font-bold text-xs text-[#333333]">{finalTitle}</h4>
-        <p className="text-[11px] text-[#666666] max-w-sm mt-1 leading-relaxed">
+        <h4 className="font-semibold text-xs text-[var(--fiori-text-primary)]">{finalTitle}</h4>
+        <p className="text-[11px] text-[var(--fiori-text-secondary)] max-w-sm mt-1 leading-relaxed">
           {finalDescription}
         </p>
         {finalActionLabel && onAction && (
@@ -173,37 +173,26 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
   return (
     <div
-      className={`flex flex-col items-center justify-center p-6 md:p-10 text-center rounded-md border border-dashed border-[#bfbfbf] bg-white ${className}`}
+      className={`flex flex-col items-center justify-center p-6 md:p-8 text-center rounded-[var(--fiori-radius-md)] border border-dashed border-[var(--fiori-border-strong)] bg-[var(--fiori-bg-surface)] ${className}`}
     >
-      {/* Icon with layered backdrop */}
-      <div className="relative mb-3">
-        <div className="w-14 h-14 rounded-md bg-[#e5f3fa] border border-[#b3ddf2] flex items-center justify-center text-[#007cc0]">
-          <FinalIcon className="w-7 h-7 stroke-[1.5]" />
-        </div>
-        <div className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-[#007cc0] text-white flex items-center justify-center text-[10px] font-mono font-bold">
-          0
-        </div>
+      <div className="w-12 h-12 rounded-[var(--fiori-radius-md)] bg-[var(--fiori-brand-bg)] border border-[var(--fiori-brand-border)] flex items-center justify-center text-[var(--fiori-brand)] mb-3">
+        <FinalIcon className="w-6 h-6 stroke-[1.6]" />
       </div>
 
-      {/* Title & Description */}
-      <h3 className="font-bold text-sm md:text-base text-[#333333] mb-1">{finalTitle}</h3>
-      <p className="text-xs text-[#666666] max-w-md mx-auto leading-relaxed mb-4">
+      <h3 className="font-semibold text-sm text-[var(--fiori-text-primary)] mb-1">{finalTitle}</h3>
+      <p className="text-xs text-[var(--fiori-text-secondary)] max-w-md mx-auto leading-relaxed mb-4">
         {finalDescription}
       </p>
 
-      {/* Enterprise Instructional Steps */}
       {finalSteps && finalSteps.length > 0 && (
-        <div className="bg-[#f7f7f7] border border-[#d9d9d9] rounded p-3 max-w-md w-full text-right text-xs mb-4">
-          <div className="text-[11px] font-bold text-[#333333] mb-1.5 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#007cc0]" />
-            <span>راهنمای گام‌به‌گام برای شروع:</span>
+        <div className="bg-[var(--fiori-bg-subtle)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-sm)] p-3 max-w-md w-full text-right text-xs mb-4">
+          <div className="text-[11px] font-semibold text-[var(--fiori-text-primary)] mb-1.5">
+            راهنمای شروع:
           </div>
-          <ul className="space-y-1 text-[#666666] text-[11px]">
+          <ul className="space-y-1 text-[var(--fiori-text-secondary)] text-[11px]">
             {finalSteps.map((step, sIdx) => (
               <li key={sIdx} className="flex items-start gap-2">
-                <span className="font-mono text-[10px] font-bold text-[#007cc0] shrink-0 mt-0.5">
-                  ●
-                </span>
+                <span className="text-[var(--fiori-brand)] shrink-0">•</span>
                 <span>{step}</span>
               </li>
             ))}
@@ -211,13 +200,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         </div>
       )}
 
-      {/* Call To Actions */}
       <div className="flex flex-wrap items-center justify-center gap-2">
         {finalActionLabel && onAction && (
           <button
             type="button"
             onClick={onAction}
-            className="sap-btn-emphasized flex items-center gap-1.5 px-4 py-1.5 text-xs cursor-pointer"
+            className="sap-btn-emphasized flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{finalActionLabel}</span>
@@ -230,7 +218,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             onClick={onSecondaryAction}
             className="sap-btn-standard flex items-center gap-1.5 px-3.5 py-1.5 text-xs cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-[#007cc0]" />
+            <RefreshCw className="w-3.5 h-3.5 text-[var(--fiori-brand)]" />
             <span>{finalSecondaryLabel}</span>
           </button>
         )}

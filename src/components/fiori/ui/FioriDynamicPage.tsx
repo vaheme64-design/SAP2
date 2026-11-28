@@ -15,6 +15,7 @@ export interface FioriDynamicPageProps {
   headerActions?: React.ReactNode;
   kpiStrip?: React.ReactNode;
   filterBar?: React.ReactNode;
+  tabs?: React.ReactNode;
   collapsibleFilters?: boolean;
   filterCollapsedDefault?: boolean;
   activeFiltersCount?: number;
@@ -33,6 +34,7 @@ export const FioriDynamicPage: React.FC<FioriDynamicPageProps> = ({
   headerActions,
   kpiStrip,
   filterBar,
+  tabs,
   collapsibleFilters = true,
   filterCollapsedDefault = false,
   activeFiltersCount = 0,
@@ -48,9 +50,15 @@ export const FioriDynamicPage: React.FC<FioriDynamicPageProps> = ({
   return (
     <div dir="rtl" className={`space-y-3 ${className}`}>
       {/* Dynamic Page Header + Snapping/Collapsible Header Content */}
-      <section className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-visible">
+      <section className="bg-[var(--fiori-bg-surface)] border border-[var(--fiori-border-default)] rounded-[var(--fiori-radius-md)] shadow-[var(--fiori-shadow-card)] overflow-hidden">
         {/* Title Bar */}
-        <div className="px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-2.5 border-b border-[var(--fiori-border-subtle)]">
+        <div
+          className={`px-4 py-3 flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 ${
+            (hasHeaderContent && !filtersCollapsed) || tabs
+              ? 'border-b border-[var(--fiori-border-subtle)]'
+              : ''
+          }`}
+        >
           <div className="min-w-0 space-y-1">
             {breadcrumbs && breadcrumbs.length > 0 && (
               <nav
@@ -79,7 +87,7 @@ export const FioriDynamicPage: React.FC<FioriDynamicPageProps> = ({
             )}
 
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-sm sm:text-[15px] font-semibold text-[var(--fiori-text-primary)] truncate">
+              <h2 className="text-[15px] sm:text-base font-semibold text-[var(--fiori-text-primary)] leading-snug">
                 {title}
               </h2>
               {status}
@@ -100,8 +108,8 @@ export const FioriDynamicPage: React.FC<FioriDynamicPageProps> = ({
                 aria-expanded={!filtersCollapsed}
                 className="sap-btn-standard px-2.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>{filtersCollapsed ? 'نمایش فیلترها' : 'بستن فیلترها'}</span>
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--fiori-text-secondary)]" />
+                <span>{filtersCollapsed ? 'نمایش فیلترها' : 'جمع‌کردن فیلترها'}</span>
                 {activeFiltersCount > 0 && (
                   <span className="px-1.5 py-0.2 rounded-[var(--fiori-radius-sm)] bg-[var(--fiori-brand-bg)] text-[var(--fiori-brand)] font-mono text-[10px]">
                     {toPersianDigits(activeFiltersCount)}
@@ -132,11 +140,14 @@ export const FioriDynamicPage: React.FC<FioriDynamicPageProps> = ({
 
         {/* Expandable Dynamic Header Content (KPIs + FilterBar) */}
         {hasHeaderContent && !filtersCollapsed && (
-          <div className="px-4 py-3 space-y-3 bg-[var(--fiori-bg-subtle)]/60">
+          <div className="px-4 py-3 space-y-3 bg-[var(--fiori-bg-subtle)]/75">
             {kpiStrip}
             {filterBar}
           </div>
         )}
+
+        {/* Optional Dynamic Page IconTabBar */}
+        {tabs}
       </section>
 
       {/* Optional Mid-Page Toolbar */}
